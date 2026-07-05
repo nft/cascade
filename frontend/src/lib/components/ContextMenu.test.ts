@@ -111,7 +111,7 @@ describe('ContextMenu component (plan 03 §2)', () => {
     app.nodes = [
       {
         id: 'victim',
-        type: 'operation',
+        type: 'http',
         position: { x: 0, y: 0 },
         data: {
           name: 'victim',

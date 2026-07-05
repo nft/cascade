@@ -1,13 +1,13 @@
 import type { ContextMenuKind } from './contextMenu'
-import { componentIds, upstreamIds } from './graph'
-import type { AppEdge, AppNode, LogEntry, Operation, OperationNodeData } from './model'
+import { componentIds, downstreamIds, upstreamIds } from './graph'
+import { isHttpNode, type AppEdge, type AppNode, type LogEntry, type Operation } from './model'
 import { initialEdges, initialLogs, initialNodes } from './mock'
 
 type SidebarTab = 'operations' | 'environments' | 'keys'
 
 export type CanvasTool = 'select' | 'scissors'
 
-export type RunScope = 'upstream' | 'component'
+export type RunScope = 'upstream' | 'downstream' | 'component'
 
 export interface ContextMenuState {
   kind: ContextMenuKind
@@ -38,8 +38,10 @@ class AppState {
     return this.nodes.find((n) => n.id === this.selectedNodeId) ?? null
   }
 
-  updateNodeData(id: string, patch: Partial<OperationNodeData>) {
-    this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n))
+  updateNodeData(id: string, patch: Partial<AppNode['data']>) {
+    this.nodes = this.nodes.map((n) =>
+      n.id === id ? ({ ...n, data: { ...n.data, ...patch } } as AppNode) : n,
+    )
   }
 
   addNode(op: Operation, position?: { x: number; y: number }) {
@@ -49,7 +51,7 @@ class AppState {
       ...this.nodes,
       {
         id,
-        type: 'operation',
+        type: 'http',
         position: position ?? { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 },
         data: {
           name: op.summary,
@@ -81,6 +83,11 @@ class AppState {
     if (!src) return
     this.addCounter += 1
     const newId = `${src.id}-copy-${this.addCounter}`
+    const data = structuredClone(src.data)
+    if ('status' in data) {
+      data.status = 'idle'
+      data.note = undefined
+    }
     this.nodes = [
       ...this.nodes,
       {
@@ -88,8 +95,8 @@ class AppState {
         id: newId,
         position: { x: src.position.x + 40, y: src.position.y + 40 },
         selected: false,
-        data: { ...src.data, status: 'idle', note: undefined, fields: src.data.fields.map((f) => ({ ...f })) },
-      },
+        data,
+      } as AppNode,
     ]
     this.selectedNodeId = newId
   }
@@ -123,9 +130,10 @@ class AppState {
 
   /**
    * Demo-only run simulation; replaced by engine events once M1 is wired in.
-   * With a target, only the target's upstream set (or weakly-connected component)
-   * runs — the same node-set semantics as the engine's planned `Options.Target`
-   * subgraph runs (M1 WP5). Nodes outside the set keep their previous status.
+   * With a target, only the target's upstream set, downstream chain, or
+   * weakly-connected component runs — the same node-set semantics as the
+   * engine's planned `Options.Target` subgraph runs (M1 WP5). Nodes outside
+   * the set keep their previous status.
    */
   async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
     if (this.isRunning) return
@@ -134,9 +142,15 @@ class AppState {
     const include = targetId
       ? scope === 'upstream'
         ? upstreamIds(this.edges, targetId)
-        : componentIds(this.edges, targetId)
+        : scope === 'downstream'
+          ? downstreamIds(this.edges, targetId)
+          : componentIds(this.edges, targetId)
       : null
-    const order = this.executionOrder().filter((id) => !include || include.has(id))
+    // Note nodes are annotations — they never run, so they keep no status.
+    const noteIds = new Set(this.nodes.filter((n) => n.type === 'note').map((n) => n.id))
+    const order = this.executionOrder().filter(
+      (id) => (!include || include.has(id)) && !noteIds.has(id),
+    )
 
     for (const id of order) this.updateNodeData(id, { status: 'idle', note: undefined })
 
@@ -158,6 +172,8 @@ class AppState {
         fails ? { status: 'failed', note: '422 Unprocessable Entity' } : { status: 'success' },
       )
       if (fails) failed.add(id)
+      // Transform log records are a plan 06 T2 concern; the demo sim only logs http calls.
+      if (!isHttpNode(node)) continue
       this.logs = [
         ...this.logs,
         {

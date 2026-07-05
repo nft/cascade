@@ -1,13 +1,14 @@
 <script lang="ts">
   import { Background, Controls, MiniMap, SvelteFlow } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
-  import { decorateEdges, polylinesIntersect, type Point } from '../graph'
+  import { assertKnownNodeTypes, decorateEdges, polylinesIntersect, type Point } from '../graph'
   import { app } from '../state.svelte'
   import CanvasToolbar from './CanvasToolbar.svelte'
   import ContextMenu from './ContextMenu.svelte'
-  import OperationNode from './OperationNode.svelte'
+  import { nodeTypes, registeredNodeTypes } from './nodeTypes'
 
-  const nodeTypes = { operation: OperationNode }
+  // Unknown node types must fail loudly, not render as xyflow's default node.
+  $effect(() => assertKnownNodeTypes(app.nodes, registeredNodeTypes))
 
   const scissors = $derived(app.canvasTool === 'scissors')
   const displayEdges = $derived(decorateEdges(app.nodes, app.edges))

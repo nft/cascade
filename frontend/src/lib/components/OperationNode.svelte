@@ -29,9 +29,9 @@
         disabled={app.isRunning}
         onclick={(e) => {
           e.stopPropagation()
-          app.simulateRun(id, 'upstream')
+          app.simulateRun(id, 'downstream')
         }}
-        title="Run this node and its upstream"
+        title="Run this node and the chain after it"
         aria-label="Run this node"
       >
         <Icon name="play_arrow" size={14} />

@@ -9,19 +9,52 @@ import "fmt"
 // NodeID uniquely identifies a node within a graph.
 type NodeID string
 
-// Node is a single operation in the graph: one API call bound to an
-// environment and a credential. Operation reference, form values, bindings,
-// repeat count, and per-node log settings are added as M1+ progresses.
+// NodeType discriminates what a node is (plan 06). Only http nodes make
+// requests; transform nodes reshape upstream data in-process; note nodes are
+// canvas annotations and never execute. The discriminator plus per-type
+// executor dispatch is the extension point for future types (delay,
+// condition, foreach).
+type NodeType string
+
+const (
+	NodeTypeHTTP      NodeType = "http"
+	NodeTypeTransform NodeType = "transform"
+	NodeTypeNote      NodeType = "note"
+)
+
+func (t NodeType) valid() bool {
+	switch t {
+	case NodeTypeHTTP, NodeTypeTransform, NodeTypeNote:
+		return true
+	}
+	return false
+}
+
+// Node is a single step in the graph. For http nodes that is one API call
+// bound to an environment and a credential. Operation reference, form values,
+// bindings, repeat count, and per-node log settings are added as M1+
+// progresses.
 type Node struct {
-	ID   NodeID
-	Name string
+	ID   NodeID   `json:"id"`
+	Type NodeType `json:"type,omitempty"`
+	Name string   `json:"name,omitempty"`
+}
+
+// EffectiveType returns the node's type, treating the zero value as http:
+// nodes predate the type discriminator, so both boards serialized before it
+// existed and hand-constructed Node{} literals mean an http node.
+func (n Node) EffectiveType() NodeType {
+	if n.Type == "" {
+		return NodeTypeHTTP
+	}
+	return n.Type
 }
 
 // Edge declares that To depends on From: To may bind to From's outputs and
 // runs only after From succeeded.
 type Edge struct {
-	From NodeID
-	To   NodeID
+	From NodeID `json:"from"`
+	To   NodeID `json:"to"`
 }
 
 // Graph is a set of nodes and dependency edges. A valid graph is a DAG.

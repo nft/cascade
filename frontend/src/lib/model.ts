@@ -1,5 +1,17 @@
 import type { Edge, Node } from '@xyflow/svelte'
 
+/**
+ * Node type discriminator (plan 06). Only `http` nodes make requests;
+ * `transform` reshapes upstream data in-process; `note` is a canvas
+ * annotation that never executes. Mirrors `core.NodeType` on the Go side.
+ */
+export const NODE_TYPES = ['http', 'transform', 'note'] as const
+export type NodeType = (typeof NODE_TYPES)[number]
+
+export function isNodeType(value: unknown): value is NodeType {
+  return NODE_TYPES.includes(value as NodeType)
+}
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 export type NodeStatus = 'idle' | 'running' | 'success' | 'failed' | 'skipped' | 'stale'
@@ -21,20 +33,39 @@ export type NodeField = {
   value: string
 }
 
-export type OperationNodeData = {
+/** Fields shared by the node types that participate in runs (http, transform). */
+export type RunnableNodeData = {
   name: string
+  status: NodeStatus
+  note?: string
+}
+
+export type OperationNodeData = RunnableNodeData & {
   method: HttpMethod
   path: string
   environment: string
   credential: string
-  status: NodeStatus
   fields: NodeField[]
   repeat: number
-  note?: string
 }
 
-export type AppNode = Node<OperationNodeData, 'operation'>
+/** Transform config (mode, pick rows, script) lands with plan 06 T3–T5. */
+export type TransformNodeData = RunnableNodeData
+
+/** Free-text sticky; not executable, no handles (card lands with plan 06 T6). */
+export type NoteNodeData = {
+  text: string
+}
+
+export type HttpNode = Node<OperationNodeData, 'http'>
+export type TransformNode = Node<TransformNodeData, 'transform'>
+export type NoteNode = Node<NoteNodeData, 'note'>
+export type AppNode = HttpNode | TransformNode | NoteNode
 export type AppEdge = Edge
+
+export function isHttpNode(node: AppNode): node is HttpNode {
+  return node.type === 'http'
+}
 
 export interface EnvironmentDef {
   name: string

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleGlobalKeydown } from './keyboard'
 import { operations } from './mock'
-import type { AppEdge, AppNode, NodeStatus } from './model'
+import type { AppEdge, AppNode, HttpNode, NodeStatus } from './model'
 import { app } from './state.svelte'
 
 const mkNode = (id: string, status: NodeStatus = 'stale'): AppNode => ({
   id,
-  type: 'operation',
+  type: 'http',
   position: { x: 0, y: 0 },
   data: {
     name: id,
@@ -22,7 +22,10 @@ const mkNode = (id: string, status: NodeStatus = 'stale'): AppNode => ({
 
 const mkEdge = (source: string, target: string): AppEdge => ({ id: `${source}->${target}`, source, target })
 
-const statusOf = (id: string) => app.nodes.find((n) => n.id === id)?.data.status
+const statusOf = (id: string) => {
+  const data = app.nodes.find((n) => n.id === id)?.data
+  return data && 'status' in data ? data.status : undefined
+}
 
 beforeEach(() => {
   app.nodes = []
@@ -58,11 +61,12 @@ describe('duplicateNode', () => {
     app.nodes = [mkNode('a1')]
     app.duplicateNode('a1')
     expect(app.nodes).toHaveLength(2)
-    const copy = app.nodes.at(-1)!
+    // mkNode only builds http nodes, so both ends of the copy are HttpNode.
+    const [original, copy] = app.nodes as HttpNode[]
     expect(copy.id).not.toBe('a1')
     expect(copy.position).toEqual({ x: 40, y: 40 })
-    expect(copy.data.fields).toEqual(app.nodes[0].data.fields)
-    expect(copy.data.fields).not.toBe(app.nodes[0].data.fields)
+    expect(copy.data.fields).toEqual(original.data.fields)
+    expect(copy.data.fields).not.toBe(original.data.fields)
     expect(copy.data.status).toBe('idle')
     expect(app.selectedNodeId).toBe(copy.id)
   })
@@ -129,6 +133,21 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     expect(statusOf('b2')).toBe('stale')
     expect(app.isRunning).toBe(false)
     expect(app.logs.map((l) => l.node).sort()).toEqual(['a1', 'a2'])
+  })
+
+  it('downstream scope (node Play button) runs the node and the chain after it, not ancestors', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
+    app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
+
+    const run = app.simulateRun('a2', 'downstream')
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('a1')).toBe('stale')
+    expect(statusOf('a2')).toBe('success')
+    expect(statusOf('a3')).toBe('success')
+    expect(app.logs.map((l) => l.node).sort()).toEqual(['a2', 'a3'])
   })
 
   it('upstream scope excludes descendants; component scope includes them', async () => {

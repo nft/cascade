@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { componentIds, decorateEdges, polylinesIntersect, segmentsIntersect, upstreamIds } from './graph'
-import type { AppEdge, AppNode, NodeStatus } from './model'
+import {
+  assertKnownNodeTypes,
+  componentIds,
+  decorateEdges,
+  downstreamIds,
+  polylinesIntersect,
+  segmentsIntersect,
+  upstreamIds,
+} from './graph'
+import type { AppEdge, AppNode, NodeStatus, NoteNode } from './model'
 
 const mkNode = (id: string, status: NodeStatus): AppNode => ({
   id,
-  type: 'operation',
+  type: 'http',
   position: { x: 0, y: 0 },
   data: {
     name: id,
@@ -43,6 +51,33 @@ describe('decorateEdges (plan 03 §3)', () => {
     const decorated = decorateEdges(nodes, [mkEdge('a', 'b')])
     expect(decorated.every((e) => e.animated === false)).toBe(true)
   })
+
+  it('leaves edges touching status-less note nodes undecorated', () => {
+    const memo: NoteNode = { id: 'memo', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }
+    const nodes = [mkNode('a', 'running'), memo]
+    const [edge] = decorateEdges(nodes, [mkEdge('a', 'memo')])
+    expect(edge.animated).toBe(false)
+    expect(edge.class).toBeUndefined()
+  })
+})
+
+describe('assertKnownNodeTypes (plan 06 T1)', () => {
+  const registered = new Set(['http'])
+  const node = (id: string, type?: string) => ({ id, type })
+
+  it('accepts nodes whose types are all registered', () => {
+    expect(() => assertKnownNodeTypes([node('a', 'http'), node('b', 'http')], registered)).not.toThrow()
+  })
+
+  it('throws on a node type missing from the registry instead of rendering it as http', () => {
+    // 'transform' is a valid future type, but until its card is registered it must fail loudly.
+    expect(() => assertKnownNodeTypes([node('a', 'http'), node('t', 'transform')], registered)).toThrow(/transform/)
+    expect(() => assertKnownNodeTypes([node('z', 'zigzag')], registered)).toThrow(/zigzag/)
+  })
+
+  it('throws on a node with no type at all', () => {
+    expect(() => assertKnownNodeTypes([node('a')], registered)).toThrow(/"a"/)
+  })
 })
 
 describe('run target sets (plan 03 §4)', () => {
@@ -53,6 +88,13 @@ describe('run target sets (plan 03 §4)', () => {
     expect(upstreamIds(edges, 'd')).toEqual(new Set(['a', 'b', 'c', 'd']))
     expect(upstreamIds(edges, 'b')).toEqual(new Set(['a', 'b']))
     expect(upstreamIds(edges, 'x')).toEqual(new Set(['x']))
+  })
+
+  it('downstreamIds returns the node plus transitive descendants only', () => {
+    expect(downstreamIds(edges, 'a')).toEqual(new Set(['a', 'b', 'c', 'd']))
+    expect(downstreamIds(edges, 'b')).toEqual(new Set(['b', 'd']))
+    expect(downstreamIds(edges, 'd')).toEqual(new Set(['d']))
+    expect(downstreamIds(edges, 'x')).toEqual(new Set(['x', 'y']))
   })
 
   it('componentIds returns the weakly-connected component', () => {

@@ -7,7 +7,9 @@ import type { AppEdge, AppNode } from './model'
  * distinct class. Styling for both classes lives in src/style.css.
  */
 export function decorateEdges(nodes: AppNode[], edges: AppEdge[]): AppEdge[] {
-  const statusById = new Map(nodes.map((n) => [n.id, n.data.status]))
+  // Note nodes carry no status; their edges (which validation rejects anyway)
+  // simply get no decoration.
+  const statusById = new Map(nodes.map((n) => [n.id, 'status' in n.data ? n.data.status : undefined]))
   return edges.map((edge) => {
     const targetStatus = statusById.get(edge.target)
     const animated = targetStatus === 'running'
@@ -17,6 +19,23 @@ export function decorateEdges(nodes: AppNode[], edges: AppEdge[]): AppEdge[] {
       class: animated ? 'edge-active' : targetStatus === 'failed' ? 'edge-failed' : undefined,
     }
   })
+}
+
+/**
+ * Every node must carry a type registered in the xyflow nodeTypes map: xyflow
+ * silently renders unknown types with its default node, which would let an
+ * unregistered type (a newer board's node, a typo) masquerade as a working
+ * node. Fail loudly instead (plan 06 T1).
+ */
+export function assertKnownNodeTypes(
+  nodes: ReadonlyArray<{ id: string; type?: string }>,
+  registered: ReadonlySet<string>,
+): void {
+  for (const n of nodes) {
+    if (!n.type || !registered.has(n.type)) {
+      throw new Error(`node "${n.id}" has unregistered node type "${n.type}"`)
+    }
+  }
 }
 
 /** The node plus its transitive ancestors — the engine's planned `Options.Target` subgraph. */
@@ -29,6 +48,22 @@ export function upstreamIds(edges: AppEdge[], targetId: string): Set<string> {
       if (e.target === id && !result.has(e.source)) {
         result.add(e.source)
         queue.push(e.source)
+      }
+    }
+  }
+  return result
+}
+
+/** The node plus its transitive descendants — what the node card's Play button runs. */
+export function downstreamIds(edges: AppEdge[], targetId: string): Set<string> {
+  const result = new Set([targetId])
+  const queue = [targetId]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    for (const e of edges) {
+      if (e.source === id && !result.has(e.target)) {
+        result.add(e.target)
+        queue.push(e.target)
       }
     }
   }

@@ -6,7 +6,7 @@ import Inspector from './Inspector.svelte'
 
 const mkNode = (id: string): AppNode => ({
   id,
-  type: 'operation',
+  type: 'http',
   position: { x: 0, y: 0 },
   data: {
     name: id,

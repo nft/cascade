@@ -1,10 +1,13 @@
 <script lang="ts">
   import { credentials, environments } from '../mock'
+  import { isHttpNode } from '../model'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
 
-  const node = $derived(app.selectedNode)
+  // Only the http card has an inspector today; transform/note variants land
+  // with plan 06 T5/T6.
+  const node = $derived(app.selectedNode && isHttpNode(app.selectedNode) ? app.selectedNode : null)
 
   let nameInput = $state<HTMLInputElement | null>(null)
   let lastRenameSignal = app.renameSignal

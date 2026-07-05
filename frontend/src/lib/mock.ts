@@ -27,7 +27,7 @@ export const credentials: CredentialDef[] = [
 export const initialNodes: AppNode[] = [
   {
     id: 'create-user',
-    type: 'operation',
+    type: 'http',
     position: { x: 0, y: 140 },
     data: {
       name: 'Create User',
@@ -45,7 +45,7 @@ export const initialNodes: AppNode[] = [
   },
   {
     id: 'create-org',
-    type: 'operation',
+    type: 'http',
     position: { x: 300, y: 140 },
     data: {
       name: 'Create Org',
@@ -63,7 +63,7 @@ export const initialNodes: AppNode[] = [
   },
   {
     id: 'invite-member',
-    type: 'operation',
+    type: 'http',
     position: { x: 620, y: 260 },
     data: {
       name: 'Invite Member',
@@ -81,7 +81,7 @@ export const initialNodes: AppNode[] = [
   },
   {
     id: 'create-project',
-    type: 'operation',
+    type: 'http',
     position: { x: 620, y: 40 },
     data: {
       name: 'Create Project',
@@ -100,7 +100,7 @@ export const initialNodes: AppNode[] = [
   },
   {
     id: 'get-project',
-    type: 'operation',
+    type: 'http',
     position: { x: 950, y: 40 },
     data: {
       name: 'Get Project',
