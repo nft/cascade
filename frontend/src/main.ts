@@ -1,3 +1,4 @@
+import 'material-symbols/rounded.css'
 import './style.css'
 import { mount } from 'svelte'
 import App from './App.svelte'

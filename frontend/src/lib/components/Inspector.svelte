@@ -2,21 +2,23 @@
   import { credentials, environments } from '../mock'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
+  import Icon from './Icon.svelte'
 
   const node = $derived(app.selectedNode)
 </script>
 
 {#if node}
-  <aside class="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800" style="background-color: #101013">
+  <aside class="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-surface">
     <div class="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
       <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[node.data.method]}">{node.data.method}</span>
       <span class="truncate font-mono text-[11px] text-zinc-400">{node.data.path}</span>
       <button
-        class="ml-auto rounded px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-800 hover:text-rose-400"
+        class="ml-auto flex items-center rounded px-1.5 py-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-rose-400"
         onclick={() => app.removeNode(node.id)}
         title="Remove node"
+        aria-label="Remove node"
       >
-        ✕
+        <Icon name="close" size={14} />
       </button>
     </div>
 
@@ -78,8 +80,9 @@
             <div class="rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
               <p class="font-mono text-[11px] text-zinc-400">{field.key}</p>
               {#if field.source === 'binding'}
-                <p class="mt-1 inline-block rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
-                  ⇠ {field.value}
+                <p class="mt-1 inline-flex items-center gap-1 rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
+                  <Icon name="link" size={12} />
+                  {field.value}
                 </p>
               {:else}
                 <p class="mt-1 font-mono text-[11px] text-zinc-200">{field.value}</p>

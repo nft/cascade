@@ -2,13 +2,14 @@
   import { credentials, environments, operations } from '../mock'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
+  import Icon from './Icon.svelte'
 
   let query = $state('')
 
   const tabs = [
-    { id: 'operations', label: 'Operations' },
-    { id: 'environments', label: 'Envs' },
-    { id: 'keys', label: 'API Keys' },
+    { id: 'operations', label: 'Operations', icon: 'api' },
+    { id: 'environments', label: 'Envs', icon: 'dns' },
+    { id: 'keys', label: 'API Keys', icon: 'key' },
   ] as const
 
   const filtered = $derived(
@@ -19,15 +20,16 @@
   const groups = $derived([...new Set(filtered.map((op) => op.group))])
 </script>
 
-<aside class="flex w-64 shrink-0 flex-col border-r border-zinc-800" style="background-color: #101013">
+<aside class="flex w-64 shrink-0 flex-col border-r border-zinc-800 bg-surface">
   <nav class="flex shrink-0 border-b border-zinc-800 text-xs">
     {#each tabs as tab (tab.id)}
       <button
-        class="flex-1 px-2 py-2 {app.sidebarTab === tab.id
+        class="flex flex-1 items-center justify-center gap-1 px-2 py-2 {app.sidebarTab === tab.id
           ? 'border-b-2 border-emerald-500 text-zinc-100'
           : 'text-zinc-500 hover:text-zinc-300'}"
         onclick={() => (app.sidebarTab = tab.id)}
       >
+        <Icon name={tab.icon} size={14} />
         {tab.label}
       </button>
     {/each}
@@ -67,8 +69,9 @@
           <p class="truncate font-mono text-[11px] text-zinc-500">{env.baseUrl}</p>
         </div>
       {/each}
-      <button class="w-full rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
-        + Add environment
+      <button class="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
+        <Icon name="add" size={14} />
+        Add environment
       </button>
     </div>
   {:else}
@@ -83,8 +86,9 @@
           <p class="pt-0.5 text-[10px] text-zinc-600">added {cred.createdAt}</p>
         </div>
       {/each}
-      <button class="w-full rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
-        + Add API key
+      <button class="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
+        <Icon name="add" size={14} />
+        Add API key
       </button>
       <p class="px-1 text-[10px] leading-relaxed text-zinc-600">
         Values are write-only after saving and stored in the OS keychain — never in workspace files.

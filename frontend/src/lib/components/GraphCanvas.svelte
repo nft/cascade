@@ -22,7 +22,7 @@
     <Controls />
     <MiniMap
       class="!h-28 !w-40"
-      bgColor="#101013"
+      bgColor="var(--color-surface)"
       maskColor="rgba(0,0,0,0.55)"
       nodeColor="#3f3f46"
     />
