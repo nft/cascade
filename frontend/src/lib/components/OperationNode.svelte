@@ -1,13 +1,15 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
   import type { OperationNodeData } from '../model'
+  import { app } from '../state.svelte'
   import { methodBadge, statusDot, statusLabel } from '../ui'
+  import Icon from './Icon.svelte'
 
-  let { data, selected = false }: { data: OperationNodeData; selected?: boolean } = $props()
+  let { id, data, selected = false }: { id: string; data: OperationNodeData; selected?: boolean } = $props()
 </script>
 
 <div
-  class="w-56 rounded-lg border bg-zinc-900 shadow-lg {selected
+  class="group w-56 rounded-lg border bg-zinc-900 shadow-lg {selected
     ? 'border-emerald-500'
     : 'border-zinc-700 hover:border-zinc-500'}"
 >
@@ -16,9 +18,25 @@
   <div class="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
     <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[data.method]}">{data.method}</span>
     <span class="truncate text-xs font-medium text-zinc-100">{data.name}</span>
-    {#if data.repeat > 1}
-      <span class="ml-auto rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">×{data.repeat}</span>
-    {/if}
+    <span class="ml-auto flex shrink-0 items-center gap-1">
+      {#if data.repeat > 1}
+        <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">×{data.repeat}</span>
+      {/if}
+      <button
+        class="nodrag flex items-center rounded p-0.5 text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400 disabled:cursor-not-allowed disabled:text-zinc-600 {selected
+          ? ''
+          : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}"
+        disabled={app.isRunning}
+        onclick={(e) => {
+          e.stopPropagation()
+          app.simulateRun(id, 'upstream')
+        }}
+        title="Run this node and its upstream"
+        aria-label="Run this node"
+      >
+        <Icon name="play_arrow" size={14} />
+      </button>
+    </span>
   </div>
 
   <div class="space-y-1.5 px-3 py-2">

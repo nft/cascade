@@ -4,7 +4,10 @@
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
+  import { handleGlobalKeydown } from './lib/keyboard'
 </script>
+
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <div class="flex h-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
   <TopBar />

@@ -1,7 +1,22 @@
+import type { ContextMenuKind } from './contextMenu'
+import { componentIds, upstreamIds } from './graph'
 import type { AppEdge, AppNode, LogEntry, Operation, OperationNodeData } from './model'
 import { initialEdges, initialLogs, initialNodes } from './mock'
 
 type SidebarTab = 'operations' | 'environments' | 'keys'
+
+export type CanvasTool = 'select' | 'scissors'
+
+export type RunScope = 'upstream' | 'component'
+
+export interface ContextMenuState {
+  kind: ContextMenuKind
+  /** Node or edge id for kind 'node' / 'edge'. */
+  id?: string
+  screen: { x: number; y: number }
+  /** Canvas position under the cursor; filled via screenToFlowPosition when the menu opens. */
+  flow?: { x: number; y: number }
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -13,6 +28,10 @@ class AppState {
   sidebarTab = $state<SidebarTab>('operations')
   logsOpen = $state(true)
   isRunning = $state(false)
+  contextMenu = $state<ContextMenuState | null>(null)
+  canvasTool = $state<CanvasTool>('select')
+  /** Bumped by requestRename; the inspector focuses its name field when it changes. */
+  renameSignal = $state(0)
   private addCounter = 0
 
   get selectedNode(): AppNode | null {
@@ -23,7 +42,7 @@ class AppState {
     this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n))
   }
 
-  addNode(op: Operation) {
+  addNode(op: Operation, position?: { x: number; y: number }) {
     this.addCounter += 1
     const id = `${op.ref}-${this.addCounter}`
     this.nodes = [
@@ -31,7 +50,7 @@ class AppState {
       {
         id,
         type: 'operation',
-        position: { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 },
+        position: position ?? { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 },
         data: {
           name: op.summary,
           method: op.method,
@@ -53,14 +72,73 @@ class AppState {
     if (this.selectedNodeId === id) this.selectedNodeId = null
   }
 
-  // Demo-only run simulation; replaced by engine events once M1 is wired in.
-  async simulateRun() {
+  removeEdge(id: string) {
+    this.edges = this.edges.filter((e) => e.id !== id)
+  }
+
+  duplicateNode(id: string) {
+    const src = this.nodes.find((n) => n.id === id)
+    if (!src) return
+    this.addCounter += 1
+    const newId = `${src.id}-copy-${this.addCounter}`
+    this.nodes = [
+      ...this.nodes,
+      {
+        ...src,
+        id: newId,
+        position: { x: src.position.x + 40, y: src.position.y + 40 },
+        selected: false,
+        data: { ...src.data, status: 'idle', note: undefined, fields: src.data.fields.map((f) => ({ ...f })) },
+      },
+    ]
+    this.selectedNodeId = newId
+  }
+
+  /** Select the node and ask the inspector to focus its name field. */
+  requestRename(id: string) {
+    this.selectedNodeId = id
+    this.renameSignal += 1
+  }
+
+  openContextMenu(menu: ContextMenuState) {
+    this.contextMenu = menu
+  }
+
+  closeContextMenu() {
+    this.contextMenu = null
+  }
+
+  /** Escape priority: context menu → scissors tool → inspector (unless typing in a field). */
+  escapePressed(typing = false) {
+    if (this.contextMenu) {
+      this.contextMenu = null
+      return
+    }
+    if (this.canvasTool !== 'select') {
+      this.canvasTool = 'select'
+      return
+    }
+    if (!typing) this.selectedNodeId = null
+  }
+
+  /**
+   * Demo-only run simulation; replaced by engine events once M1 is wired in.
+   * With a target, only the target's upstream set (or weakly-connected component)
+   * runs — the same node-set semantics as the engine's planned `Options.Target`
+   * subgraph runs (M1 WP5). Nodes outside the set keep their previous status.
+   */
+  async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
     if (this.isRunning) return
     this.isRunning = true
     const runId = `run-${Math.random().toString(16).slice(2, 6)}`
-    const order = this.executionOrder()
+    const include = targetId
+      ? scope === 'upstream'
+        ? upstreamIds(this.edges, targetId)
+        : componentIds(this.edges, targetId)
+      : null
+    const order = this.executionOrder().filter((id) => !include || include.has(id))
 
-    for (const n of this.nodes) this.updateNodeData(n.id, { status: 'idle', note: undefined })
+    for (const id of order) this.updateNodeData(id, { status: 'idle', note: undefined })
 
     const failed = new Set<string>()
     for (const id of order) {

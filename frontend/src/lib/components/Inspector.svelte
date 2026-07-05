@@ -5,6 +5,16 @@
   import Icon from './Icon.svelte'
 
   const node = $derived(app.selectedNode)
+
+  let nameInput = $state<HTMLInputElement | null>(null)
+  let lastRenameSignal = app.renameSignal
+  $effect(() => {
+    if (app.renameSignal !== lastRenameSignal) {
+      lastRenameSignal = app.renameSignal
+      nameInput?.focus()
+      nameInput?.select()
+    }
+  })
 </script>
 
 {#if node}
@@ -13,19 +23,20 @@
       <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[node.data.method]}">{node.data.method}</span>
       <span class="truncate font-mono text-[11px] text-zinc-400">{node.data.path}</span>
       <button
-        class="ml-auto flex items-center rounded px-1.5 py-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-rose-400"
-        onclick={() => app.removeNode(node.id)}
-        title="Remove node"
-        aria-label="Remove node"
+        class="ml-auto flex items-center rounded px-1.5 py-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+        onclick={() => (app.selectedNodeId = null)}
+        title="Close inspector"
+        aria-label="Close inspector"
       >
         <Icon name="close" size={14} />
       </button>
     </div>
 
-    <div class="space-y-4 p-3">
+    <div class="flex-1 space-y-4 p-3">
       <label class="block">
         <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Name</span>
         <input
+          bind:this={nameInput}
           class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
           value={node.data.name}
           oninput={(e) => app.updateNodeData(node.id, { name: e.currentTarget.value })}
@@ -95,6 +106,17 @@
           {/each}
         </div>
       </div>
+    </div>
+
+    <div class="mt-auto border-t border-zinc-800 p-3">
+      <button
+        class="flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/30 px-2 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10"
+        onclick={() => app.removeNode(node.id)}
+        title="Delete node"
+      >
+        <Icon name="delete" size={14} />
+        Delete node
+      </button>
     </div>
   </aside>
 {/if}

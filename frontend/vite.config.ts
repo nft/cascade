@@ -4,8 +4,12 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
+  // Vitest runs in Node; resolve Svelte (and friends) to their client builds
+  // so component tests can mount() into jsdom.
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
   test: {
-    environment: 'node',
+    environment: 'jsdom',
+    setupFiles: ['src/test-setup.ts'],
     include: ['src/**/*.test.ts'],
   },
 })
