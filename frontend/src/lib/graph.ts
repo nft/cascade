@@ -3,16 +3,24 @@ import type { AppEdge, AppNode } from './model'
 
 /**
  * Map edges to display edges: an edge animates iff its target node is running
- * (data is "flowing into" the node being executed); failed targets get a
+ * (data is "flowing into" the node being executed) and its source is part of
+ * the active run — a subgraph run (e.g. the Play button's downstream scope)
+ * must not animate edges from ancestors that are not running, even though
+ * they may still carry a status from an earlier run. Failed targets get a
  * distinct class. Styling for both classes lives in src/style.css.
  */
-export function decorateEdges(nodes: AppNode[], edges: AppEdge[]): AppEdge[] {
+export function decorateEdges(
+  nodes: AppNode[],
+  edges: AppEdge[],
+  activeRunIds: ReadonlySet<string> | null = null,
+): AppEdge[] {
   // Note nodes carry no status; their edges (which validation rejects anyway)
   // simply get no decoration.
   const statusById = new Map(nodes.map((n) => [n.id, 'status' in n.data ? n.data.status : undefined]))
   return edges.map((edge) => {
     const targetStatus = statusById.get(edge.target)
-    const animated = targetStatus === 'running'
+    const animated =
+      targetStatus === 'running' && (activeRunIds === null || activeRunIds.has(edge.source))
     return {
       ...edge,
       animated,

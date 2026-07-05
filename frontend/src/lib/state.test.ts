@@ -35,6 +35,7 @@ beforeEach(() => {
   app.contextMenu = null
   app.canvasTool = 'select'
   app.isRunning = false
+  app.activeRunIds = null
 })
 
 afterEach(() => {
@@ -141,9 +142,12 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
 
     const run = app.simulateRun('a2', 'downstream')
+    // While running, the ancestor is not part of the active run set (its edge must not animate).
+    expect(app.activeRunIds).toEqual(new Set(['a2', 'a3']))
     await vi.runAllTimersAsync()
     await run
 
+    expect(app.activeRunIds).toBeNull()
     expect(statusOf('a1')).toBe('stale')
     expect(statusOf('a2')).toBe('success')
     expect(statusOf('a3')).toBe('success')

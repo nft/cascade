@@ -11,7 +11,7 @@
   $effect(() => assertKnownNodeTypes(app.nodes, registeredNodeTypes))
 
   const scissors = $derived(app.canvasTool === 'scissors')
-  const displayEdges = $derived(decorateEdges(app.nodes, app.edges))
+  const displayEdges = $derived(decorateEdges(app.nodes, app.edges, app.activeRunIds))
 
   function screenPoint(event: MouseEvent | TouchEvent) {
     const p = 'touches' in event ? event.touches[0] : event

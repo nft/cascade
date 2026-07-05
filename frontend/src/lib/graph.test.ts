@@ -46,6 +46,16 @@ describe('decorateEdges (plan 03 §3)', () => {
     expect(edge.class).toBe('edge-failed')
   })
 
+  it('does not animate an edge from a node outside the active run into a running node', () => {
+    // Play on 'b' (downstream scope): 'a' keeps an old status but is not running.
+    const nodes = [mkNode('a', 'success'), mkNode('b', 'running'), mkNode('c', 'running')]
+    const edges = [mkEdge('a', 'b'), mkEdge('b', 'c')]
+    const [fromOutside, fromInside] = decorateEdges(nodes, edges, new Set(['b', 'c']))
+    expect(fromOutside.animated).toBe(false)
+    expect(fromOutside.class).toBeUndefined()
+    expect(fromInside.animated).toBe(true)
+  })
+
   it('never animates when nothing is running', () => {
     const nodes = [mkNode('a', 'success'), mkNode('b', 'success')]
     const decorated = decorateEdges(nodes, [mkEdge('a', 'b')])

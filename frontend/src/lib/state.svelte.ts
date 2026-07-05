@@ -28,6 +28,8 @@ class AppState {
   sidebarTab = $state<SidebarTab>('operations')
   logsOpen = $state(true)
   isRunning = $state(false)
+  /** Node ids in the currently running subgraph; null when idle. Drives edge animation. */
+  activeRunIds = $state<ReadonlySet<string> | null>(null)
   contextMenu = $state<ContextMenuState | null>(null)
   canvasTool = $state<CanvasTool>('select')
   /** Bumped by requestRename; the inspector focuses its name field when it changes. */
@@ -151,6 +153,7 @@ class AppState {
     const order = this.executionOrder().filter(
       (id) => (!include || include.has(id)) && !noteIds.has(id),
     )
+    this.activeRunIds = new Set(order)
 
     for (const id of order) this.updateNodeData(id, { status: 'idle', note: undefined })
 
@@ -189,6 +192,7 @@ class AppState {
         },
       ]
     }
+    this.activeRunIds = null
     this.isRunning = false
   }
 
