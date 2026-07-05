@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { credentials, environments } from '../mock'
   import { isHttpNode } from '../model'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
@@ -54,7 +53,7 @@
             value={node.data.environment}
             onchange={(e) => app.updateNodeData(node.id, { environment: e.currentTarget.value })}
           >
-            {#each environments as env (env.name)}
+            {#each app.environments as env (env.name)}
               <option value={env.name}>{env.name}</option>
             {/each}
           </select>
@@ -66,7 +65,7 @@
             value={node.data.credential}
             onchange={(e) => app.updateNodeData(node.id, { credential: e.currentTarget.value })}
           >
-            {#each credentials as cred (cred.name)}
+            {#each app.credentials as cred (cred.name)}
               <option value={cred.name}>{cred.name}</option>
             {/each}
           </select>

@@ -1,0 +1,346 @@
+export namespace main {
+	
+	export class ProjectBundle {
+	    project: store.ProjectMeta;
+	    sources: store.Source[];
+	    environments: store.Environment[];
+	    credentials: store.Credential[];
+	    boards: store.Board[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectBundle(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], store.ProjectMeta);
+	        this.sources = this.convertValues(source["sources"], store.Source);
+	        this.environments = this.convertValues(source["environments"], store.Environment);
+	        this.credentials = this.convertValues(source["credentials"], store.Credential);
+	        this.boards = this.convertValues(source["boards"], store.Board);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace store {
+	
+	export class Viewport {
+	    x: number;
+	    y: number;
+	    zoom: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Viewport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.zoom = source["zoom"];
+	    }
+	}
+	export class Position {
+	    x: number;
+	    y: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Position(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	    }
+	}
+	export class BoardLayout {
+	    positions: Record<string, Position>;
+	    viewport?: Viewport;
+	
+	    static createFrom(source: any = {}) {
+	        return new BoardLayout(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.positions = this.convertValues(source["positions"], Position, true);
+	        this.viewport = this.convertValues(source["viewport"], Viewport);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BoardEdge {
+	    id?: string;
+	    from: string;
+	    to: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BoardEdge(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.from = source["from"];
+	        this.to = source["to"];
+	    }
+	}
+	export class BoardNode {
+	    id: string;
+	    type?: string;
+	    name?: string;
+	    data?: Record<string, any>;
+	
+	    static createFrom(source: any = {}) {
+	        return new BoardNode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.name = source["name"];
+	        this.data = source["data"];
+	    }
+	}
+	export class Board {
+	    formatVersion: number;
+	    id: string;
+	    name: string;
+	    nodes: BoardNode[];
+	    edges: BoardEdge[];
+	    layout: BoardLayout;
+	
+	    static createFrom(source: any = {}) {
+	        return new Board(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.formatVersion = source["formatVersion"];
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.nodes = this.convertValues(source["nodes"], BoardNode);
+	        this.edges = this.convertValues(source["edges"], BoardEdge);
+	        this.layout = this.convertValues(source["layout"], BoardLayout);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	export class Credential {
+	    name: string;
+	    kind: string;
+	    createdAt?: string;
+	    config?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Credential(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.createdAt = source["createdAt"];
+	        this.config = source["config"];
+	    }
+	}
+	export class Defaults {
+	    environment?: string;
+	    credential?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Defaults(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.environment = source["environment"];
+	        this.credential = source["credential"];
+	    }
+	}
+	export class Environment {
+	    name: string;
+	    baseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Environment(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.baseUrl = source["baseUrl"];
+	    }
+	}
+	export class Operation {
+	    ref: string;
+	    method: string;
+	    path: string;
+	    summary?: string;
+	    group?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Operation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ref = source["ref"];
+	        this.method = source["method"];
+	        this.path = source["path"];
+	        this.summary = source["summary"];
+	        this.group = source["group"];
+	    }
+	}
+	
+	export class ProjectInfo {
+	    id: string;
+	    name: string;
+	    path: string;
+	    lastOpenedAt?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.lastOpenedAt = source["lastOpenedAt"];
+	    }
+	}
+	export class ProjectMeta {
+	    formatVersion: number;
+	    id: string;
+	    name: string;
+	    createdAt: string;
+	    defaults: Defaults;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.formatVersion = source["formatVersion"];
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.createdAt = source["createdAt"];
+	        this.defaults = this.convertValues(source["defaults"], Defaults);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Source {
+	    id: string;
+	    title: string;
+	    version?: string;
+	    operations: Operation[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Source(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.version = source["version"];
+	        this.operations = this.convertValues(source["operations"], Operation);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+

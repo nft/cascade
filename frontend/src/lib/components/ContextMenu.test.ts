@@ -1,6 +1,7 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { handleGlobalKeydown } from '../keyboard'
+import { operations } from '../mock'
 import { app } from '../state.svelte'
 import Harness from './testing/ContextMenuHarness.svelte'
 
@@ -17,6 +18,14 @@ beforeEach(() => {
   app.contextMenu = null
   app.isRunning = false
   app.canvasTool = 'select'
+  // The add-node palette lists the open project's operations (plan 01).
+  app.project = {
+    project: { id: 'test-project', name: 'Test' },
+    sources: [{ id: 'src-test', title: 'demo-api', operations }],
+    environments: [],
+    credentials: [],
+    boards: [],
+  }
   window.addEventListener('keydown', handleGlobalKeydown)
   instance = mount(Harness, { target: document.body })
 })

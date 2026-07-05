@@ -1,5 +1,8 @@
-// Mock workspace data driving the UI until the Go engine (M1) is wired in.
-import type { AppEdge, AppNode, CredentialDef, EnvironmentDef, LogEntry, Operation } from './model'
+// Demo dataset (plan 01): seeds the in-memory API fallback (inMemoryApi.ts,
+// used by vitest and plain-browser dev) and mirrors the Go-side Default
+// project seed in seed/default.json — keep the two in sync. Components never
+// import this directly; they read the current project from the app state.
+import type { AppEdge, AppNode, CredentialDef, EnvironmentDef, Operation } from './model'
 
 export const operations: Operation[] = [
   { ref: 'createUser', method: 'POST', path: '/v1/users', summary: 'Create a user', group: 'Users' },
@@ -19,9 +22,9 @@ export const environments: EnvironmentDef[] = [
 ]
 
 export const credentials: CredentialDef[] = [
-  { name: 'local-dev', type: 'api-key', createdAt: '2026-06-28' },
-  { name: 'staging-admin', type: 'bearer', createdAt: '2026-07-01' },
-  { name: 'sandbox-service', type: 'basic', createdAt: '2026-07-02' },
+  { name: 'local-dev', kind: 'api-key', createdAt: '2026-06-28' },
+  { name: 'staging-admin', kind: 'bearer', createdAt: '2026-07-01' },
+  { name: 'sandbox-service', kind: 'basic', createdAt: '2026-07-02' },
 ]
 
 export const initialNodes: AppNode[] = [
@@ -122,65 +125,3 @@ export const initialEdges: AppEdge[] = [
   { id: 'e-project-get', source: 'create-project', target: 'get-project' },
 ]
 
-export const initialLogs: LogEntry[] = [
-  {
-    id: 'log-1',
-    runId: 'run-7f3a',
-    time: '14:02:11.204',
-    node: 'Create User',
-    method: 'POST',
-    url: 'https://staging.api.example.com/v1/users',
-    status: 201,
-    durationMs: 182,
-    request: JSON.stringify(
-      { headers: { Authorization: '«redacted»', 'Content-Type': 'application/json' }, body: { email: 'ada@example.com', name: 'Ada Lovelace' } },
-      null,
-      2,
-    ),
-    response: JSON.stringify({ id: 'usr_01HZX4', email: 'ada@example.com', name: 'Ada Lovelace' }, null, 2),
-  },
-  {
-    id: 'log-2',
-    runId: 'run-7f3a',
-    time: '14:02:11.421',
-    node: 'Create Org',
-    method: 'POST',
-    url: 'https://staging.api.example.com/v1/orgs',
-    status: 201,
-    durationMs: 240,
-    request: JSON.stringify(
-      { headers: { Authorization: '«redacted»', 'Content-Type': 'application/json' }, body: { name: 'Acme Inc', owner_id: 'usr_01HZX4' } },
-      null,
-      2,
-    ),
-    response: JSON.stringify({ id: 'org_01HZX9', name: 'Acme Inc' }, null, 2),
-  },
-  {
-    id: 'log-3',
-    runId: 'run-7f3a',
-    time: '14:02:11.702',
-    node: 'Invite Member',
-    method: 'POST',
-    url: 'https://staging.api.example.com/v1/orgs/org_01HZX9/members',
-    status: 200,
-    durationMs: 156,
-    response: JSON.stringify({ invited: 'member+1@example.com' }, null, 2),
-  },
-  {
-    id: 'log-4',
-    runId: 'run-7f3a',
-    time: '14:02:11.933',
-    node: 'Create Project',
-    method: 'POST',
-    url: 'https://staging.api.example.com/v1/projects',
-    status: 422,
-    durationMs: 98,
-    error: 'name "Apollo" already exists in org_01HZX9',
-    request: JSON.stringify(
-      { headers: { Authorization: '«redacted»', 'Content-Type': 'application/json' }, body: { name: 'Apollo', org_id: 'org_01HZX9' } },
-      null,
-      2,
-    ),
-    response: JSON.stringify({ error: 'name "Apollo" already exists in org_01HZX9' }, null, 2),
-  },
-]

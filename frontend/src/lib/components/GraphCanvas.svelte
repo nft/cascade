@@ -97,8 +97,8 @@
   onpointerdown={sliceStart}
 >
   <SvelteFlow
-    bind:nodes={app.nodes}
-    bind:edges={() => displayEdges, (v) => (app.edges = v)}
+    bind:nodes={() => app.nodes, (v) => app.setNodesFromCanvas(v)}
+    bind:edges={() => displayEdges, (v) => app.setEdgesFromCanvas(v)}
     {nodeTypes}
     colorMode="dark"
     fitView

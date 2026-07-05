@@ -72,10 +72,88 @@ export interface EnvironmentDef {
   baseUrl: string
 }
 
+/** Credential metadata only — values live in the OS keychain (plan 04), never in the frontend. */
 export interface CredentialDef {
   name: string
-  type: 'bearer' | 'api-key' | 'basic'
+  kind: 'bearer' | 'api-key' | 'basic'
   createdAt: string
+  config?: Record<string, string>
+}
+
+/** One entry in the project index (mirrors store.ProjectInfo). */
+export interface ProjectInfo {
+  id: string
+  name: string
+  path?: string
+  lastOpenedAt?: string
+}
+
+export interface ProjectDefaults {
+  environment?: string
+  credential?: string
+}
+
+/** project.json content (mirrors store.ProjectMeta). */
+export interface ProjectMeta {
+  id: string
+  name: string
+  createdAt?: string
+  defaults?: ProjectDefaults
+}
+
+/** An imported schema source and its parsed operation catalog (mirrors store.Source). */
+export interface SourceDef {
+  id: string
+  title: string
+  version?: string
+  operations: Operation[]
+}
+
+/** Everything needed to render a freshly opened project (mirrors main.ProjectBundle). */
+export interface ProjectBundle {
+  project: ProjectMeta
+  sources: SourceDef[]
+  environments: EnvironmentDef[]
+  credentials: CredentialDef[]
+  boards: BoardJSON[]
+}
+
+/**
+ * On-disk/wire board format (mirrors store.Board): the M1 graph JSON plus a
+ * canvas-only `layout` key the engine ignores. Conversions to/from canvas
+ * state live in board.ts.
+ */
+export interface BoardNodeJSON {
+  id: string
+  type?: string
+  name?: string
+  data?: Record<string, unknown>
+}
+
+export interface BoardEdgeJSON {
+  id?: string
+  from: string
+  to: string
+}
+
+export interface BoardViewport {
+  x: number
+  y: number
+  zoom: number
+}
+
+export interface BoardLayoutJSON {
+  positions: Record<string, { x: number; y: number }>
+  viewport?: BoardViewport
+}
+
+export interface BoardJSON {
+  formatVersion: number
+  id: string
+  name: string
+  nodes: BoardNodeJSON[]
+  edges: BoardEdgeJSON[]
+  layout: BoardLayoutJSON
 }
 
 export interface LogEntry {

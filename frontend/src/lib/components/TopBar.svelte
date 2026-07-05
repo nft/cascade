@@ -1,11 +1,12 @@
 <script lang="ts">
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
+  import ProjectSwitcher from './ProjectSwitcher.svelte'
 </script>
 
 <header class="flex h-12 shrink-0 items-center gap-3 border-b border-zinc-800 bg-surface px-4">
   <span class="text-sm font-semibold tracking-tight">Cascade</span>
-  <span class="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">demo-workspace</span>
+  <ProjectSwitcher />
 
   <div class="ml-auto flex items-center gap-2">
     <button

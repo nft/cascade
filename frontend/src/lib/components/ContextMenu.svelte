@@ -1,7 +1,7 @@
 <script lang="ts">
   import { useSvelteFlow } from '@xyflow/svelte'
   import { menuItems, type MenuItem } from '../contextMenu'
-  import { operations } from '../mock'
+  import type { Operation } from '../model'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -17,7 +17,7 @@
   let searchEl = $state<HTMLInputElement | null>(null)
 
   const filtered = $derived(
-    operations.filter((op) =>
+    app.operations.filter((op) =>
       `${op.method} ${op.path} ${op.summary}`.toLowerCase().includes(query.toLowerCase()),
     ),
   )
@@ -64,7 +64,7 @@
     app.closeContextMenu()
   }
 
-  function pick(op: (typeof operations)[number]) {
+  function pick(op: Operation) {
     if (!menu) return
     app.addNode(op, menu.flow ?? screenToFlowPosition(menu.screen))
     app.closeContextMenu()
