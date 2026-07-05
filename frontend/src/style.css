@@ -22,6 +22,11 @@
   .cursor-scissors .svelte-flow__edge {
     pointer-events: visibleStroke;
   }
+  /* Scissors mode: highlight the edge a click would cut. */
+  .cursor-scissors .svelte-flow__edge:hover {
+    --xy-edge-stroke: var(--color-rose-500);
+    --xy-edge-stroke-width: 2.5;
+  }
 }
 
 @utility cursor-scissors {

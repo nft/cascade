@@ -35,6 +35,45 @@ export function upstreamIds(edges: AppEdge[], targetId: string): Set<string> {
   return result
 }
 
+export type Point = { x: number; y: number }
+
+function orient(a: Point, b: Point, c: Point): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+function onSegment(a: Point, b: Point, p: Point): boolean {
+  return (
+    Math.min(a.x, b.x) <= p.x &&
+    p.x <= Math.max(a.x, b.x) &&
+    Math.min(a.y, b.y) <= p.y &&
+    p.y <= Math.max(a.y, b.y)
+  )
+}
+
+export function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
+  const o1 = orient(a, b, c)
+  const o2 = orient(a, b, d)
+  const o3 = orient(c, d, a)
+  const o4 = orient(c, d, b)
+  if (o1 > 0 !== o2 > 0 && o1 < 0 !== o2 < 0 && o3 > 0 !== o4 > 0 && o3 < 0 !== o4 < 0) return true
+  // Collinear endpoints touching the other segment.
+  if (o1 === 0 && onSegment(a, b, c)) return true
+  if (o2 === 0 && onSegment(a, b, d)) return true
+  if (o3 === 0 && onSegment(c, d, a)) return true
+  if (o4 === 0 && onSegment(c, d, b)) return true
+  return false
+}
+
+/** True when any segment of polyline `a` crosses any segment of polyline `b` (scissors slice test). */
+export function polylinesIntersect(a: Point[], b: Point[]): boolean {
+  for (let i = 0; i < a.length - 1; i++) {
+    for (let j = 0; j < b.length - 1; j++) {
+      if (segmentsIntersect(a[i], a[i + 1], b[j], b[j + 1])) return true
+    }
+  }
+  return false
+}
+
 /** The node's weakly-connected component: ancestors and descendants (BFS over undirected edges). */
 export function componentIds(edges: AppEdge[], targetId: string): Set<string> {
   const result = new Set([targetId])

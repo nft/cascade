@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { componentIds, decorateEdges, upstreamIds } from './graph'
+import { componentIds, decorateEdges, polylinesIntersect, segmentsIntersect, upstreamIds } from './graph'
 import type { AppEdge, AppNode, NodeStatus } from './model'
 
 const mkNode = (id: string, status: NodeStatus): AppNode => ({
@@ -58,5 +58,36 @@ describe('run target sets (plan 03 §4)', () => {
   it('componentIds returns the weakly-connected component', () => {
     expect(componentIds(edges, 'b')).toEqual(new Set(['a', 'b', 'c', 'd']))
     expect(componentIds(edges, 'x')).toEqual(new Set(['x', 'y']))
+  })
+})
+
+describe('slice geometry (plan 03 §5 v2)', () => {
+  it('detects crossing segments', () => {
+    expect(segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }, { x: 10, y: 0 })).toBe(true)
+  })
+
+  it('rejects parallel and distant segments', () => {
+    expect(segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 5 }, { x: 10, y: 5 })).toBe(false)
+    expect(segmentsIntersect({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 5, y: 5 }, { x: 6, y: 5 })).toBe(false)
+  })
+
+  it('counts an endpoint touching the other segment as a hit', () => {
+    expect(segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 })).toBe(true)
+  })
+
+  it('a slice trace cuts a sampled edge path it crosses and misses one it does not', () => {
+    // Horizontal "edge" sampled at y=50 from x=0..100.
+    const edge = Array.from({ length: 11 }, (_, i) => ({ x: i * 10, y: 50 }))
+    const crossingTrace = [
+      { x: 40, y: 80 },
+      { x: 45, y: 60 },
+      { x: 55, y: 20 },
+    ]
+    const missingTrace = [
+      { x: 40, y: 80 },
+      { x: 55, y: 60 },
+    ]
+    expect(polylinesIntersect(crossingTrace, edge)).toBe(true)
+    expect(polylinesIntersect(missingTrace, edge)).toBe(false)
   })
 })
