@@ -92,6 +92,8 @@ export type RunnableNodeData = {
   key: string
   status: NodeStatus
   note?: string
+  /** Named aliases this node declares for values of its own output (plan 05 §9b). */
+  exports?: NodeExport[]
 }
 
 export type OperationNodeData = RunnableNodeData & {
@@ -101,15 +103,27 @@ export type OperationNodeData = RunnableNodeData & {
   credential: string
   fields: NodeField[]
   repeat: number
-  exports?: NodeExport[]
   /** Response schema pinned via "use last response as schema"; survives later runs. */
   responseSchema?: SchemaJSON
 }
 
-/** Transform config (mode, pick rows, script) lands with plan 06 T3–T5. */
-export type TransformNodeData = RunnableNodeData
+/** How a transform node computes its output (plan 06): declarative Pick rows or a sandboxed script. */
+export const TRANSFORM_MODES = ['pick', 'script'] as const
+export type TransformMode = (typeof TRANSFORM_MODES)[number]
 
-/** Free-text sticky; not executable, no handles (card lands with plan 06 T6). */
+export type TransformNodeData = RunnableNodeData & {
+  mode: TransformMode
+  /**
+   * Pick rows: output key ← expression. Reuses the request-field shape —
+   * `key` is a dot path inside the result body, the rest is the expression
+   * (literal, binding ref, or template), so the field editor round-trip and
+   * validation apply unchanged.
+   */
+  pick: NodeField[]
+  script: string
+}
+
+/** Free-text sticky; not executable, no handles (plan 06 T6). */
 export type NoteNodeData = {
   text: string
 }
@@ -118,10 +132,20 @@ export type HttpNode = Node<OperationNodeData, 'http'>
 export type TransformNode = Node<TransformNodeData, 'transform'>
 export type NoteNode = Node<NoteNodeData, 'note'>
 export type AppNode = HttpNode | TransformNode | NoteNode
+/** The node types that run and produce an output other nodes bind against. */
+export type RunnableNode = HttpNode | TransformNode
 export type AppEdge = Edge
 
 export function isHttpNode(node: AppNode): node is HttpNode {
   return node.type === 'http'
+}
+
+export function isTransformNode(node: AppNode): node is TransformNode {
+  return node.type === 'transform'
+}
+
+export function isRunnableNode(node: AppNode): node is RunnableNode {
+  return node.type === 'http' || node.type === 'transform'
 }
 
 export interface EnvironmentDef {
@@ -215,16 +239,48 @@ export interface BoardJSON {
   layout: BoardLayoutJSON
 }
 
-export interface LogEntry {
+interface LogEntryBase {
   id: string
   runId: string
   time: string
   node: string
+  durationMs: number
+  error?: string
+}
+
+export type HttpLogEntry = LogEntryBase & {
+  kind: 'http'
   method: HttpMethod
   url: string
   status: number
-  durationMs: number
-  error?: string
   request?: string
   response?: string
+}
+
+/** Transform log rows record input/output instead of request/response (plan 06). */
+export type TransformLogEntry = LogEntryBase & {
+  kind: 'transform'
+  /** Keys of the direct upstream nodes consumed. */
+  inputNodes: string[]
+  /** JSON of the produced body (absent on failure). */
+  output?: string
+}
+
+export type LogEntry = HttpLogEntry | TransformLogEntry
+
+/** One upstream output as handed to a transform script run (mirrors main.ScriptUpstream). */
+export interface ScriptUpstream {
+  status: number
+  headers?: Record<string, string>
+  body: unknown
+}
+
+/** One transform-script execution request (mirrors main.ScriptRunRequest). */
+export interface ScriptRunRequest {
+  script: string
+  /** Ancestor outputs by node key (`nodes.<key>` inside the script). */
+  nodes: Record<string, ScriptUpstream>
+  /** The single direct upstream, when there is exactly one (`res`). */
+  res?: ScriptUpstream
+  index: number
 }

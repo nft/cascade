@@ -2,6 +2,17 @@
 
 @theme {
   --color-surface: #101013;
+  /* Code editor tokens (plan 06): CodeMirror is themed through these, not a
+     forked theme stylesheet. */
+  --color-code-bg: #09090b;
+  --color-code-gutter: #52525b;
+  --color-code-keyword: #c4b5fd;
+  --color-code-string: #6ee7b7;
+  --color-code-number: #fcd34d;
+  --color-code-comment: #71717a;
+  --color-code-property: #93c5fd;
+  --color-code-name: #e4e4e7;
+  --color-code-punctuation: #a1a1aa;
   /* Scissors tool cursor (plan 03 §5) — inline SVG, hotspot at the blade crossing. */
   --cursor-scissors: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23fafafa'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='6'%20cy='6'%20r='3'/%3E%3Ccircle%20cx='6'%20cy='18'%20r='3'/%3E%3Cpath%20d='M20%204%208.12%2015.88'/%3E%3Cpath%20d='M14.47%2014.48%2020%2020'/%3E%3Cpath%20d='M8.12%208.12%2012%2012'/%3E%3C/svg%3E") 12 12, crosshair;
 }
@@ -26,6 +37,61 @@
   .cursor-scissors .svelte-flow__edge:hover {
     --xy-edge-stroke: var(--color-rose-500);
     --xy-edge-stroke-width: 2.5;
+  }
+
+  /* CodeMirror (plan 06 T5): third-party DOM, styled here via @theme tokens
+     instead of a forked theme. Syntax colors target the tok-* classes the
+     @lezer/highlight classHighlighter emits. */
+  .cm-editor {
+    background-color: var(--color-code-bg);
+    font-size: 11px;
+    max-height: 16rem;
+  }
+  .cm-editor.cm-focused {
+    outline: none;
+  }
+  .cm-editor .cm-content {
+    font-family: var(--font-mono);
+    caret-color: var(--color-code-name);
+  }
+  .cm-editor .cm-gutters {
+    background-color: var(--color-code-bg);
+    border-right: none;
+    color: var(--color-code-gutter);
+  }
+  .cm-editor .cm-activeLine,
+  .cm-editor .cm-activeLineGutter {
+    background-color: color-mix(in srgb, var(--color-code-name) 4%, transparent);
+  }
+  .tok-keyword {
+    color: var(--color-code-keyword);
+  }
+  .tok-string,
+  .tok-string2,
+  .tok-regexp {
+    color: var(--color-code-string);
+  }
+  .tok-number,
+  .tok-bool,
+  .tok-atom,
+  .tok-null {
+    color: var(--color-code-number);
+  }
+  .tok-comment {
+    color: var(--color-code-comment);
+    font-style: italic;
+  }
+  .tok-propertyName,
+  .tok-labelName {
+    color: var(--color-code-property);
+  }
+  .tok-variableName,
+  .tok-name {
+    color: var(--color-code-name);
+  }
+  .tok-operator,
+  .tok-punctuation {
+    color: var(--color-code-punctuation);
   }
 }
 

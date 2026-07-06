@@ -17,6 +17,7 @@ import {
   type NodeField,
   type OperationNodeData,
   type SchemaJSON,
+  type TransformNodeData,
 } from './model'
 import { isValidKey, slugifyKey, uniqueKey } from './refs'
 
@@ -91,8 +92,23 @@ export function deserializeBoard(board: BoardJSON): {
     switch (type) {
       case 'note':
         return { id: wire.id, type, position, data: { text: String(data.text ?? '') } }
-      case 'transform':
-        return { id: wire.id, type, position, data: { name: wire.name ?? wire.id, key, status: 'idle' } }
+      case 'transform': {
+        const partial = data as Partial<TransformNodeData>
+        return {
+          id: wire.id,
+          type,
+          position,
+          data: {
+            name: wire.name ?? wire.id,
+            key,
+            status: 'idle',
+            mode: partial.mode === 'script' ? 'script' : 'pick',
+            pick: Array.isArray(partial.pick) ? (partial.pick as NodeField[]) : [],
+            script: typeof partial.script === 'string' ? partial.script : '',
+            ...(Array.isArray(partial.exports) ? { exports: partial.exports as NodeExport[] } : {}),
+          },
+        }
+      }
       case 'http': {
         const partial = data as Partial<OperationNodeData>
         return {

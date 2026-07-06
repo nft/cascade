@@ -25,17 +25,23 @@ const (
 // hintKeyCap bounds how many sibling keys a PathNotFoundError hint lists.
 const hintKeyCap = 8
 
-// segment is one step of a parsed accessor path: an object key or an array
-// index.
+// wildcardSegment is the bracket content of the [*] array-map extension
+// (plan 06 T3): "orgs[*].id" maps the rest of the path over every element.
+const wildcardSegment = "*"
+
+// segment is one step of a parsed accessor path: an object key, an array
+// index, or the [*] array map.
 type segment struct {
 	key     string
 	index   int
 	isIndex bool
+	isWild  bool
 }
 
-// parsePath splits a dot/bracket path ("data.items[0].id") into segments.
-// Keys may contain any character except '.', '[' and ']' (unicode keys are
-// fine); indexes are non-negative integers in brackets.
+// parsePath splits a dot/bracket path ("data.items[0].id",
+// "orgs[*].id") into segments. Keys may contain any character except '.',
+// '[' and ']' (unicode keys are fine); brackets hold a non-negative integer
+// index or the [*] wildcard.
 func parsePath(path string) ([]segment, error) {
 	if path == "" {
 		return nil, nil
@@ -55,6 +61,12 @@ func parsePath(path string) ([]segment, error) {
 			end := strings.IndexByte(rest, ']')
 			if end < 0 {
 				return nil, fmt.Errorf("binding: unclosed '[' in path %q", path)
+			}
+			if rest[1:end] == wildcardSegment {
+				segs = append(segs, segment{isWild: true})
+				rest = rest[end+1:]
+				expectKey = false
+				continue
 			}
 			idx, err := strconv.Atoi(rest[1:end])
 			if err != nil || idx < 0 {
@@ -178,7 +190,24 @@ func resolveValuePath(node string, value any, fullPath, rest string) (any, error
 
 func resolveSegments(node string, value any, fullPath string, segs []segment) (any, error) {
 	current := value
-	for _, seg := range segs {
+	for i, seg := range segs {
+		if seg.isWild {
+			arr, ok := current.([]any)
+			if !ok {
+				return nil, &PathNotFoundError{Node: node, Path: fullPath, Hint: fmt.Sprintf("[*] needs an array, but the value is a JSON %s", jsonTypeName(current))}
+			}
+			// Map the rest of the path over every element; nested [*]
+			// recurses, so "a[*].b[*].c" yields nested arrays.
+			mapped := make([]any, len(arr))
+			for j, elem := range arr {
+				v, err := resolveSegments(node, elem, fullPath, segs[i+1:])
+				if err != nil {
+					return nil, err
+				}
+				mapped[j] = v
+			}
+			return mapped, nil
+		}
 		switch v := current.(type) {
 		case map[string]any:
 			if seg.isIndex {

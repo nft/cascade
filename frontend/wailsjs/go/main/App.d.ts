@@ -13,4 +13,6 @@ export function OpenProject(arg1:string):Promise<main.ProjectBundle>;
 
 export function RenameProject(arg1:string,arg2:string):Promise<store.ProjectInfo>;
 
+export function RunTransformScript(arg1:main.ScriptRunRequest):Promise<any>;
+
 export function SaveBoard(arg1:string,arg2:store.Board):Promise<void>;

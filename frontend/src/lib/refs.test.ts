@@ -242,3 +242,45 @@ describe('resolveField (mirrors core/binding resolution)', () => {
     expect(() => resolveField(binding('create-user-1', 'body.nope'), ctx)).toThrow(/available keys/)
   })
 })
+
+describe('[*] array map (plan 06 T3, mirrors core/binding goldens)', () => {
+  const outputs: Record<string, CapturedResponse> = {
+    'create-org-1': {
+      status: 201,
+      body: {
+        orgs: [
+          { id: 'o1', tags: ['a', 'b'] },
+          { id: 'o2', tags: [] },
+        ],
+        empty: [],
+        count: 2,
+      },
+      at: '2026-07-06T14:02:00Z',
+    },
+  }
+  const ctx: ResolveContext = { outputs, exports: {}, upstreams: ['create-org-1'], index: 0 }
+  const bind = (path: string): NodeField => ({
+    key: 'k',
+    source: 'binding',
+    value: 'x',
+    ref: { nodeId: 'create-org-1', path },
+  })
+
+  it('maps object paths over arrays', () => {
+    expect(resolveField(bind('body.orgs[*].id'), ctx)).toEqual(['o1', 'o2'])
+    expect(resolveField(bind('orgs[*].id'), ctx)).toEqual(['o1', 'o2'])
+    expect(resolveField(bind('body.empty[*].id'), ctx)).toEqual([])
+  })
+
+  it('nests for nested [*] and errors on non-arrays / missing element paths', () => {
+    expect(resolveField(bind('body.orgs[*].tags[*]'), ctx)).toEqual([['a', 'b'], []])
+    expect(() => resolveField(bind('body.count[*]'), ctx)).toThrow(/needs an array/)
+    expect(() => resolveField(bind('body.orgs[*].tags[0]'), ctx)).toThrow(/out of range/)
+  })
+
+  it('parses [*] references from the field editor', () => {
+    const field = parseFieldInput('body.ids', 'createOrg.body.orgs[*].id', nodeIdByKey(nodes), new Set(nodes.map((n) => n.id)))
+    expect(field.source).toBe('binding')
+    expect(field.ref).toEqual({ nodeId: 'create-org-1', path: 'body.orgs[*].id' })
+  })
+})

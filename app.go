@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 
+	"cascade/core/binding"
+	"cascade/core/transform"
 	"cascade/store"
 )
 
@@ -98,6 +101,55 @@ func (a *App) OpenProject(id string) (ProjectBundle, error) {
 		Credentials:  credentials,
 		Boards:       boards,
 	}, nil
+}
+
+// ScriptUpstream is one upstream output as the frontend captures it,
+// handed to a transform script run.
+type ScriptUpstream struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    any               `json:"body"`
+}
+
+// ScriptRunRequest is one transform-script execution against captured
+// upstream responses (plan 06 T4/T5): both the inspector's Test button and
+// the interim frontend run simulation call this. Nodes is keyed by node key
+// (scripts read `nodes.<key>`); Res is the single direct upstream, when
+// there is exactly one.
+type ScriptRunRequest struct {
+	Script string                    `json:"script"`
+	Nodes  map[string]ScriptUpstream `json:"nodes"`
+	Res    *ScriptUpstream           `json:"res,omitempty"`
+	Index  int                       `json:"index"`
+}
+
+// RunTransformScript executes one transform script in the goja sandbox and
+// returns the result body. Script errors (throw, timeout, output cap,
+// non-serializable return) surface as the rejected promise's message.
+func (a *App) RunTransformScript(req ScriptRunRequest) (any, error) {
+	in := transform.Input{
+		Nodes: make(map[string]*binding.Output, len(req.Nodes)),
+		Index: req.Index,
+	}
+	for key, up := range req.Nodes {
+		in.Nodes[key] = up.output()
+	}
+	if req.Res != nil {
+		in.Res = req.Res.output()
+	}
+	out, err := transform.Execute(transform.Spec{Mode: transform.ModeScript, Script: req.Script}, in)
+	if err != nil {
+		return nil, err
+	}
+	return out.Body, nil
+}
+
+func (u ScriptUpstream) output() *binding.Output {
+	header := make(http.Header, len(u.Headers))
+	for name, value := range u.Headers {
+		header.Set(name, value)
+	}
+	return &binding.Output{Status: u.Status, Header: header, Body: u.Body}
 }
 
 // SaveBoard persists one board (graph + canvas layout) of a project.

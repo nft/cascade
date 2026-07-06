@@ -14,6 +14,7 @@
       ? menuItems(menu.kind, {
           isRunning: app.isRunning,
           hasResponse: menu.id !== undefined && menu.id in app.responses,
+          nodeType: menu.id !== undefined ? app.nodes.find((n) => n.id === menu.id)?.type : undefined,
         })
       : [],
   )
@@ -46,6 +47,12 @@
       case 'add-node':
         paletteOpen = true
         return // keep the menu open, showing the palette
+      case 'add-transform':
+        app.addTransformNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
+      case 'add-note':
+        app.addNoteNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
       case 'fit-view':
         fitView()
         break

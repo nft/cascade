@@ -38,6 +38,58 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class ScriptUpstream {
+	    status: number;
+	    headers?: Record<string, string>;
+	    body: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptUpstream(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.headers = source["headers"];
+	        this.body = source["body"];
+	    }
+	}
+	export class ScriptRunRequest {
+	    script: string;
+	    nodes: Record<string, ScriptUpstream>;
+	    res?: ScriptUpstream;
+	    index: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptRunRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.script = source["script"];
+	        this.nodes = this.convertValues(source["nodes"], ScriptUpstream, true);
+	        this.res = this.convertValues(source["res"], ScriptUpstream);
+	        this.index = source["index"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -76,6 +128,7 @@ export namespace store {
 	export class BoardLayout {
 	    positions: Record<string, Position>;
 	    viewport?: Viewport;
+	    responses?: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
 	        return new BoardLayout(source);
@@ -85,6 +138,7 @@ export namespace store {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.positions = this.convertValues(source["positions"], Position, true);
 	        this.viewport = this.convertValues(source["viewport"], Viewport);
+	        this.responses = source["responses"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

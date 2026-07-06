@@ -2,10 +2,27 @@ import { describe, expect, it } from 'vitest'
 import { menuItems } from './contextMenu'
 
 describe('context menu contents (plan 03 §2)', () => {
-  it('pane menu offers add-node, paste (disabled until plan 07) and fit view', () => {
+  it('pane menu offers add-node, add-transform, add-note, paste (disabled until plan 07) and fit view', () => {
     const items = menuItems('pane', { isRunning: false })
-    expect(items.map((i) => i.label)).toEqual(['Add node…', 'Paste', 'Fit view'])
+    expect(items.map((i) => i.label)).toEqual([
+      'Add node…',
+      'Add transform',
+      'Add note',
+      'Paste',
+      'Fit view',
+    ])
     expect(items.find((i) => i.action === 'paste')?.disabled).toBe(true)
+  })
+
+  it('note node menu is annotation-only: duplicate and delete (plan 06 T6)', () => {
+    const items = menuItems('node', { isRunning: false, nodeType: 'note' })
+    expect(items.map((i) => i.action)).toEqual(['duplicate', 'delete-node'])
+  })
+
+  it('transform node menu skips schema pinning (http-only concern)', () => {
+    const items = menuItems('node', { isRunning: false, nodeType: 'transform' })
+    expect(items.some((i) => i.action === 'use-as-schema')).toBe(false)
+    expect(items.some((i) => i.action === 'run-node')).toBe(true)
   })
 
   it('node menu offers run, clipboard, duplicate, rename, schema pin and delete', () => {

@@ -194,3 +194,54 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(() => deserializeBoard(board)).toThrow(/unknown type/)
   })
 })
+
+describe('transform nodes round-trip (plan 06)', () => {
+  const transformNode: AppNode = {
+    id: 't1',
+    type: 'transform',
+    position: { x: 5, y: 6 },
+    data: {
+      name: 'Actives',
+      key: 'actives',
+      status: 'success',
+      note: 'run product',
+      mode: 'script',
+      pick: [{ key: 'emails', source: 'binding', value: 'res.body.a', ref: { nodeId: '', path: 'body.a' } }],
+      script: 'return res.body',
+      exports: [{ key: 'emails', path: 'body.emails' }],
+    },
+  }
+
+  it('persists mode/pick/script/exports but never run products', () => {
+    const wire = serializeBoard('b1', 'Main', [transformNode], []).nodes[0]
+    expect(wire.type).toBe('transform')
+    expect(wire.data).toMatchObject({ mode: 'script', script: 'return res.body' })
+    expect(wire.data).not.toHaveProperty('status')
+    expect(wire.data).not.toHaveProperty('note')
+
+    const { nodes } = deserializeBoard(serializeBoard('b1', 'Main', [transformNode], []))
+    expect(nodes[0].type).toBe('transform')
+    expect(nodes[0].data).toMatchObject({
+      name: 'Actives',
+      key: 'actives',
+      status: 'idle',
+      mode: 'script',
+      script: 'return res.body',
+      exports: [{ key: 'emails', path: 'body.emails' }],
+    })
+    expect((nodes[0].data as { pick: unknown[] }).pick).toHaveLength(1)
+  })
+
+  it('defaults absent transform config to an empty pick setup', () => {
+    const board: BoardJSON = {
+      formatVersion: BOARD_FORMAT_VERSION,
+      id: 'b1',
+      name: 'Main',
+      nodes: [{ id: 't1', type: 'transform', name: 'Old Transform' }],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    expect(nodes[0].data).toMatchObject({ mode: 'pick', pick: [], script: '' })
+  })
+})

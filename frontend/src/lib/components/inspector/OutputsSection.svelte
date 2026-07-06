@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { HttpNode, NodeExport } from '../../model'
+  import type { NodeExport, RunnableNode } from '../../model'
   import { nodeSchemaSource } from '../../picker'
   import { isValidKey } from '../../refs'
   import { inferSchema, schemaTree } from '../../schema'
@@ -7,7 +7,7 @@
   import Icon from '../Icon.svelte'
   import SchemaTree from './SchemaTree.svelte'
 
-  let { node }: { node: HttpNode } = $props()
+  let { node }: { node: RunnableNode } = $props()
 
   const exports = $derived(node.data.exports ?? [])
   const schemaSource = $derived(nodeSchemaSource(node, app.responses[node.id], inferSchema))

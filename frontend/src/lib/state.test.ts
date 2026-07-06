@@ -280,3 +280,77 @@ describe('node keys (plan 05 §9a)', () => {
     expect((app.nodes[0] as HttpNode).data.key).toBe('makeUser')
   })
 })
+
+describe('transform nodes in the sim (plan 06 T2)', () => {
+  const mkTransform = (id: string, script: string): AppNode => ({
+    id,
+    type: 'transform',
+    position: { x: 0, y: 0 },
+    data: {
+      name: id,
+      key: `key_${id.replace(/[^A-Za-z0-9]/g, '_')}`,
+      status: 'idle',
+      mode: 'script',
+      pick: [],
+      script,
+    },
+  })
+
+  it('executes a transform between two http nodes; bindings resolve through it', async () => {
+    vi.useFakeTimers()
+    const upstream = mkNode('create-org')
+    const invite = mkNode('invite')
+    invite.data = {
+      ...invite.data,
+      fields: [{ key: 'body.from', source: 'binding', value: 'shape.label', ref: { nodeId: 'shape', path: 'label' } }],
+    } as HttpNode['data']
+    app.nodes = [upstream, mkTransform('shape', 'return { label: "org " + res.body.name }'), invite]
+    app.edges = [mkEdge('create-org', 'shape'), mkEdge('shape', 'invite')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('shape')).toBe('success')
+    // Synthetic output captured like a response (status 0) and bound downstream.
+    expect(app.responses['shape']?.status).toBe(0)
+    expect(app.responses['shape']?.body).toEqual({ label: 'org Apollo' })
+    expect((app.responses['invite']?.body as { from: string }).from).toBe('org Apollo')
+    // Transform log record variant: input keys and output, no url/status.
+    const entry = app.logs.find((l) => l.kind === 'transform')
+    expect(entry).toBeDefined()
+    if (entry?.kind === 'transform') {
+      expect(entry.inputNodes).toEqual(['key_create_org'])
+      expect(entry.output).toBe(JSON.stringify({ label: 'org Apollo' }))
+    }
+  })
+
+  it('a failing script fails the node with the message and skips downstream', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkNode('a'), mkTransform('t', 'throw new Error("boom")'), mkNode('b')]
+    app.edges = [mkEdge('a', 't'), mkEdge('t', 'b')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('t')).toBe('failed')
+    expect(statusOf('b')).toBe('skipped')
+    const entry = app.logs.find((l) => l.kind === 'transform')
+    expect(entry?.error).toMatch(/boom/)
+  })
+
+  it('note nodes are never scheduled: no status, no log entry', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkNode('a'), { id: 'sticky', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('sticky')).toBeUndefined()
+    expect(app.logs.some((l) => l.node === 'sticky')).toBe(false)
+    expect(app.responses['sticky']).toBeUndefined()
+  })
+})

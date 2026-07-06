@@ -4,6 +4,8 @@ import type { ContextMenuKind } from './contextMenu'
 import { componentIds, downstreamIds, upstreamIds } from './graph'
 import {
   isHttpNode,
+  isRunnableNode,
+  isTransformNode,
   type AppEdge,
   type AppNode,
   type BoardViewport,
@@ -17,17 +19,20 @@ import {
   type Operation,
   type ProjectBundle,
   type ProjectInfo,
+  type TransformNode,
 } from './model'
+import { makeHttpNode, makeNoteNode, makeTransformNode } from './nodeFactory'
 import {
   directUpstreams,
   isValidKey,
+  keyByNodeId,
   resolveField,
-  slugifyKey,
   takenKeys,
   uniqueKey,
   type ResolveContext,
 } from './refs'
 import { inferSchema } from './schema'
+import { executeTransform, setKeyPath } from './transform'
 
 type SidebarTab = 'operations' | 'environments' | 'keys'
 
@@ -50,20 +55,6 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function pseudoUuid(): string {
   const hex = () => Math.floor(Math.random() * 16).toString(16)
   return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, hex)
-}
-
-/** Sets a dot-path leaf inside the fabricated response body ("owner.id" → {owner: {id}}). */
-function setBodyPath(target: Record<string, unknown>, path: string, value: unknown): void {
-  const segs = path.split('.')
-  let current = target
-  for (const seg of segs.slice(0, -1)) {
-    const next = current[seg]
-    if (typeof next !== 'object' || next === null || Array.isArray(next)) {
-      current[seg] = {}
-    }
-    current = current[seg] as Record<string, unknown>
-  }
-  current[segs[segs.length - 1]] = value
 }
 
 const BOARD_SAVE_DEBOUNCE_MS = 400
@@ -259,29 +250,33 @@ class AppState {
 
   addNode(op: Operation, position?: { x: number; y: number }) {
     this.addCounter += 1
-    const id = `${op.ref}-${this.addCounter}`
     const defaults = this.project?.project.defaults
-    this.nodes = [
-      ...this.nodes,
-      {
-        id,
-        type: 'http',
-        position: position ?? { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 },
-        data: {
-          name: op.summary,
-          key: uniqueKey(slugifyKey(op.summary), takenKeys(this.nodes)),
-          method: op.method,
-          path: op.path,
-          environment: defaults?.environment ?? '',
-          credential: defaults?.credential ?? '',
-          status: 'idle',
-          repeat: 1,
-          fields: [],
-        },
-      },
-    ]
-    this.selectedNodeId = id
+    this.insertNode(
+      makeHttpNode(op, `${op.ref}-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
+    )
+  }
+
+  addTransformNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    this.insertNode(
+      makeTransformNode(`transform-${this.addCounter}`, this.nodes, position ?? this.autoPosition()),
+    )
+  }
+
+  addNoteNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    this.insertNode(makeNoteNode(`note-${this.addCounter}`, position ?? this.autoPosition()))
+  }
+
+  private insertNode(node: AppNode) {
+    this.nodes = [...this.nodes, node]
+    this.selectedNodeId = node.id
     this.scheduleBoardSave()
+  }
+
+  /** Stagger sidebar-added nodes so they do not stack (add-at-cursor passes a position). */
+  private autoPosition(): { x: number; y: number } {
+    return { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 }
   }
 
   removeNode(id: string) {
@@ -437,6 +432,14 @@ class AppState {
         continue
       }
       this.updateNodeData(id, { status: 'running' })
+      // Transforms execute for real (Pick on the mirrored resolver, Script in
+      // the Go sandbox); only http calls are still simulated.
+      if (isTransformNode(node)) {
+        const ok = await this.runTransformNode(node, runId)
+        if (!ok) failed.add(id)
+        continue
+      }
+      if (!isHttpNode(node)) continue
       await sleep(500)
       const fails = id === 'create-project'
       this.updateNodeData(
@@ -444,12 +447,11 @@ class AppState {
         fails ? { status: 'failed', note: '422 Unprocessable Entity' } : { status: 'success' },
       )
       if (fails) failed.add(id)
-      // Transform log records are a plan 06 T2 concern; the demo sim only logs http calls.
-      if (!isHttpNode(node)) continue
       const captured = fails ? null : this.captureSimulatedResponse(node)
       this.logs = [
         ...this.logs,
         {
+          kind: 'http',
           id: `${runId}-${id}`,
           runId,
           time: new Date().toISOString().slice(11, 23),
@@ -469,6 +471,60 @@ class AppState {
     this.scheduleBoardSave()
   }
 
+  /** Declared exports by node id, for binding resolution (http and transform nodes alike). */
+  private exportsByNodeId(): ResolveContext['exports'] {
+    return Object.fromEntries(
+      this.nodes.filter(isRunnableNode).map((n) => [n.id, n.data.exports ?? []]),
+    )
+  }
+
+  /**
+   * Executes one transform node during the sim and captures its synthetic
+   * output (status 0) like any response, so downstream bindings, the picker
+   * and schema inference work with zero special cases. Returns success.
+   */
+  private async runTransformNode(node: TransformNode, runId: string): Promise<boolean> {
+    const started = performance.now()
+    const keys = keyByNodeId(this.nodes)
+    const entry = {
+      kind: 'transform' as const,
+      id: `${runId}-${node.id}`,
+      runId,
+      time: new Date().toISOString().slice(11, 23),
+      node: node.data.name,
+      inputNodes: directUpstreams(this.edges, node.id).map((id) => keys.get(id) ?? id),
+    }
+    try {
+      const body = await executeTransform(
+        node,
+        this.nodes,
+        this.edges,
+        this.responses,
+        this.exportsByNodeId(),
+      )
+      const captured: CapturedResponse = { status: 0, body, at: new Date().toISOString() }
+      if (JSON.stringify(captured.body).length > RESPONSE_BODY_CAP_BYTES) {
+        captured.body = null
+        captured.truncated = true
+      }
+      this.responses = { ...this.responses, [node.id]: captured }
+      this.updateNodeData(node.id, { status: 'success' })
+      this.logs = [
+        ...this.logs,
+        { ...entry, durationMs: Math.round(performance.now() - started), output: JSON.stringify(body) },
+      ]
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      this.updateNodeData(node.id, { status: 'failed', note: message })
+      this.logs = [
+        ...this.logs,
+        { ...entry, durationMs: Math.round(performance.now() - started), error: message },
+      ]
+      return false
+    }
+  }
+
   /**
    * Fabricate and store the node's response for the demo sim: body.* fields
    * resolve against upstream captures (so bindings, res sugar, templates and
@@ -477,9 +533,7 @@ class AppState {
   private captureSimulatedResponse(node: HttpNode): CapturedResponse {
     const ctx: ResolveContext = {
       outputs: this.responses,
-      exports: Object.fromEntries(
-        this.nodes.filter(isHttpNode).map((n) => [n.id, n.data.exports ?? []]),
-      ),
+      exports: this.exportsByNodeId(),
       upstreams: directUpstreams(this.edges, node.id),
       index: 0,
     }
@@ -495,7 +549,7 @@ class AppState {
       } catch (err) {
         value = `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
       }
-      setBodyPath(body, field.key.slice('body.'.length), value)
+      setKeyPath(body, field.key.slice('body.'.length), value)
     }
     const captured: CapturedResponse = {
       status: 201,

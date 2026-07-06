@@ -15,8 +15,8 @@ export const RESERVED_REF_ROOTS: ReadonlySet<string> = new Set([REF_RES, REF_IND
 
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const TEMPLATE_RE = /\{\{\s*([^{}]*?)\s*\}\}/g
-/** A whole-field reference: `res`, `res.body.id`, `createUser.body.id`, `create-user.status`. */
-const WHOLE_REF_RE = /^([A-Za-z_][A-Za-z0-9_-]*)((?:\.[^\s.[\]{}]+|\[\d+\])*)$/
+/** A whole-field reference: `res`, `res.body.id`, `createUser.orgs[*].id`, `create-user.status`. */
+const WHOLE_REF_RE = /^([A-Za-z_][A-Za-z0-9_-]*)((?:\.[^\s.[\]{}]+|\[\d+\]|\[\*\])*)$/
 
 /** Accessor prefixes that always win over body keys and export names. */
 const PREFIX_STATUS = 'status'
@@ -387,7 +387,10 @@ function resolveOutputPath(
   }
 }
 
-type PathSegment = { key: string } | { index: number }
+type PathSegment = { key: string } | { index: number } | { wildcard: true }
+
+/** Bracket content of the [*] array-map extension (plan 06 T3). */
+const WILDCARD_SEGMENT = '*'
 
 function parsePathSegments(path: string): PathSegment[] {
   if (path === '') return []
@@ -402,6 +405,12 @@ function parsePathSegments(path: string): PathSegment[] {
     } else if (rest[0] === '[') {
       const end = rest.indexOf(']')
       if (end < 0) throw new ResolveError(`unclosed "[" in path "${path}"`)
+      if (rest.slice(1, end) === WILDCARD_SEGMENT) {
+        segs.push({ wildcard: true })
+        rest = rest.slice(end + 1)
+        expectKey = false
+        continue
+      }
       const idx = Number(rest.slice(1, end))
       if (!Number.isInteger(idx) || idx < 0) throw new ResolveError(`invalid index in path "${path}"`)
       segs.push({ index: idx })
@@ -421,8 +430,21 @@ function parsePathSegments(path: string): PathSegment[] {
 }
 
 function resolveValuePath(nodeId: string, value: unknown, fullPath: string, rest: string): unknown {
+  return resolveSegments(nodeId, value, fullPath, parsePathSegments(rest))
+}
+
+function resolveSegments(nodeId: string, value: unknown, fullPath: string, segs: PathSegment[]): unknown {
   let current = value
-  for (const seg of parsePathSegments(rest)) {
+  for (let at = 0; at < segs.length; at++) {
+    const seg = segs[at]
+    if ('wildcard' in seg) {
+      if (!Array.isArray(current))
+        throw new ResolveError(`"${fullPath}": [*] needs an array, but the value is a JSON ${jsonTypeName(current)}`)
+      // Map the rest of the path over every element; nested [*] recurses,
+      // so "a[*].b[*].c" yields nested arrays (mirrors core/binding).
+      const tail = segs.slice(at + 1)
+      return current.map((elem) => resolveSegments(nodeId, elem, fullPath, tail))
+    }
     if (Array.isArray(current)) {
       if (!('index' in seg))
         throw new ResolveError(`"${fullPath}": value is an array of ${current.length} elements; use [index]`)

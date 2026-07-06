@@ -2,10 +2,13 @@
 // plain-browser dev). It mirrors the Go store's behavior: a "Default"
 // project seeded from mock.ts, new projects starting with one empty "Main"
 // board, and lastOpenedAt stamped on open.
+// The Go sandbox's `_` helper source, single-sourced from the engine so the
+// browser stand-in and goja agree on helper behavior.
+import helpersSource from '../../../core/transform/helpers.js?raw'
 import type { CascadeApi } from './api'
 import { serializeBoard } from './board'
 import { credentials, environments, initialEdges, initialNodes, operations } from './mock'
-import type { ProjectBundle, ProjectInfo, SourceDef } from './model'
+import type { ProjectBundle, ProjectInfo, ScriptRunRequest, SourceDef } from './model'
 
 const DEFAULT_PROJECT_NAME = 'Default'
 const MAIN_BOARD_NAME = 'Main'
@@ -85,5 +88,29 @@ export function createInMemoryApi(): CascadeApi {
       if (index >= 0) stored.bundle.boards[index] = copy
       else stored.bundle.boards.push(copy)
     },
+    async runTransformScript(req) {
+      return runScriptInBrowser(req)
+    },
   }
+}
+
+/**
+ * Dev-only stand-in for the Go goja sandbox: same inputs (res, nodes, i, _)
+ * and the same helpers source, but no interrupt or output cap — the real
+ * enforcement lives in core/transform and applies whenever the app runs
+ * inside Wails.
+ */
+function runScriptInBrowser({ script, nodes, res, index }: ScriptRunRequest): unknown {
+  const run = new Function(
+    'nodes',
+    'res',
+    'i',
+    `${helpersSource}\nreturn (function(){${script}\n})()`,
+  )
+  const result: unknown = run(nodes, res, index)
+  if (result === undefined) throw new Error('transform: script returned no value — end it with `return …`')
+  const raw = JSON.stringify(result)
+  if (raw === undefined) throw new Error('transform: script must return a JSON-serializable value')
+  // Round-trip like the engine so downstream sees plain JSON shapes.
+  return JSON.parse(raw)
 }

@@ -22,6 +22,10 @@ export function RenameProject(arg1, arg2) {
   return window['go']['main']['App']['RenameProject'](arg1, arg2);
 }
 
+export function RunTransformScript(arg1) {
+  return window['go']['main']['App']['RunTransformScript'](arg1);
+}
+
 export function SaveBoard(arg1, arg2) {
   return window['go']['main']['App']['SaveBoard'](arg1, arg2);
 }
