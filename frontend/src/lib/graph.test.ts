@@ -16,6 +16,7 @@ const mkNode = (id: string, status: NodeStatus): AppNode => ({
   position: { x: 0, y: 0 },
   data: {
     name: id,
+    key: `key_${id.replace(/[^A-Za-z0-9]/g, '_')}`,
     method: 'GET',
     path: `/v1/${id}`,
     environment: 'staging',

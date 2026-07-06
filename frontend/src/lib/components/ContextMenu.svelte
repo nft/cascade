@@ -9,7 +9,14 @@
   const { screenToFlowPosition, fitView } = useSvelteFlow()
 
   const menu = $derived(app.contextMenu)
-  const items = $derived(menu ? menuItems(menu.kind, { isRunning: app.isRunning }) : [])
+  const items = $derived(
+    menu
+      ? menuItems(menu.kind, {
+          isRunning: app.isRunning,
+          hasResponse: menu.id !== undefined && menu.id in app.responses,
+        })
+      : [],
+  )
 
   let paletteOpen = $state(false)
   let query = $state('')
@@ -53,6 +60,9 @@
         break
       case 'rename':
         if (menu.id) app.requestRename(menu.id)
+        break
+      case 'use-as-schema':
+        if (menu.id) app.useLastResponseAsSchema(menu.id)
         break
       case 'delete-node':
         if (menu.id) app.removeNode(menu.id)

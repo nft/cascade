@@ -3,6 +3,9 @@
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
+  import FieldsSection from './inspector/FieldsSection.svelte'
+  import OutputsSection from './inspector/OutputsSection.svelte'
+  import ResponseSchemaSection from './inspector/ResponseSchemaSection.svelte'
 
   // Only the http card has an inspector today; transform/note variants land
   // with plan 06 T5/T6.
@@ -17,6 +20,19 @@
       nameInput?.select()
     }
   })
+
+  let keyError = $state<string | null>(null)
+  // Editing a different node clears a stale key error.
+  $effect(() => {
+    void app.selectedNodeId
+    keyError = null
+  })
+
+  function commitKey(id: string, value: string, el: HTMLInputElement) {
+    keyError = app.setNodeKey(id, value.trim())
+    // A rejected key keeps the stored one; snap the input back to it.
+    if (keyError !== null && node) el.value = node.data.key
+  }
 </script>
 
 {#if node}
@@ -43,6 +59,21 @@
           value={node.data.name}
           oninput={(e) => app.updateNodeData(node.id, { name: e.currentTarget.value })}
         />
+      </label>
+
+      <label class="block">
+        <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Key</span>
+        <input
+          class="mt-1 w-full rounded-md border bg-zinc-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-zinc-500 {keyError
+            ? 'border-rose-500/40'
+            : 'border-zinc-800'}"
+          value={node.data.key}
+          onchange={(e) => commitKey(node.id, e.currentTarget.value, e.currentTarget)}
+          title="Other nodes reference this node as {'{{'}{node.data.key}.…{'}}'}"
+        />
+        {#if keyError}
+          <p class="mt-1 text-[10px] text-rose-400">{keyError}</p>
+        {/if}
       </label>
 
       <div class="grid grid-cols-2 gap-2">
@@ -83,31 +114,11 @@
         />
       </label>
 
-      <div>
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Request fields</span>
-          <span class="text-[10px] text-zinc-600">from operation schema</span>
-        </div>
-        <div class="mt-1.5 space-y-1.5">
-          {#each node.data.fields as field (field.key)}
-            <div class="rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-              <p class="font-mono text-[11px] text-zinc-400">{field.key}</p>
-              {#if field.source === 'binding'}
-                <p class="mt-1 inline-flex items-center gap-1 rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
-                  <Icon name="link" size={12} />
-                  {field.value}
-                </p>
-              {:else}
-                <p class="mt-1 font-mono text-[11px] text-zinc-200">{field.value}</p>
-              {/if}
-            </div>
-          {:else}
-            <p class="rounded-md border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-600">
-              No fields configured yet — the schema-driven form lands with the M2 engine wiring.
-            </p>
-          {/each}
-        </div>
-      </div>
+      <FieldsSection {node} />
+
+      <OutputsSection {node} />
+
+      <ResponseSchemaSection {node} />
     </div>
 
     <div class="mt-auto border-t border-zinc-800 p-3">

@@ -7,13 +7,27 @@ import {
   type AppEdge,
   type AppNode,
   type BoardViewport,
+  type CapturedResponse,
   type CredentialDef,
   type EnvironmentDef,
+  type HttpNode,
   type LogEntry,
+  type NodeExport,
+  type NodeField,
   type Operation,
   type ProjectBundle,
   type ProjectInfo,
 } from './model'
+import {
+  directUpstreams,
+  isValidKey,
+  resolveField,
+  slugifyKey,
+  takenKeys,
+  uniqueKey,
+  type ResolveContext,
+} from './refs'
+import { inferSchema } from './schema'
 
 type SidebarTab = 'operations' | 'environments' | 'keys'
 
@@ -32,6 +46,26 @@ export interface ContextMenuState {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Demo-sim id generator: uuid-shaped so schema inference can show its format guess. */
+function pseudoUuid(): string {
+  const hex = () => Math.floor(Math.random() * 16).toString(16)
+  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, hex)
+}
+
+/** Sets a dot-path leaf inside the fabricated response body ("owner.id" → {owner: {id}}). */
+function setBodyPath(target: Record<string, unknown>, path: string, value: unknown): void {
+  const segs = path.split('.')
+  let current = target
+  for (const seg of segs.slice(0, -1)) {
+    const next = current[seg]
+    if (typeof next !== 'object' || next === null || Array.isArray(next)) {
+      current[seg] = {}
+    }
+    current = current[seg] as Record<string, unknown>
+  }
+  current[segs[segs.length - 1]] = value
+}
+
 const BOARD_SAVE_DEBOUNCE_MS = 400
 
 /** Mirrors the Go-side first-launch bootstrap name (bootstrap.go). */
@@ -39,6 +73,9 @@ const DEFAULT_PROJECT_NAME = 'Default'
 
 /** Node data keys that are run products, not user edits — changing only these never triggers a board save. */
 const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note'])
+
+/** Captured response bodies above this JSON size are dropped (plan 05 §8). */
+const RESPONSE_BODY_CAP_BYTES = 256 * 1024
 
 /** Most recently opened first; never-opened projects sort last in index order. */
 const byLastOpened = (a: ProjectInfo, b: ProjectInfo) =>
@@ -48,6 +85,8 @@ class AppState {
   nodes = $state.raw<AppNode[]>([])
   edges = $state.raw<AppEdge[]>([])
   logs = $state<LogEntry[]>([])
+  /** Last successful response per node id; persisted in the board layout (plan 05 §8). */
+  responses = $state<Record<string, CapturedResponse>>({})
   projects = $state<ProjectInfo[]>([])
   /** The open project's working set; null until init() resolves. */
   project = $state<ProjectBundle | null>(null)
@@ -106,10 +145,13 @@ class AppState {
     const board = bundle.boards[0]
     this.boardId = board?.id ?? null
     this.boardName = board?.name ?? ''
-    const loaded = board ? deserializeBoard(board) : { nodes: [], edges: [], viewport: undefined }
+    const loaded = board
+      ? deserializeBoard(board)
+      : { nodes: [], edges: [], viewport: undefined, responses: {} }
     this.nodes = loaded.nodes
     this.edges = loaded.edges
     this.viewport = loaded.viewport
+    this.responses = loaded.responses
     this.logs = []
     this.selectedNodeId = null
     this.contextMenu = null
@@ -179,7 +221,14 @@ class AppState {
   private async saveBoardNow() {
     const projectId = this.projectId
     if (!projectId || !this.boardId) return
-    const board = serializeBoard(this.boardId, this.boardName, this.nodes, this.edges, this.viewport)
+    const board = serializeBoard(
+      this.boardId,
+      this.boardName,
+      this.nodes,
+      this.edges,
+      this.viewport,
+      this.responses,
+    )
     try {
       await api.saveBoard(projectId, board)
     } catch (err) {
@@ -220,6 +269,7 @@ class AppState {
         position: position ?? { x: 120 + this.addCounter * 40, y: 380 + this.addCounter * 24 },
         data: {
           name: op.summary,
+          key: uniqueKey(slugifyKey(op.summary), takenKeys(this.nodes)),
           method: op.method,
           path: op.path,
           environment: defaults?.environment ?? '',
@@ -237,6 +287,10 @@ class AppState {
   removeNode(id: string) {
     this.nodes = this.nodes.filter((n) => n.id !== id)
     this.edges = this.edges.filter((e) => e.source !== id && e.target !== id)
+    if (id in this.responses) {
+      const { [id]: _dropped, ...rest } = this.responses
+      this.responses = rest
+    }
     if (this.selectedNodeId === id) this.selectedNodeId = null
     this.scheduleBoardSave()
   }
@@ -256,6 +310,9 @@ class AppState {
       data.status = 'idle'
       data.note = undefined
     }
+    // The copy needs its own board-unique key; refs elsewhere keep pointing
+    // at the original (they store its node ID).
+    if ('key' in data) data.key = uniqueKey(data.key, takenKeys(this.nodes))
     this.nodes = [
       ...this.nodes,
       {
@@ -268,6 +325,51 @@ class AppState {
     ]
     this.selectedNodeId = newId
     this.scheduleBoardSave()
+  }
+
+  /**
+   * Rename a node's reference key. Returns an error message when the key is
+   * rejected (bad slug, reserved word, or taken on this board); null on
+   * success. Refs store node IDs, so no field on any node is rewritten.
+   */
+  setNodeKey(id: string, key: string): string | null {
+    if (!isValidKey(key)) return 'keys are letters, digits and _, starting with a letter ("res" and "i" are reserved)'
+    if (takenKeys(this.nodes, id).has(key)) return `key "${key}" is already used on this board`
+    this.updateNodeData(id, { key })
+    return null
+  }
+
+  /** Replace one request field's parsed value (from the inspector editor). */
+  setField(nodeId: string, field: NodeField) {
+    const node = this.nodes.find((n) => n.id === nodeId)
+    if (!node || !isHttpNode(node)) return
+    const fields = node.data.fields.some((f) => f.key === field.key)
+      ? node.data.fields.map((f) => (f.key === field.key ? field : f))
+      : [...node.data.fields, field]
+    this.updateNodeData(nodeId, { fields })
+  }
+
+  removeField(nodeId: string, fieldKey: string) {
+    const node = this.nodes.find((n) => n.id === nodeId)
+    if (!node || !isHttpNode(node)) return
+    this.updateNodeData(nodeId, { fields: node.data.fields.filter((f) => f.key !== fieldKey) })
+  }
+
+  /** Replace a node's declared output aliases (inspector Outputs section). */
+  setExports(nodeId: string, exports: NodeExport[]) {
+    this.updateNodeData(nodeId, { exports })
+  }
+
+  /**
+   * Pin the schema inferred from the node's last captured response onto the
+   * node (plan 05 §8). Pinned schemas serialize with the board, so shared
+   * boards keep working pickers without run history; invoking again after a
+   * newer run re-infers.
+   */
+  useLastResponseAsSchema(nodeId: string) {
+    const captured = this.responses[nodeId]
+    if (!captured) return
+    this.updateNodeData(nodeId, { responseSchema: inferSchema(captured.body) })
   }
 
   /** Select the node and ask the inspector to focus its name field. */
@@ -344,6 +446,7 @@ class AppState {
       if (fails) failed.add(id)
       // Transform log records are a plan 06 T2 concern; the demo sim only logs http calls.
       if (!isHttpNode(node)) continue
+      const captured = fails ? null : this.captureSimulatedResponse(node)
       this.logs = [
         ...this.logs,
         {
@@ -356,11 +459,56 @@ class AppState {
           status: fails ? 422 : 201,
           durationMs: 80 + Math.floor(Math.random() * 300),
           error: fails ? 'name "Apollo" already exists in org_01HZX9' : undefined,
+          response: captured ? JSON.stringify(captured.body) : undefined,
         },
       ]
     }
     this.activeRunIds = null
     this.isRunning = false
+    // Captured responses persist in the board layout (plan 05 §8).
+    this.scheduleBoardSave()
+  }
+
+  /**
+   * Fabricate and store the node's response for the demo sim: body.* fields
+   * resolve against upstream captures (so bindings, res sugar, templates and
+   * {{i}} behave like the real engine), plus a server-shaped id/created_at.
+   */
+  private captureSimulatedResponse(node: HttpNode): CapturedResponse {
+    const ctx: ResolveContext = {
+      outputs: this.responses,
+      exports: Object.fromEntries(
+        this.nodes.filter(isHttpNode).map((n) => [n.id, n.data.exports ?? []]),
+      ),
+      upstreams: directUpstreams(this.edges, node.id),
+      index: 0,
+    }
+    const body: Record<string, unknown> = {
+      id: pseudoUuid(),
+      created_at: new Date().toISOString(),
+    }
+    for (const field of node.data.fields) {
+      if (!field.key.startsWith('body.')) continue
+      let value: unknown
+      try {
+        value = resolveField(field, ctx)
+      } catch (err) {
+        value = `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
+      }
+      setBodyPath(body, field.key.slice('body.'.length), value)
+    }
+    const captured: CapturedResponse = {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      at: new Date().toISOString(),
+    }
+    if (JSON.stringify(captured.body).length > RESPONSE_BODY_CAP_BYTES) {
+      captured.body = null
+      captured.truncated = true
+    }
+    this.responses = { ...this.responses, [node.id]: captured }
+    return captured
   }
 
   /** Topological order over the current canvas; nodes in cycles are dropped (canvas rejects cycles anyway). */

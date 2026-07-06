@@ -8,7 +8,7 @@ describe('context menu contents (plan 03 §2)', () => {
     expect(items.find((i) => i.action === 'paste')?.disabled).toBe(true)
   })
 
-  it('node menu offers run, clipboard, duplicate, rename and delete', () => {
+  it('node menu offers run, clipboard, duplicate, rename, schema pin and delete', () => {
     const items = menuItems('node', { isRunning: false })
     expect(items.map((i) => i.label)).toEqual([
       'Run this node',
@@ -16,10 +16,18 @@ describe('context menu contents (plan 03 §2)', () => {
       'Copy',
       'Duplicate',
       'Rename',
+      'Use last response as schema',
       'Delete',
     ])
     expect(items.find((i) => i.action === 'copy')?.disabled).toBe(true)
     expect(items.find((i) => i.action === 'run-node')?.disabled).toBe(false)
+  })
+
+  it('schema pin is disabled until the node has a captured response (plan 05 §8)', () => {
+    const without = menuItems('node', { isRunning: false })
+    expect(without.find((i) => i.action === 'use-as-schema')?.disabled).toBe(true)
+    const withResponse = menuItems('node', { isRunning: false, hasResponse: true })
+    expect(withResponse.find((i) => i.action === 'use-as-schema')?.disabled).toBe(false)
   })
 
   it('disables run entries while a run is in flight', () => {

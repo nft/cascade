@@ -10,6 +10,7 @@ export type MenuAction =
   | 'copy'
   | 'duplicate'
   | 'rename'
+  | 'use-as-schema'
   | 'delete-node'
   | 'cut-edge'
 
@@ -23,8 +24,12 @@ export interface MenuItem {
 }
 
 const CLIPBOARD_TITLE = 'Clipboard lands with board export / import (plan 07)'
+const NO_RESPONSE_TITLE = 'Run the node first — inference needs a captured response'
 
-export function menuItems(kind: ContextMenuKind, opts: { isRunning: boolean }): MenuItem[] {
+export function menuItems(
+  kind: ContextMenuKind,
+  opts: { isRunning: boolean; hasResponse?: boolean },
+): MenuItem[] {
   switch (kind) {
     case 'pane':
       return [
@@ -39,6 +44,13 @@ export function menuItems(kind: ContextMenuKind, opts: { isRunning: boolean }): 
         { action: 'copy', icon: 'content_copy', label: 'Copy', disabled: true, title: CLIPBOARD_TITLE },
         { action: 'duplicate', icon: 'control_point_duplicate', label: 'Duplicate' },
         { action: 'rename', icon: 'edit', label: 'Rename' },
+        {
+          action: 'use-as-schema',
+          icon: 'schema',
+          label: 'Use last response as schema',
+          disabled: !opts.hasResponse,
+          title: opts.hasResponse ? undefined : NO_RESPONSE_TITLE,
+        },
         { action: 'delete-node', icon: 'delete', label: 'Delete', danger: true },
       ]
     case 'edge':

@@ -74,8 +74,19 @@ func testBoard(id string) Board {
 			}},
 			{ID: "create-org", Type: "http", Name: "Create Org"},
 		},
-		Edges:  []BoardEdge{{ID: "e1", From: "create-user", To: "create-org"}},
-		Layout: BoardLayout{Positions: map[string]Position{"create-user": {X: 0, Y: 140}, "create-org": {X: 300, Y: 140}}},
+		Edges: []BoardEdge{{ID: "e1", From: "create-user", To: "create-org"}},
+		Layout: BoardLayout{
+			Positions: map[string]Position{"create-user": {X: 0, Y: 140}, "create-org": {X: 300, Y: 140}},
+			// Last responses ride along in the layout sidecar (plan 05 §8) and
+			// must survive the round trip untouched.
+			Responses: map[string]any{
+				"create-user": map[string]any{
+					"status": float64(201),
+					"body":   map[string]any{"id": "u1"},
+					"at":     "2026-07-06T14:02:00Z",
+				},
+			},
+		},
 	}
 }
 

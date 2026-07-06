@@ -37,11 +37,15 @@ type BoardEdge struct {
 	To   string `json:"to"`
 }
 
-// BoardLayout is canvas-only data (node positions, viewport) that the engine
-// ignores.
+// BoardLayout is canvas-only data (node positions, viewport, last responses)
+// that the engine ignores.
 type BoardLayout struct {
 	Positions map[string]Position `json:"positions"`
 	Viewport  *Viewport           `json:"viewport,omitempty"`
+	// Responses holds each node's last successful response (plan 05 §8) for
+	// schema inference and picker previews; written by the frontend and
+	// treated opaquely by the store.
+	Responses map[string]any `json:"responses,omitempty"`
 }
 
 // Position is a node's canvas coordinate.

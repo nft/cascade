@@ -34,6 +34,7 @@ export const initialNodes: AppNode[] = [
     position: { x: 0, y: 140 },
     data: {
       name: 'Create User',
+      key: 'createUser',
       method: 'POST',
       path: '/v1/users',
       environment: 'staging',
@@ -52,6 +53,7 @@ export const initialNodes: AppNode[] = [
     position: { x: 300, y: 140 },
     data: {
       name: 'Create Org',
+      key: 'createOrg',
       method: 'POST',
       path: '/v1/orgs',
       environment: 'staging',
@@ -60,7 +62,12 @@ export const initialNodes: AppNode[] = [
       repeat: 1,
       fields: [
         { key: 'body.name', source: 'literal', value: 'Acme Inc' },
-        { key: 'body.owner_id', source: 'binding', value: 'Create User → response.body.id' },
+        {
+          key: 'body.owner_id',
+          source: 'binding',
+          value: 'create-user.body.id',
+          ref: { nodeId: 'create-user', path: 'body.id' },
+        },
       ],
     },
   },
@@ -70,6 +77,7 @@ export const initialNodes: AppNode[] = [
     position: { x: 620, y: 260 },
     data: {
       name: 'Invite Member',
+      key: 'inviteMember',
       method: 'POST',
       path: '/v1/orgs/{id}/members',
       environment: 'staging',
@@ -77,8 +85,13 @@ export const initialNodes: AppNode[] = [
       status: 'success',
       repeat: 5,
       fields: [
-        { key: 'path.id', source: 'binding', value: 'Create Org → response.body.id' },
-        { key: 'body.email', source: 'literal', value: 'member+{i}@example.com' },
+        {
+          key: 'path.id',
+          source: 'binding',
+          value: 'create-org.body.id',
+          ref: { nodeId: 'create-org', path: 'body.id' },
+        },
+        { key: 'body.email', source: 'template', value: 'member+{{i}}@example.com' },
       ],
     },
   },
@@ -88,6 +101,7 @@ export const initialNodes: AppNode[] = [
     position: { x: 620, y: 40 },
     data: {
       name: 'Create Project',
+      key: 'createProject',
       method: 'POST',
       path: '/v1/projects',
       environment: 'staging',
@@ -97,7 +111,12 @@ export const initialNodes: AppNode[] = [
       note: '422 Unprocessable Entity',
       fields: [
         { key: 'body.name', source: 'literal', value: 'Apollo' },
-        { key: 'body.org_id', source: 'binding', value: 'Create Org → response.body.id' },
+        {
+          key: 'body.org_id',
+          source: 'binding',
+          value: 'create-org.body.id',
+          ref: { nodeId: 'create-org', path: 'body.id' },
+        },
       ],
     },
   },
@@ -107,13 +126,21 @@ export const initialNodes: AppNode[] = [
     position: { x: 950, y: 40 },
     data: {
       name: 'Get Project',
+      key: 'getProject',
       method: 'GET',
       path: '/v1/projects/{id}',
       environment: 'staging',
       credential: 'staging-admin',
       status: 'skipped',
       repeat: 1,
-      fields: [{ key: 'path.id', source: 'binding', value: 'Create Project → response.body.id' }],
+      fields: [
+        {
+          key: 'path.id',
+          source: 'binding',
+          value: 'create-project.body.id',
+          ref: { nodeId: 'create-project', path: 'body.id' },
+        },
+      ],
     },
   },
 ]

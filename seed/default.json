@@ -33,6 +33,7 @@
         "type": "http",
         "name": "Create User",
         "data": {
+          "key": "createUser",
           "method": "POST",
           "path": "/v1/users",
           "environment": "staging",
@@ -49,6 +50,7 @@
         "type": "http",
         "name": "Create Org",
         "data": {
+          "key": "createOrg",
           "method": "POST",
           "path": "/v1/orgs",
           "environment": "staging",
@@ -56,7 +58,7 @@
           "repeat": 1,
           "fields": [
             { "key": "body.name", "source": "literal", "value": "Acme Inc" },
-            { "key": "body.owner_id", "source": "binding", "value": "Create User → response.body.id" }
+            { "key": "body.owner_id", "source": "binding", "value": "create-user.body.id", "ref": { "nodeId": "create-user", "path": "body.id" } }
           ]
         }
       },
@@ -65,14 +67,15 @@
         "type": "http",
         "name": "Invite Member",
         "data": {
+          "key": "inviteMember",
           "method": "POST",
           "path": "/v1/orgs/{id}/members",
           "environment": "staging",
           "credential": "staging-admin",
           "repeat": 5,
           "fields": [
-            { "key": "path.id", "source": "binding", "value": "Create Org → response.body.id" },
-            { "key": "body.email", "source": "literal", "value": "member+{i}@example.com" }
+            { "key": "path.id", "source": "binding", "value": "create-org.body.id", "ref": { "nodeId": "create-org", "path": "body.id" } },
+            { "key": "body.email", "source": "template", "value": "member+{{i}}@example.com" }
           ]
         }
       },
@@ -81,6 +84,7 @@
         "type": "http",
         "name": "Create Project",
         "data": {
+          "key": "createProject",
           "method": "POST",
           "path": "/v1/projects",
           "environment": "staging",
@@ -88,7 +92,7 @@
           "repeat": 1,
           "fields": [
             { "key": "body.name", "source": "literal", "value": "Apollo" },
-            { "key": "body.org_id", "source": "binding", "value": "Create Org → response.body.id" }
+            { "key": "body.org_id", "source": "binding", "value": "create-org.body.id", "ref": { "nodeId": "create-org", "path": "body.id" } }
           ]
         }
       },
@@ -97,13 +101,14 @@
         "type": "http",
         "name": "Get Project",
         "data": {
+          "key": "getProject",
           "method": "GET",
           "path": "/v1/projects/{id}",
           "environment": "staging",
           "credential": "staging-admin",
           "repeat": 1,
           "fields": [
-            { "key": "path.id", "source": "binding", "value": "Create Project → response.body.id" }
+            { "key": "path.id", "source": "binding", "value": "create-project.body.id", "ref": { "nodeId": "create-project", "path": "body.id" } }
           ]
         }
       }

@@ -10,6 +10,7 @@ const mkNode = (id: string, status: NodeStatus = 'stale'): AppNode => ({
   position: { x: 0, y: 0 },
   data: {
     name: id,
+    key: `key_${id.replace(/[^A-Za-z0-9]/g, '_')}`,
     method: 'GET',
     path: `/v1/${id}`,
     environment: 'staging',
@@ -182,5 +183,100 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     await run
     expect(statusOf('a1')).toBe('success')
     expect(statusOf('b1')).toBe('success')
+  })
+})
+
+describe('response capture and schema pinning (plan 05)', () => {
+  const withFields = (id: string, fields: HttpNode['data']['fields']): AppNode => {
+    const node = mkNode(id) as HttpNode
+    node.data.fields = fields
+    return node
+  }
+
+  it('captures each successful response and resolves the FK chain through refs', async () => {
+    vi.useFakeTimers()
+    app.responses = {}
+    app.nodes = [
+      withFields('u1', [{ key: 'body.email', source: 'literal', value: 'ada@example.com' }]),
+      withFields('o1', [
+        { key: 'body.owner_id', source: 'binding', value: 'u1.body.id', ref: { nodeId: 'u1', path: 'body.id' } },
+        { key: 'body.greeting', source: 'template', value: 'welcome-{{u1.body.email}}' },
+      ]),
+    ]
+    app.edges = [mkEdge('u1', 'o1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    const userBody = app.responses['u1'].body as Record<string, unknown>
+    const orgBody = app.responses['o1'].body as Record<string, unknown>
+    expect(userBody.email).toBe('ada@example.com')
+    // the org's binding resolved against the user's captured response
+    expect(orgBody.owner_id).toBe(userBody.id)
+    expect(orgBody.greeting).toBe('welcome-ada@example.com')
+    expect(app.responses['u1'].status).toBe(201)
+  })
+
+  it('res sugar resolves against the single direct upstream during the sim', async () => {
+    vi.useFakeTimers()
+    app.responses = {}
+    app.nodes = [
+      withFields('u1', [{ key: 'body.name', source: 'literal', value: 'Ada' }]),
+      withFields('o1', [
+        { key: 'body.owner', source: 'binding', value: 'res.name', ref: { nodeId: '', path: 'name' } },
+      ]),
+    ]
+    app.edges = [mkEdge('u1', 'o1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+    expect((app.responses['o1'].body as Record<string, unknown>).owner).toBe('Ada')
+  })
+
+  it('useLastResponseAsSchema pins an inferred schema onto the node', async () => {
+    vi.useFakeTimers()
+    app.responses = {}
+    app.nodes = [withFields('u1', [{ key: 'body.email', source: 'literal', value: 'ada@example.com' }])]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    app.useLastResponseAsSchema('u1')
+    const node = app.nodes[0] as HttpNode
+    expect(node.data.responseSchema?.type).toBe('object')
+    expect(node.data.responseSchema?.properties?.email).toEqual({ type: 'string', format: 'email' })
+    expect(node.data.responseSchema?.properties?.id.format).toBe('uuid')
+  })
+})
+
+describe('node keys (plan 05 §9a)', () => {
+  it('addNode derives a board-unique key from the operation summary', () => {
+    const op = operations[0] // "Create a user"
+    app.nodes = []
+    app.addNode(op)
+    app.addNode(op)
+    const keys = app.nodes.map((n) => (n as HttpNode).data.key)
+    expect(keys[0]).toBe('createAUser')
+    expect(keys[1]).toBe('createAUser2')
+  })
+
+  it('duplicateNode re-keys the copy', () => {
+    app.nodes = [mkNode('a1')]
+    app.duplicateNode('a1')
+    const keys = app.nodes.map((n) => (n as HttpNode).data.key)
+    expect(new Set(keys).size).toBe(2)
+  })
+
+  it('setNodeKey rejects invalid, reserved and taken keys', () => {
+    app.nodes = [mkNode('a1'), mkNode('a2')]
+    expect(app.setNodeKey('a1', 'res')).toMatch(/reserved/)
+    expect(app.setNodeKey('a1', '1abc')).toMatch(/letters/)
+    expect(app.setNodeKey('a1', (app.nodes[1] as HttpNode).data.key)).toMatch(/already used/)
+    expect(app.setNodeKey('a1', 'makeUser')).toBeNull()
+    expect((app.nodes[0] as HttpNode).data.key).toBe('makeUser')
   })
 })

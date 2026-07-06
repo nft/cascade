@@ -1,0 +1,8 @@
+{
+  "data": {
+    "items": [
+      {"id": "a1", "tags": ["x", "y"], "score": 1},
+      {"id": "a2", "tags": [], "score": 2.5}
+    ]
+  }
+}

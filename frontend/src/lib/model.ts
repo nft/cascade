@@ -24,18 +24,72 @@ export interface Operation {
   group: string
 }
 
-/** A single request field on a node: a literal value or a binding to an upstream output. */
-export type FieldSource = 'literal' | 'binding'
+/**
+ * How a request field gets its value (plan 05 §9a): a literal, a single
+ * structured reference to an upstream output, or a template interpolating
+ * one or more {{…}} references into text.
+ */
+export type FieldSource = 'literal' | 'binding' | 'template'
+
+/**
+ * A structured reference to an upstream node's output. `nodeId` is the node
+ * **ID** — the UI renders the node's key, so key renames rewrite nothing
+ * stored. An empty nodeId is the `res` sugar ("my single direct upstream").
+ * `path` is an accessor path (`body.id`, `status`, `headers.Location`, or an
+ * export key like `userId`); empty means the whole response body.
+ */
+export interface FieldRef {
+  nodeId: string
+  path: string
+}
 
 export type NodeField = {
   key: string
   source: FieldSource
+  /**
+   * literal → the text; template → text with {{…}} whose references use
+   * node IDs (or res/i); binding → the canonical stored reference
+   * (`<nodeId>.<path>` or `res.<path>`), mirroring `ref`.
+   */
   value: string
+  ref?: FieldRef
+}
+
+/** A named alias a node declares for a value of its own response (plan 05 §9b). */
+export interface NodeExport {
+  key: string
+  path: string
+}
+
+/** JSON-schema wire shape shared with core/schema/infer on the Go side. */
+export interface SchemaJSON {
+  type?: string | string[]
+  format?: string
+  nullable?: boolean
+  properties?: Record<string, SchemaJSON>
+  items?: SchemaJSON
+}
+
+/**
+ * A node's last successful response (plan 05 §8), persisted in the board's
+ * layout sidecar — enough for schema inference and picker previews without
+ * keeping run history.
+ */
+export interface CapturedResponse {
+  status: number
+  headers?: Record<string, string>
+  body: unknown
+  /** ISO capture timestamp — shown as "inferred from last run · 14:02". */
+  at: string
+  /** True when the body exceeded the capture cap and was dropped. */
+  truncated?: boolean
 }
 
 /** Fields shared by the node types that participate in runs (http, transform). */
 export type RunnableNodeData = {
   name: string
+  /** Board-unique slug other nodes reference this node by (`createUser`). */
+  key: string
   status: NodeStatus
   note?: string
 }
@@ -47,6 +101,9 @@ export type OperationNodeData = RunnableNodeData & {
   credential: string
   fields: NodeField[]
   repeat: number
+  exports?: NodeExport[]
+  /** Response schema pinned via "use last response as schema"; survives later runs. */
+  responseSchema?: SchemaJSON
 }
 
 /** Transform config (mode, pick rows, script) lands with plan 06 T3–T5. */
@@ -145,6 +202,8 @@ export interface BoardViewport {
 export interface BoardLayoutJSON {
   positions: Record<string, { x: number; y: number }>
   viewport?: BoardViewport
+  /** Last successful response per node id (canvas-only; the engine ignores layout). */
+  responses?: Record<string, CapturedResponse>
 }
 
 export interface BoardJSON {

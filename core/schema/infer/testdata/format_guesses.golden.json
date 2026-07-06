@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "almost_email": {
+      "type": "string"
+    },
+    "almost_uuid": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "plain": {
+      "type": "string"
+    }
+  }
+}

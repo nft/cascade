@@ -124,6 +124,7 @@ describe('ContextMenu component (plan 03 §2)', () => {
         position: { x: 0, y: 0 },
         data: {
           name: 'victim',
+          key: 'victim',
           method: 'GET',
           path: '/v1/victim',
           environment: 'staging',

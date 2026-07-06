@@ -8,6 +8,7 @@ const httpNode = (id: string, x = 10, y = 20): AppNode => ({
   position: { x, y },
   data: {
     name: `Node ${id}`,
+    key: `node${id.toUpperCase()}`,
     method: 'POST',
     path: `/v1/${id}`,
     environment: 'staging',
@@ -33,6 +34,7 @@ describe('serializeBoard (plan 01 P5)', () => {
       type: 'http',
       name: 'Node a',
       data: {
+        key: 'nodeA',
         method: 'POST',
         path: '/v1/a',
         environment: 'staging',
@@ -93,6 +95,91 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(bare.data.fields).toEqual([])
     // Edges without an id get a deterministic one.
     expect(edges[0].id).toBeTruthy()
+  })
+
+  it('backfills missing node keys from names, board-uniquely (plan 05 §9a)', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        { id: 'n1', name: 'Create User' },
+        { id: 'n2', name: 'Create User' },
+        { id: 'n3', name: 'Create User' },
+      ],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    expect(nodes.map((n) => (n as HttpNode).data.key)).toEqual([
+      'createUser',
+      'createUser2',
+      'createUser3',
+    ])
+  })
+
+  it('migrates pre-plan-05 display-string bindings to ID-backed refs', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        { id: 'u1', name: 'Create User' },
+        {
+          id: 'o1',
+          name: 'Create Org',
+          data: {
+            fields: [
+              { key: 'body.owner_id', source: 'binding', value: 'Create User → response.body.id' },
+              { key: 'body.email', source: 'literal', value: 'member+{i}@example.com' },
+              { key: 'body.ghost', source: 'binding', value: 'Nobody → response.body.id' },
+            ],
+          },
+        },
+      ],
+      edges: [{ from: 'u1', to: 'o1' }],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    const org = nodes[1] as HttpNode
+    expect(org.data.fields[0]).toEqual({
+      key: 'body.owner_id',
+      source: 'binding',
+      value: 'u1.body.id',
+      ref: { nodeId: 'u1', path: 'body.id' },
+    })
+    // old {i} placeholder becomes the {{i}} template reference
+    expect(org.data.fields[1]).toEqual({
+      key: 'body.email',
+      source: 'template',
+      value: 'member+{{i}}@example.com',
+    })
+    // an unmatchable legacy binding degrades to a literal, never throws
+    expect(org.data.fields[2].source).toBe('literal')
+  })
+
+  it('round-trips captured responses through the layout sidecar (plan 05 §8)', () => {
+    const responses = {
+      a: { status: 201, body: { id: 'u1' }, at: '2026-07-06T14:02:00Z' },
+      ghost: { status: 200, body: null, at: '2026-07-06T14:02:00Z' },
+    }
+    const board = serializeBoard('b1', 'Main', [httpNode('a')], [], undefined, responses)
+    // responses of deleted nodes are dropped at save time
+    expect(board.layout.responses).toEqual({ a: responses.a })
+    const loaded = deserializeBoard(board)
+    expect(loaded.responses).toEqual({ a: responses.a })
+  })
+
+  it('preserves exports and pinned response schemas across the round-trip', () => {
+    const node = httpNode('a')
+    if (node.type === 'http') {
+      node.data.exports = [{ key: 'userId', path: 'body.id' }]
+      node.data.responseSchema = { type: 'object', properties: { id: { type: 'string' } } }
+    }
+    const { nodes } = deserializeBoard(serializeBoard('b1', 'Main', [node], []))
+    const loaded = nodes[0] as HttpNode
+    expect(loaded.data.exports).toEqual([{ key: 'userId', path: 'body.id' }])
+    expect(loaded.data.responseSchema).toEqual({ type: 'object', properties: { id: { type: 'string' } } })
   })
 
   it('fails loudly on an unknown node type instead of rendering a default node', () => {

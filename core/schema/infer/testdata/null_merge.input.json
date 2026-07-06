@@ -1,0 +1,7 @@
+{
+  "members": [
+    {"id": 1, "nickname": "ada", "email": null},
+    {"id": 2, "email": "grace@example.com"}
+  ],
+  "deleted_at": null
+}

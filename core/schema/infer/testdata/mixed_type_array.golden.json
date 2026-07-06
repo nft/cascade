@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "values": {
+      "type": "array",
+      "items": {
+        "type": [
+          "array",
+          "boolean",
+          "number",
+          "object",
+          "string"
+        ],
+        "properties": {
+          "k": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "items": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}
