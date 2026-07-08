@@ -244,12 +244,23 @@ export interface EnvironmentDef {
   baseUrl: string
 }
 
+/** The credential injection matrix (plan 04): each kind is a rule for where the secret enters a request. */
+export const CREDENTIAL_KINDS = ['bearer', 'basic', 'header', 'query'] as const
+export type CredentialKind = (typeof CREDENTIAL_KINDS)[number]
+
 /** Credential metadata only — values live in the OS keychain (plan 04), never in the frontend. */
 export interface CredentialDef {
   name: string
-  kind: 'bearer' | 'api-key' | 'basic'
+  kind: CredentialKind
+  /** Kind 'header': the header name, e.g. 'X-Internal-Token'. */
+  header?: string
+  /** Kind 'query': the query parameter name. */
+  param?: string
+  /** Optional value template with one {secret} placeholder; absent means the bare secret. */
+  template?: string
+  /** Kind 'basic': the username; the secret is the password. */
+  username?: string
   createdAt: string
-  config?: Record<string, string>
 }
 
 /** One entry in the project index (mirrors store.ProjectInfo). */

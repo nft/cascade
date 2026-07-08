@@ -81,6 +81,7 @@ func TestDoValidation(t *testing.T) {
 // echo captures what the server saw for assertions.
 type echo struct {
 	method, path, query, contentType, body, auth string
+	headers                                      http.Header
 }
 
 func newEchoServer(t *testing.T, seen *echo, status int, respBody string) *httptest.Server {
@@ -90,7 +91,7 @@ func newEchoServer(t *testing.T, seen *echo, status int, respBody string) *httpt
 		*seen = echo{
 			method: r.Method, path: r.URL.Path, query: r.URL.RawQuery,
 			contentType: r.Header.Get("Content-Type"), body: string(raw),
-			auth: r.Header.Get("Authorization"),
+			auth: r.Header.Get("Authorization"), headers: r.Header.Clone(),
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
@@ -163,7 +164,7 @@ func TestDoCredentialInjectionAndRedaction(t *testing.T) {
 		Method: "GET", EnvBase: srv.URL, Path: "/me",
 		// A stray literal Authorization row must lose to the injected credential.
 		Headers: map[string]string{"Authorization": "Bearer stale"},
-	}, &Credential{Header: "Authorization", Value: "Bearer s3cret"})
+	}, &Credential{Kind: KindBearer, Secret: "s3cret"})
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}

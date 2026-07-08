@@ -438,8 +438,11 @@ export namespace store {
 	export class Credential {
 	    name: string;
 	    kind: string;
+	    header?: string;
+	    param?: string;
+	    template?: string;
+	    username?: string;
 	    createdAt?: string;
-	    config?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Credential(source);
@@ -449,8 +452,11 @@ export namespace store {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
 	        this.kind = source["kind"];
+	        this.header = source["header"];
+	        this.param = source["param"];
+	        this.template = source["template"];
+	        this.username = source["username"];
 	        this.createdAt = source["createdAt"];
-	        this.config = source["config"];
 	    }
 	}
 	export class Defaults {

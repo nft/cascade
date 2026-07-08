@@ -22,9 +22,9 @@ export const environments: EnvironmentDef[] = [
 ]
 
 export const credentials: CredentialDef[] = [
-  { name: 'local-dev', kind: 'api-key', createdAt: '2026-06-28' },
+  { name: 'local-dev', kind: 'header', header: 'X-Api-Key', createdAt: '2026-06-28' },
   { name: 'staging-admin', kind: 'bearer', createdAt: '2026-07-01' },
-  { name: 'sandbox-service', kind: 'basic', createdAt: '2026-07-02' },
+  { name: 'sandbox-service', kind: 'basic', username: 'sandbox', createdAt: '2026-07-02' },
 ]
 
 /** Mirrors the seeded collection in seed/default.json (plan 08 B1). */

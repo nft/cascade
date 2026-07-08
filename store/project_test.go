@@ -43,6 +43,34 @@ func TestEnvironmentAndCredentialRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveCredentialsRejectsBadMetadata(t *testing.T) {
+	_, p := newTestProject(t)
+	bad := []struct {
+		name  string
+		creds []Credential
+	}{
+		{"empty name", []Credential{{Kind: "bearer"}}},
+		{"legacy api-key kind", []Credential{{Name: "a", Kind: "api-key"}}},
+		{"header kind without header", []Credential{{Name: "a", Kind: "header"}}},
+		{"query kind without param", []Credential{{Name: "a", Kind: "query"}}},
+		{"template without placeholder", []Credential{{Name: "a", Kind: "bearer", Template: "Token"}}},
+		{"duplicate names", []Credential{{Name: "a", Kind: "bearer"}, {Name: "a", Kind: "basic"}}},
+	}
+	for _, tt := range bad {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := p.SaveCredentials(tt.creds); err == nil {
+				t.Error("invalid credential metadata saved")
+			}
+		})
+	}
+
+	// The flexible case must pass: any header name, any surrounding text.
+	ok := []Credential{{Name: "internal", Kind: "header", Header: "X-Internal-Token", Template: "Token {secret}"}}
+	if err := p.SaveCredentials(ok); err != nil {
+		t.Errorf("valid header credential rejected: %v", err)
+	}
+}
+
 func TestSourceRoundTrip(t *testing.T) {
 	_, p := newTestProject(t)
 	src := Source{

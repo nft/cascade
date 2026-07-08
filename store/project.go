@@ -96,10 +96,22 @@ func (p *Project) Credentials() ([]Credential, error) {
 	return readListFile[Credential](filepath.Join(p.dir, credentialsFile))
 }
 
-// SaveCredentials replaces the project's credential metadata list.
+// SaveCredentials replaces the project's credential metadata list. Metadata
+// the injection engine could not execute is rejected here, so it never
+// reaches disk.
 func (p *Project) SaveCredentials(creds []Credential) error {
 	if creds == nil {
 		creds = []Credential{}
+	}
+	seen := map[string]bool{}
+	for _, c := range creds {
+		if err := validateCredential(c); err != nil {
+			return err
+		}
+		if seen[c.Name] {
+			return fmt.Errorf("credential %q appears twice", c.Name)
+		}
+		seen[c.Name] = true
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()

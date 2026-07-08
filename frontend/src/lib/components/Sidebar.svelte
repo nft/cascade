@@ -9,7 +9,7 @@
   const tabs = [
     { id: 'operations', label: 'Operations', icon: 'api' },
     { id: 'environments', label: 'Envs', icon: 'dns' },
-    { id: 'keys', label: 'API Keys', icon: 'key' },
+    { id: 'credentials', label: 'Credentials', icon: 'key' },
   ] as const
 </script>
 
@@ -75,7 +75,7 @@
       {/each}
       <button class="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
         <Icon name="add" size={14} />
-        Add API key
+        Add credential
       </button>
       <p class="px-1 text-[10px] leading-relaxed text-zinc-600">
         Values are write-only after saving and stored in the OS keychain — never in project files.

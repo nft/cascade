@@ -48,7 +48,7 @@ import { isValidKey, takenKeys, uniqueKey } from './refs'
 import { inferSchema } from './schema'
 import { simulateRun } from './sim'
 
-type SidebarTab = 'operations' | 'environments' | 'keys'
+type SidebarTab = 'operations' | 'environments' | 'credentials'
 
 export type CanvasTool = 'select' | 'scissors'
 

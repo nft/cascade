@@ -63,14 +63,6 @@ type Request struct {
 	RawBody    *RawBody
 }
 
-// Credential is a resolved injection, ready to set: how secrets map onto a
-// header (bearer/api-key/basic) is the caller's concern — this package only
-// ever sees the final header and knows to redact it.
-type Credential struct {
-	Header string
-	Value  string
-}
-
 // Response is the captured outcome of a call.
 type Response struct {
 	Status      int
@@ -79,7 +71,7 @@ type Response struct {
 	BodyText    string
 	Truncated   bool
 	DurationMs  int
-	URL         string
+	URL         string            // as sent, except query-kind credential values are redacted
 	SentHeaders map[string]string // as sent, credential values redacted
 }
 
@@ -126,7 +118,8 @@ func BuildURL(req Request) (string, error) {
 }
 
 // Do executes the request. A nil client gets the default timeout; cred, when
-// non-nil, is injected as its header and redacted in SentHeaders.
+// non-nil, is injected per its kind and redacted in SentHeaders (header
+// kinds) or in the reported URL (query kind).
 func Do(ctx context.Context, client *http.Client, req Request, cred *Credential) (Response, error) {
 	if req.Protocol != "" && req.Protocol != ProtocolHTTP {
 		return Response{}, fmt.Errorf("protocol %q is not executable yet — only http requests run", req.Protocol)
@@ -141,9 +134,31 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 		return Response{}, fmt.Errorf("request has both a field body and a raw body")
 	}
 
+	var inj *injection
+	if cred != nil {
+		resolved, err := cred.resolve()
+		if err != nil {
+			return Response{}, err
+		}
+		inj = &resolved
+	}
+
 	fullURL, err := BuildURL(req)
 	if err != nil {
 		return Response{}, err
+	}
+	// Query-kind credentials append after BuildURL so they can't collide with
+	// literal query rows; the reported URL carries the redaction marker
+	// instead of the secret, because URLs land in logs.
+	displayURL := fullURL
+	if inj != nil && inj.param != "" {
+		sep := "?"
+		if strings.Contains(fullURL, "?") {
+			sep = "&"
+		}
+		name := url.QueryEscape(inj.param)
+		displayURL = fullURL + sep + name + "=" + RedactedValue
+		fullURL += sep + name + "=" + url.QueryEscape(inj.value)
 	}
 
 	var body io.Reader
@@ -172,8 +187,8 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 		httpReq.Header.Set(k, v)
 	}
 	// The credential lands last so a stray literal header can't override it.
-	if cred != nil {
-		httpReq.Header.Set(cred.Header, cred.Value)
+	if inj != nil && inj.header != "" {
+		httpReq.Header.Set(inj.header, inj.value)
 	}
 
 	if client == nil {
@@ -194,8 +209,8 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 		Status:      resp.StatusCode,
 		Headers:     flattenHeader(resp.Header),
 		DurationMs:  int(time.Since(started).Milliseconds()),
-		URL:         fullURL,
-		SentHeaders: redactedHeaders(httpReq.Header, cred),
+		URL:         displayURL,
+		SentHeaders: redactedHeaders(httpReq.Header, inj),
 	}
 	if len(captured) > MaxCaptureBytes {
 		out.Truncated = true
@@ -242,10 +257,10 @@ func flattenHeader(h http.Header) map[string]string {
 	return out
 }
 
-func redactedHeaders(h http.Header, cred *Credential) map[string]string {
+func redactedHeaders(h http.Header, inj *injection) map[string]string {
 	out := flattenHeader(h)
-	if cred != nil {
-		out[http.CanonicalHeaderKey(cred.Header)] = RedactedValue
+	if inj != nil && inj.header != "" {
+		out[http.CanonicalHeaderKey(inj.header)] = RedactedValue
 	}
 	return out
 }
