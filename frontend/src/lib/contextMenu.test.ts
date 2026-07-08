@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { menuItems } from './contextMenu'
+import { libraryMenuItems, menuItems } from './contextMenu'
 
 describe('context menu contents (plan 03 §2)', () => {
   it('pane menu offers add-node, custom request, add-transform, add-note, paste (disabled until plan 07) and fit view', () => {
@@ -57,5 +57,48 @@ describe('context menu contents (plan 03 §2)', () => {
   it('edge menu has the single "Cut connection" entry', () => {
     const items = menuItems('edge', { isRunning: false })
     expect(items.map((i) => i.label)).toEqual(['Cut connection'])
+  })
+})
+
+describe('collections tree menus (plan 08 B2)', () => {
+  it('collection and folder menus offer new request/folder, rename and delete', () => {
+    for (const kind of ['collection', 'folder'] as const) {
+      const items = libraryMenuItems(kind)
+      expect(items.map((i) => i.action)).toEqual([
+        'new-request',
+        'new-folder',
+        'rename-item',
+        'delete-item',
+      ])
+    }
+  })
+
+  it('request menu offers rename, duplicate and delete', () => {
+    expect(libraryMenuItems('request').map((i) => i.action)).toEqual([
+      'rename-item',
+      'duplicate-request',
+      'delete-item',
+    ])
+  })
+
+  it('new request stays disabled until the editor dialog lands (plan 08 C7)', () => {
+    expect(libraryMenuItems('collection').find((i) => i.action === 'new-request')?.disabled).toBe(true)
+  })
+
+  it('new folder is disabled at the depth cap', () => {
+    expect(libraryMenuItems('folder').find((i) => i.action === 'new-folder')?.disabled).toBe(false)
+    expect(
+      libraryMenuItems('folder', { atDepthCap: true }).find((i) => i.action === 'new-folder')?.disabled,
+    ).toBe(true)
+  })
+
+  it('delete carries the board-reference warning in its label', () => {
+    expect(libraryMenuItems('request').find((i) => i.action === 'delete-item')?.label).toBe('Delete')
+    expect(
+      libraryMenuItems('request', { refCount: 1 }).find((i) => i.action === 'delete-item')?.label,
+    ).toBe('Delete (1 node references it)')
+    expect(
+      libraryMenuItems('collection', { refCount: 3 }).find((i) => i.action === 'delete-item')?.label,
+    ).toBe('Delete (3 nodes reference it)')
   })
 })

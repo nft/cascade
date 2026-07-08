@@ -161,7 +161,7 @@ function isRawBody(value: unknown): value is RawBody {
   return typeof raw.contentType === 'string' && typeof raw.text === 'string'
 }
 
-function isRequestRef(value: unknown): value is RequestRef {
+export function isRequestRef(value: unknown): value is RequestRef {
   if (!value || typeof value !== 'object') return false
   const ref = value as Partial<RequestRef>
   return typeof ref.collectionId === 'string' && typeof ref.requestId === 'string'

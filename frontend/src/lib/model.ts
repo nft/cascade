@@ -117,6 +117,68 @@ export interface RequestRef {
   requestId: string
 }
 
+/**
+ * Wire protocols a request definition can use (plan 08 B1). Only 'http'
+ * executes in P0; 'ws' is a reserved discriminator so collections/boards
+ * never need a format break when WebSocket lands.
+ */
+export const REQUEST_PROTOCOLS = ['http', 'ws'] as const
+export type RequestProtocol = (typeof REQUEST_PROTOCOLS)[number]
+
+export function isRequestProtocol(value: unknown): value is RequestProtocol {
+  return REQUEST_PROTOCOLS.includes(value as RequestProtocol)
+}
+
+/** Request-side schemas are per-section so the editor tabs map 1:1 (plan 08 B4). */
+export interface RequestSchema {
+  /** Path+query, flat. */
+  params?: Record<string, SchemaJSON>
+  headers?: Record<string, SchemaJSON>
+  /** Nested object schema. */
+  body?: SchemaJSON
+}
+
+/** One reusable request definition inside a collection (plan 08 B1). */
+export interface RequestDef {
+  /** Random short id — rename-safe; requestRefs point at it. */
+  id: string
+  name: string
+  protocol: RequestProtocol
+  /** Always present for protocol 'http'; absent for other protocols. */
+  method?: HttpMethod
+  /**
+   * Path resolved against an environment ('/v1/invoices'), OR an absolute
+   * URL ('https://api.stripe.com/v1/invoices') carrying its own origin.
+   */
+  url: string
+  /**
+   * Header/param/body rows copied onto new nodes. Literal-only — bindings
+   * are board concepts and don't belong in a library.
+   */
+  defaults?: NodeField[]
+  requestSchema?: RequestSchema
+  /** Hand-written or inferred from a test request (plan 08 B4). */
+  responseSchema?: SchemaJSON
+  description?: string
+}
+
+/** One nestable folder of request definitions; depth is capped (plan 08 B1). */
+export interface CollectionFolder {
+  id: string
+  name: string
+  folders?: CollectionFolder[]
+  requests: RequestDef[]
+}
+
+/** A project-scoped library of request definitions (mirrors store.Collection). */
+export interface CollectionDef {
+  formatVersion?: number
+  id: string
+  name: string
+  /** Unnamed root folder; top-level items live in it. */
+  root: CollectionFolder
+}
+
 export type OperationNodeData = RunnableNodeData & {
   method: HttpMethod
   path: string
@@ -226,6 +288,7 @@ export interface ProjectBundle {
   environments: EnvironmentDef[]
   credentials: CredentialDef[]
   boards: BoardJSON[]
+  collections: CollectionDef[]
 }
 
 /**

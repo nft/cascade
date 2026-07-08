@@ -6,6 +6,10 @@ export function CreateProject(arg1) {
   return window['go']['main']['App']['CreateProject'](arg1);
 }
 
+export function DeleteCollection(arg1, arg2) {
+  return window['go']['main']['App']['DeleteCollection'](arg1, arg2);
+}
+
 export function DeleteProject(arg1) {
   return window['go']['main']['App']['DeleteProject'](arg1);
 }
@@ -28,4 +32,8 @@ export function RunTransformScript(arg1) {
 
 export function SaveBoard(arg1, arg2) {
   return window['go']['main']['App']['SaveBoard'](arg1, arg2);
+}
+
+export function SaveCollection(arg1, arg2) {
+  return window['go']['main']['App']['SaveCollection'](arg1, arg2);
 }

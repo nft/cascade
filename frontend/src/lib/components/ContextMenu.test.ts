@@ -25,6 +25,7 @@ beforeEach(() => {
     environments: [],
     credentials: [],
     boards: [],
+    collections: [],
   }
   window.addEventListener('keydown', handleGlobalKeydown)
   instance = mount(Harness, { target: document.body })

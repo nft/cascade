@@ -68,6 +68,29 @@ func TestDoneWhenScenario(t *testing.T) {
 	if len(payBundle.Boards) != 1 || len(payBundle.Boards[0].Nodes) != 0 {
 		t.Fatalf("payments boards = %+v; want one empty Main board", payBundle.Boards)
 	}
+	if len(defBundle.Collections) != 1 || defBundle.Collections[0].Name != "Internal APIs" {
+		t.Fatalf("default collections = %+v; want the seeded Internal APIs", defBundle.Collections)
+	}
+	if len(payBundle.Collections) != 0 {
+		t.Fatalf("payments collections = %+v; want none", payBundle.Collections)
+	}
+
+	// Collection CRUD through the bindings the sidebar uses.
+	if err := app.SaveCollection(payments.ID, store.Collection{ID: "paycol", Name: "Charges",
+		Root: store.CollectionFolder{ID: "root", Requests: []store.RequestDef{
+			{ID: "charge", Name: "Create charge", Protocol: "http", Method: "POST", URL: "/v2/charges"},
+		}}}); err != nil {
+		t.Fatalf("SaveCollection: %v", err)
+	}
+	if bundle, err := app.OpenProject(payments.ID); err != nil || len(bundle.Collections) != 1 {
+		t.Fatalf("collections after save = %+v, %v; want 1", bundle.Collections, err)
+	}
+	if err := app.DeleteCollection(payments.ID, "paycol"); err != nil {
+		t.Fatalf("DeleteCollection: %v", err)
+	}
+	if bundle, err := app.OpenProject(payments.ID); err != nil || len(bundle.Collections) != 0 {
+		t.Fatalf("collections after delete = %+v, %v; want none", bundle.Collections, err)
+	}
 
 	// Edit the Payments board through the binding the canvas uses.
 	board := payBundle.Boards[0]

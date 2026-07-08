@@ -5,6 +5,8 @@ import {main} from '../models';
 
 export function CreateProject(arg1:string):Promise<store.ProjectInfo>;
 
+export function DeleteCollection(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteProject(arg1:string):Promise<void>;
 
 export function ListProjects():Promise<Array<store.ProjectInfo>>;
@@ -16,3 +18,5 @@ export function RenameProject(arg1:string,arg2:string):Promise<store.ProjectInfo
 export function RunTransformScript(arg1:main.ScriptRunRequest):Promise<any>;
 
 export function SaveBoard(arg1:string,arg2:store.Board):Promise<void>;
+
+export function SaveCollection(arg1:string,arg2:store.Collection):Promise<void>;

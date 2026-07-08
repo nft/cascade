@@ -1,39 +1,47 @@
 import { api } from './api'
 import { deserializeBoard, serializeBoard } from './board'
+import {
+  addFolder,
+  addRequest,
+  findRequest,
+  libraryId,
+  makeCollection,
+  makeFolder,
+  removeFolder,
+  removeRequest,
+  requestRefCount,
+  updateFolder,
+  updateRequest,
+} from './collections'
 import type { ContextMenuKind } from './contextMenu'
-import { componentIds, downstreamIds, upstreamIds } from './graph'
 import {
   isHttpNode,
-  isRunnableNode,
-  isTransformNode,
   type AppEdge,
   type AppNode,
   type BoardViewport,
   type CapturedResponse,
+  type CollectionDef,
   type CredentialDef,
   type EnvironmentDef,
-  type HttpNode,
   type LogEntry,
   type NodeExport,
   type NodeField,
   type Operation,
   type ProjectBundle,
   type ProjectInfo,
-  type TransformNode,
+  type RequestDef,
 } from './model'
-import { makeCustomHttpNode, makeHttpNode, makeNoteNode, makeTransformNode } from './nodeFactory'
-import { normalizeOrigin } from './request'
 import {
-  directUpstreams,
-  isValidKey,
-  keyByNodeId,
-  resolveField,
-  takenKeys,
-  uniqueKey,
-  type ResolveContext,
-} from './refs'
+  makeCustomHttpNode,
+  makeHttpNode,
+  makeHttpNodeFromRequest,
+  makeNoteNode,
+  makeTransformNode,
+} from './nodeFactory'
+import { normalizeOrigin } from './request'
+import { isValidKey, takenKeys, uniqueKey } from './refs'
 import { inferSchema } from './schema'
-import { executeTransform, setKeyPath } from './transform'
+import { simulateRun } from './sim'
 
 type SidebarTab = 'operations' | 'environments' | 'keys'
 
@@ -50,14 +58,6 @@ export interface ContextMenuState {
   flow?: { x: number; y: number }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-/** Demo-sim id generator: uuid-shaped so schema inference can show its format guess. */
-function pseudoUuid(): string {
-  const hex = () => Math.floor(Math.random() * 16).toString(16)
-  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, hex)
-}
-
 const BOARD_SAVE_DEBOUNCE_MS = 400
 
 /** Mirrors the Go-side first-launch bootstrap name (bootstrap.go). */
@@ -66,14 +66,11 @@ const DEFAULT_PROJECT_NAME = 'Default'
 /** Node data keys that are run products, not user edits — changing only these never triggers a board save. */
 const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note'])
 
-/** Captured response bodies above this JSON size are dropped (plan 05 §8). */
-const RESPONSE_BODY_CAP_BYTES = 256 * 1024
-
 /** Most recently opened first; never-opened projects sort last in index order. */
 const byLastOpened = (a: ProjectInfo, b: ProjectInfo) =>
   (b.lastOpenedAt ?? '').localeCompare(a.lastOpenedAt ?? '')
 
-class AppState {
+export class AppState {
   nodes = $state.raw<AppNode[]>([])
   edges = $state.raw<AppEdge[]>([])
   logs = $state<LogEntry[]>([])
@@ -420,194 +417,148 @@ class AppState {
     if (!typing) this.selectedNodeId = null
   }
 
-  /**
-   * Demo-only run simulation; replaced by engine events once M1 is wired in.
-   * With a target, only the target's upstream set, downstream chain, or
-   * weakly-connected component runs — the same node-set semantics as the
-   * engine's planned `Options.Target` subgraph runs (M1 WP5). Nodes outside
-   * the set keep their previous status.
-   */
+  /** Demo-only run simulation (sim.ts); replaced by engine events once M1 is wired in. */
   async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
-    if (this.isRunning) return
-    this.isRunning = true
-    const runId = `run-${Math.random().toString(16).slice(2, 6)}`
-    const include = targetId
-      ? scope === 'upstream'
-        ? upstreamIds(this.edges, targetId)
-        : scope === 'downstream'
-          ? downstreamIds(this.edges, targetId)
-          : componentIds(this.edges, targetId)
-      : null
-    // Note nodes are annotations — they never run, so they keep no status.
-    const noteIds = new Set(this.nodes.filter((n) => n.type === 'note').map((n) => n.id))
-    const order = this.executionOrder().filter(
-      (id) => (!include || include.has(id)) && !noteIds.has(id),
-    )
-    this.activeRunIds = new Set(order)
-
-    for (const id of order) this.updateNodeData(id, { status: 'idle', note: undefined })
-
-    const failed = new Set<string>()
-    for (const id of order) {
-      const node = this.nodes.find((n) => n.id === id)
-      if (!node) continue
-      const upstreamFailed = this.edges.some((e) => e.target === id && failed.has(e.source))
-      if (upstreamFailed) {
-        failed.add(id)
-        this.updateNodeData(id, { status: 'skipped' })
-        continue
-      }
-      this.updateNodeData(id, { status: 'running' })
-      // Transforms execute for real (Pick on the mirrored resolver, Script in
-      // the Go sandbox); only http calls are still simulated.
-      if (isTransformNode(node)) {
-        const ok = await this.runTransformNode(node, runId)
-        if (!ok) failed.add(id)
-        continue
-      }
-      if (!isHttpNode(node)) continue
-      await sleep(500)
-      const fails = id === 'create-project'
-      this.updateNodeData(
-        id,
-        fails ? { status: 'failed', note: '422 Unprocessable Entity' } : { status: 'success' },
-      )
-      if (fails) failed.add(id)
-      const captured = fails ? null : this.captureSimulatedResponse(node)
-      this.logs = [
-        ...this.logs,
-        {
-          kind: 'http',
-          id: `${runId}-${id}`,
-          runId,
-          time: new Date().toISOString().slice(11, 23),
-          node: node.data.name,
-          method: node.data.method,
-          url: `https://staging.api.example.com${node.data.path.replace('{id}', 'org_01HZX9')}`,
-          status: fails ? 422 : 201,
-          durationMs: 80 + Math.floor(Math.random() * 300),
-          error: fails ? 'name "Apollo" already exists in org_01HZX9' : undefined,
-          response: captured ? JSON.stringify(captured.body) : undefined,
-        },
-      ]
-    }
-    this.activeRunIds = null
-    this.isRunning = false
-    // Captured responses persist in the board layout (plan 05 §8).
-    this.scheduleBoardSave()
+    await simulateRun(this, targetId, scope)
   }
 
-  /** Declared exports by node id, for binding resolution (http and transform nodes alike). */
-  private exportsByNodeId(): ResolveContext['exports'] {
-    return Object.fromEntries(
-      this.nodes.filter(isRunnableNode).map((n) => [n.id, n.data.exports ?? []]),
-    )
+  // --- collections (plan 08 B1/B2) -------------------------------------------
+
+  get collections(): CollectionDef[] {
+    return this.project?.collections ?? []
   }
 
   /**
-   * Executes one transform node during the sim and captures its synthetic
-   * output (status 0) like any response, so downstream bindings, the picker
-   * and schema inference work with zero special cases. Returns success.
+   * Apply an immutable tree operation to one collection and persist the
+   * result. A null from the operation means "target not found / invariant
+   * would break" — the state is left untouched.
    */
-  private async runTransformNode(node: TransformNode, runId: string): Promise<boolean> {
-    const started = performance.now()
-    const keys = keyByNodeId(this.nodes)
-    const entry = {
-      kind: 'transform' as const,
-      id: `${runId}-${node.id}`,
-      runId,
-      time: new Date().toISOString().slice(11, 23),
-      node: node.data.name,
-      inputNodes: directUpstreams(this.edges, node.id).map((id) => keys.get(id) ?? id),
-    }
+  private mutateCollection(
+    collectionId: string,
+    fn: (collection: CollectionDef) => CollectionDef | null,
+  ): boolean {
+    if (!this.project) return false
+    const current = this.project.collections.find((c) => c.id === collectionId)
+    if (!current) return false
+    const next = fn(current)
+    if (!next) return false
+    this.project.collections = this.project.collections.map((c) =>
+      c.id === collectionId ? next : c,
+    )
+    void this.saveCollectionNow(next)
+    return true
+  }
+
+  private async saveCollectionNow(collection: CollectionDef) {
+    const projectId = this.projectId
+    if (!projectId) return
     try {
-      const body = await executeTransform(
-        node,
-        this.nodes,
-        this.edges,
-        this.responses,
-        this.exportsByNodeId(),
-      )
-      const captured: CapturedResponse = { status: 0, body, at: new Date().toISOString() }
-      if (JSON.stringify(captured.body).length > RESPONSE_BODY_CAP_BYTES) {
-        captured.body = null
-        captured.truncated = true
-      }
-      this.responses = { ...this.responses, [node.id]: captured }
-      this.updateNodeData(node.id, { status: 'success' })
-      this.logs = [
-        ...this.logs,
-        { ...entry, durationMs: Math.round(performance.now() - started), output: JSON.stringify(body) },
-      ]
-      return true
+      await api.saveCollection(projectId, $state.snapshot(collection) as CollectionDef)
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      this.updateNodeData(node.id, { status: 'failed', note: message })
-      this.logs = [
-        ...this.logs,
-        { ...entry, durationMs: Math.round(performance.now() - started), error: message },
-      ]
-      return false
+      // Same policy as board saves: a failed write must not take down the UI.
+      console.error('collection save failed:', err)
     }
   }
 
-  /**
-   * Fabricate and store the node's response for the demo sim: body.* fields
-   * resolve against upstream captures (so bindings, res sugar, templates and
-   * {{i}} behave like the real engine), plus a server-shaped id/created_at.
-   */
-  private captureSimulatedResponse(node: HttpNode): CapturedResponse {
-    const ctx: ResolveContext = {
-      outputs: this.responses,
-      exports: this.exportsByNodeId(),
-      upstreams: directUpstreams(this.edges, node.id),
-      index: 0,
-    }
-    const body: Record<string, unknown> = {
-      id: pseudoUuid(),
-      created_at: new Date().toISOString(),
-    }
-    for (const field of node.data.fields) {
-      if (!field.key.startsWith('body.')) continue
-      let value: unknown
-      try {
-        value = resolveField(field, ctx)
-      } catch (err) {
-        value = `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
-      }
-      setKeyPath(body, field.key.slice('body.'.length), value)
-    }
-    const captured: CapturedResponse = {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      at: new Date().toISOString(),
-    }
-    if (JSON.stringify(captured.body).length > RESPONSE_BODY_CAP_BYTES) {
-      captured.body = null
-      captured.truncated = true
-    }
-    this.responses = { ...this.responses, [node.id]: captured }
-    return captured
+  createCollection(name: string): CollectionDef | null {
+    if (!this.project) return null
+    const collection = makeCollection(name)
+    this.project.collections = [...this.project.collections, collection]
+    void this.saveCollectionNow(collection)
+    return collection
   }
 
-  /** Topological order over the current canvas; nodes in cycles are dropped (canvas rejects cycles anyway). */
-  private executionOrder(): string[] {
-    const indegree = new Map<string, number>(this.nodes.map((n) => [n.id, 0]))
-    for (const e of this.edges) indegree.set(e.target, (indegree.get(e.target) ?? 0) + 1)
-    const ready = this.nodes.filter((n) => indegree.get(n.id) === 0).map((n) => n.id)
-    const order: string[] = []
-    while (ready.length > 0) {
-      const id = ready.shift()!
-      order.push(id)
-      for (const e of this.edges) {
-        if (e.source !== id) continue
-        const d = (indegree.get(e.target) ?? 0) - 1
-        indegree.set(e.target, d)
-        if (d === 0) ready.push(e.target)
-      }
+  renameCollection(collectionId: string, name: string) {
+    this.mutateCollection(collectionId, (c) => ({ ...c, name }))
+  }
+
+  async deleteCollection(collectionId: string) {
+    const projectId = this.projectId
+    if (!this.project || !projectId) return
+    this.project.collections = this.project.collections.filter((c) => c.id !== collectionId)
+    try {
+      await api.deleteCollection(projectId, collectionId)
+    } catch (err) {
+      console.error('collection delete failed:', err)
     }
-    return order
+  }
+
+  /** Nodes across all boards (the open one included) referencing the collection. */
+  collectionRefCount(collectionId: string, requestId?: string): number {
+    if (!this.project) return 0
+    const savedBoards = this.project.boards.filter((b) => b.id !== this.boardId)
+    const savedNodes = savedBoards.flatMap((b) => b.nodes)
+    const canvasNodes = this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))
+    return requestRefCount([...savedNodes, ...canvasNodes], collectionId, requestId)
+  }
+
+  /** Returns the new folder's id, or null when the parent is missing or the depth cap would break. */
+  addCollectionFolder(collectionId: string, parentFolderId: string, name: string): string | null {
+    const folder = makeFolder(name)
+    const ok = this.mutateCollection(collectionId, (c) => {
+      const root = addFolder(c.root, parentFolderId, folder)
+      return root ? { ...c, root } : null
+    })
+    return ok ? folder.id : null
+  }
+
+  renameCollectionFolder(collectionId: string, folderId: string, name: string) {
+    this.mutateCollection(collectionId, (c) => {
+      const root = updateFolder(c.root, folderId, (f) => ({ ...f, name }))
+      return root ? { ...c, root } : null
+    })
+  }
+
+  deleteCollectionFolder(collectionId: string, folderId: string) {
+    this.mutateCollection(collectionId, (c) => {
+      const root = removeFolder(c.root, folderId)
+      return root ? { ...c, root } : null
+    })
+  }
+
+  renameCollectionRequest(collectionId: string, requestId: string, name: string) {
+    this.mutateCollection(collectionId, (c) => {
+      const root = updateRequest(c.root, requestId, (r) => ({ ...r, name }))
+      return root ? { ...c, root } : null
+    })
+  }
+
+  duplicateCollectionRequest(collectionId: string, folderId: string, requestId: string) {
+    this.mutateCollection(collectionId, (c) => {
+      const source = findRequest(c.root, requestId)
+      if (!source) return null
+      const copy: RequestDef = {
+        ...structuredClone($state.snapshot(source) as RequestDef),
+        id: libraryId('req'),
+        name: `${source.name} copy`,
+      }
+      const root = addRequest(c.root, folderId, copy)
+      return root ? { ...c, root } : null
+    })
+  }
+
+  deleteCollectionRequest(collectionId: string, requestId: string) {
+    this.mutateCollection(collectionId, (c) => {
+      const root = removeRequest(c.root, requestId)
+      return root ? { ...c, root } : null
+    })
+  }
+
+  /** Instantiate a collection request as a canvas node (plan 08 B3). */
+  addNodeFromRequest(collectionId: string, request: RequestDef, position?: { x: number; y: number }) {
+    if (request.protocol !== 'http') return
+    this.addCounter += 1
+    const defaults = this.project?.project.defaults
+    this.insertNode(
+      makeHttpNodeFromRequest(
+        collectionId,
+        $state.snapshot(request) as RequestDef,
+        `req-${this.addCounter}`,
+        this.nodes,
+        defaults,
+        position ?? this.autoPosition(),
+      ),
+    )
   }
 }
 

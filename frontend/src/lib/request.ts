@@ -57,6 +57,27 @@ export function urlHost(value: string): string | null {
 }
 
 /**
+ * Splits an absolute URL into a normalized origin and a path, for
+ * instantiating a collection request that carries its own origin (plan 08
+ * B3). Returns null when the value is not an absolute http(s) URL.
+ */
+export function splitUrl(url: string): { origin: string; path: string } | null {
+  if (!isAbsoluteUrl(url)) return null
+  try {
+    const parsed = new URL(url.trim())
+    if (!parsed.host) return null
+    // URL percent-encodes braces; undo it so {id} placeholders survive.
+    const path = (parsed.pathname + parsed.search).replace(/%7B/gi, '{').replace(/%7D/gi, '}')
+    return {
+      origin: `${parsed.protocol}//${parsed.host}`,
+      path: path === '/' ? '' : path,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * Placeholder names in a path (`/v1/users/{id}` → `['id']`), in order of
  * appearance, deduplicated; empty/blank braces are ignored.
  */

@@ -78,3 +78,69 @@ export function menuItems(
       return [{ action: 'cut-edge', icon: 'content_cut', label: 'Cut connection', danger: true }]
   }
 }
+
+// --- collections tree menus (plan 08 B2) -------------------------------------
+
+/** Row kinds in the sidebar collections tree. The root folder uses 'collection'. */
+export type LibraryMenuKind = 'collection' | 'folder' | 'request'
+
+export type LibraryMenuAction =
+  | 'new-request'
+  | 'new-folder'
+  | 'rename-item'
+  | 'duplicate-request'
+  | 'delete-item'
+
+export interface LibraryMenuItem {
+  action: LibraryMenuAction
+  icon: string
+  label: string
+  disabled?: boolean
+  danger?: boolean
+  title?: string
+}
+
+const NEW_REQUEST_TITLE = 'The request editor lands with plan 08 C7 — until then, save nodes from the canvas'
+const DEPTH_CAP_TITLE = 'Folders nest at most 3 levels deep'
+
+/**
+ * Context menu for one collections-tree row. `refCount` is how many board
+ * nodes reference the item (or anything inside it) — deletion stays allowed
+ * (a requestRef is provenance only) but the label carries the warning.
+ */
+export function libraryMenuItems(
+  kind: LibraryMenuKind,
+  opts: { atDepthCap?: boolean; refCount?: number } = {},
+): LibraryMenuItem[] {
+  const refCount = opts.refCount ?? 0
+  const deleteLabel =
+    refCount > 0
+      ? `Delete (${refCount} ${refCount === 1 ? 'node references' : 'nodes reference'} it)`
+      : 'Delete'
+  const items: LibraryMenuItem[] = [
+    ...(kind === 'request'
+      ? []
+      : [
+          {
+            action: 'new-request' as const,
+            icon: 'http',
+            label: 'New request',
+            disabled: true,
+            title: NEW_REQUEST_TITLE,
+          },
+          {
+            action: 'new-folder' as const,
+            icon: 'create_new_folder',
+            label: 'New folder',
+            disabled: opts.atDepthCap ?? false,
+            title: opts.atDepthCap ? DEPTH_CAP_TITLE : undefined,
+          },
+        ]),
+    { action: 'rename-item', icon: 'edit', label: 'Rename' },
+    ...(kind === 'request'
+      ? [{ action: 'duplicate-request' as const, icon: 'control_point_duplicate', label: 'Duplicate' }]
+      : []),
+    { action: 'delete-item', icon: 'delete', label: deleteLabel, danger: true },
+  ]
+  return items
+}

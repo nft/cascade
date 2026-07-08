@@ -2,7 +2,7 @@
 // used by vitest and plain-browser dev) and mirrors the Go-side Default
 // project seed in seed/default.json — keep the two in sync. Components never
 // import this directly; they read the current project from the app state.
-import type { AppEdge, AppNode, CredentialDef, EnvironmentDef, Operation } from './model'
+import type { AppEdge, AppNode, CollectionDef, CredentialDef, EnvironmentDef, Operation } from './model'
 
 export const operations: Operation[] = [
   { ref: 'createUser', method: 'POST', path: '/v1/users', summary: 'Create a user', group: 'Users' },
@@ -26,6 +26,51 @@ export const credentials: CredentialDef[] = [
   { name: 'staging-admin', kind: 'bearer', createdAt: '2026-07-01' },
   { name: 'sandbox-service', kind: 'basic', createdAt: '2026-07-02' },
 ]
+
+/** Mirrors the seeded collection in seed/default.json (plan 08 B1). */
+export const demoCollection: CollectionDef = {
+  formatVersion: 1,
+  id: 'demo-collection',
+  name: 'Internal APIs',
+  root: {
+    id: 'root',
+    name: '',
+    requests: [
+      {
+        id: 'health-check',
+        name: 'Health check',
+        protocol: 'http',
+        method: 'GET',
+        url: 'https://status.example.com/healthz',
+      },
+    ],
+    folders: [
+      {
+        id: 'billing',
+        name: 'Billing',
+        requests: [
+          {
+            id: 'create-invoice',
+            name: 'Create invoice',
+            protocol: 'http',
+            method: 'POST',
+            url: '/v1/invoices',
+            defaults: [
+              { key: 'body.amount', source: 'literal', value: '100' },
+              { key: 'body.currency', source: 'literal', value: 'EUR' },
+            ],
+          },
+          {
+            id: 'invoice-events',
+            name: 'Invoice events',
+            protocol: 'ws',
+            url: '/v1/invoices/events',
+          },
+        ],
+      },
+    ],
+  },
+}
 
 export const initialNodes: AppNode[] = [
   {

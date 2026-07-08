@@ -7,7 +7,7 @@
 import helpersSource from '../../../core/transform/helpers.js?raw'
 import type { CascadeApi } from './api'
 import { serializeBoard } from './board'
-import { credentials, environments, initialEdges, initialNodes, operations } from './mock'
+import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
 import type { ProjectBundle, ProjectInfo, ScriptRunRequest, SourceDef } from './model'
 
 const DEFAULT_PROJECT_NAME = 'Default'
@@ -45,6 +45,7 @@ export function createInMemoryApi(): CascadeApi {
       environments: seeded ? environments : [],
       credentials: seeded ? credentials : [],
       boards: [board],
+      collections: seeded ? [demoCollection] : [],
     }
     const stored: StoredProject = { info: { id, name }, bundle: structuredClone(bundle) }
     projects.set(id, stored)
@@ -87,6 +88,17 @@ export function createInMemoryApi(): CascadeApi {
       const index = stored.bundle.boards.findIndex((b) => b.id === board.id)
       if (index >= 0) stored.bundle.boards[index] = copy
       else stored.bundle.boards.push(copy)
+    },
+    async saveCollection(projectId, collection) {
+      const stored = get(projectId)
+      const copy = structuredClone(collection)
+      const index = stored.bundle.collections.findIndex((c) => c.id === collection.id)
+      if (index >= 0) stored.bundle.collections[index] = copy
+      else stored.bundle.collections.push(copy)
+    },
+    async deleteCollection(projectId, id) {
+      const stored = get(projectId)
+      stored.bundle.collections = stored.bundle.collections.filter((c) => c.id !== id)
     },
     async runTransformScript(req) {
       return runScriptInBrowser(req)

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { app } from '../state.svelte'
-  import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
+  import CollectionsTree from './sidebar/CollectionsTree.svelte'
+  import OperationsList from './sidebar/OperationsList.svelte'
 
   let query = $state('')
 
@@ -10,16 +11,6 @@
     { id: 'environments', label: 'Envs', icon: 'dns' },
     { id: 'keys', label: 'API Keys', icon: 'key' },
   ] as const
-
-  const filtered = $derived(
-    app.operations.filter((op) =>
-      `${op.method} ${op.path} ${op.summary}`.toLowerCase().includes(query.toLowerCase()),
-    ),
-  )
-  const groups = $derived([...new Set(filtered.map((op) => op.group))])
-  const sourcesLabel = $derived(
-    (app.project?.sources ?? []).map((s) => `${s.title} ${s.version ?? ''}`.trim()).join(', '),
-  )
 </script>
 
 <aside class="flex w-64 shrink-0 flex-col border-r border-zinc-800 bg-surface">
@@ -38,38 +29,17 @@
   </nav>
 
   {#if app.sidebarTab === 'operations'}
-    {#if app.operations.length === 0}
-      <p class="p-4 text-center text-[11px] leading-relaxed text-zinc-600">
-        No schemas imported into <em>{app.projectName}</em> yet — use Import schema to add an
-        OpenAPI document.
-      </p>
-    {:else}
-      <div class="p-2">
-        <input
-          class="w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-          placeholder="Search operations…"
-          bind:value={query}
-        />
-      </div>
-      <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        <p class="px-1 pb-2 text-[10px] text-zinc-600">{sourcesLabel} · click to add to canvas</p>
-        {#each groups as group (group)}
-          <p class="px-1 pt-2 pb-1 text-[10px] font-medium tracking-wide text-zinc-500 uppercase">{group}</p>
-          {#each filtered.filter((op) => op.group === group) as op (op.ref)}
-            <button
-              class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-zinc-800/70"
-              onclick={() => app.addNode(op)}
-              title={op.summary}
-            >
-              <span class="w-12 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-semibold {methodBadge[op.method]}">
-                {op.method}
-              </span>
-              <span class="truncate font-mono text-[11px] text-zinc-300">{op.path}</span>
-            </button>
-          {/each}
-        {/each}
-      </div>
-    {/if}
+    <div class="p-2">
+      <input
+        class="w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+        placeholder="Search requests…"
+        bind:value={query}
+      />
+    </div>
+    <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <OperationsList {query} />
+      <CollectionsTree {query} />
+    </div>
   {:else if app.sidebarTab === 'environments'}
     <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
       {#each app.environments as env (env.name)}

@@ -1,6 +1,7 @@
 // Fresh-node payloads for canvas insertion, kept out of the store so
 // AppState only orchestrates (id allocation, selection, persistence).
-import type { AppNode, Operation, ProjectDefaults } from './model'
+import type { AppNode, Operation, ProjectDefaults, RequestDef } from './model'
+import { splitUrl } from './request'
 import { slugifyKey, takenKeys, uniqueKey } from './refs'
 import { DEFAULT_TRANSFORM_SCRIPT } from './transform'
 
@@ -55,6 +56,43 @@ export function makeCustomHttpNode(
       status: 'idle',
       repeat: 1,
       fields: [],
+    },
+  }
+}
+
+/**
+ * Instantiates a collection request onto the canvas (plan 08 B3): copies the
+ * request's shape, materializes its literal defaults into fields, and links
+ * back via requestRef (provenance only — the node stays independent). An
+ * absolute URL becomes an origin override; such a node also starts with
+ * credential none, same opt-into-secrets rule as makeCustomHttpNode.
+ */
+export function makeHttpNodeFromRequest(
+  collectionId: string,
+  request: RequestDef,
+  id: string,
+  existing: readonly AppNode[],
+  defaults: ProjectDefaults | undefined,
+  position: { x: number; y: number },
+): AppNode {
+  const split = splitUrl(request.url)
+  return {
+    id,
+    type: 'http',
+    position,
+    data: {
+      name: request.name,
+      key: uniqueKey(slugifyKey(request.name), takenKeys(existing)),
+      method: request.method ?? 'GET',
+      path: split ? split.path : request.url,
+      ...(split ? { origin: split.origin } : {}),
+      environment: defaults?.environment ?? '',
+      credential: split ? '' : (defaults?.credential ?? ''),
+      status: 'idle',
+      repeat: 1,
+      fields: structuredClone(request.defaults ?? []),
+      ...(request.responseSchema ? { responseSchema: structuredClone(request.responseSchema) } : {}),
+      requestRef: { collectionId, requestId: request.id },
     },
   }
 }

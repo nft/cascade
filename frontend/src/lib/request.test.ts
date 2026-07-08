@@ -10,6 +10,7 @@ import {
   sectionFields,
   sectionKey,
   sectionOfKey,
+  splitUrl,
   urlHost,
 } from './request'
 import { HTTP_METHODS, type NodeField } from './model'
@@ -71,6 +72,25 @@ describe('isAbsoluteUrl / urlHost / effectiveBaseUrl', () => {
     expect(effectiveBaseUrl('https://other.io', 'https://staging.example.com')).toBe('https://other.io')
     expect(effectiveBaseUrl(undefined, 'https://staging.example.com')).toBe('https://staging.example.com')
     expect(effectiveBaseUrl('', 'https://staging.example.com')).toBe('https://staging.example.com')
+  })
+})
+
+describe('splitUrl (plan 08 B3)', () => {
+  it('splits an absolute URL into origin and path, keeping {placeholders} intact', () => {
+    expect(splitUrl('https://api.stripe.com/v1/invoices/{id}')).toEqual({
+      origin: 'https://api.stripe.com',
+      path: '/v1/invoices/{id}',
+    })
+    expect(splitUrl('http://localhost:8080/healthz?deep=1')).toEqual({
+      origin: 'http://localhost:8080',
+      path: '/healthz?deep=1',
+    })
+    expect(splitUrl('https://api.example.com/')).toEqual({ origin: 'https://api.example.com', path: '' })
+  })
+
+  it('returns null for relative paths and non-http schemes', () => {
+    expect(splitUrl('/v1/invoices')).toBeNull()
+    expect(splitUrl('ws://api.example.com/events')).toBeNull()
   })
 })
 
