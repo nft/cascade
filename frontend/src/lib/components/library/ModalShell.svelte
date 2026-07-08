@@ -4,7 +4,12 @@
   // propagation so the global chain doesn't also clear the selection.
   import type { Snippet } from 'svelte'
 
-  let { title, onclose, children }: { title: string; onclose: () => void; children: Snippet } = $props()
+  let {
+    title,
+    onclose,
+    wide = false,
+    children,
+  }: { title: string; onclose: () => void; wide?: boolean; children: Snippet } = $props()
 </script>
 
 <div
@@ -19,7 +24,7 @@
     aria-modal="true"
     aria-label={title}
     tabindex="-1"
-    class="flex max-h-full w-96 flex-col rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
+    class="flex max-h-full {wide ? 'w-[36rem]' : 'w-96'} max-w-full flex-col rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
     onkeydown={(e) => {
       if (e.key === 'Escape') {
         e.stopPropagation()

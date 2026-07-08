@@ -37,3 +37,7 @@ export function SaveBoard(arg1, arg2) {
 export function SaveCollection(arg1, arg2) {
   return window['go']['main']['App']['SaveCollection'](arg1, arg2);
 }
+
+export function SendTestRequest(arg1, arg2) {
+  return window['go']['main']['App']['SendTestRequest'](arg1, arg2);
+}

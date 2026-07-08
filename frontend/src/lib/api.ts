@@ -4,7 +4,15 @@
 import * as GoApp from '../../wailsjs/go/main/App'
 import type { main as goMain, store as goStore } from '../../wailsjs/go/models'
 import { createInMemoryApi } from './inMemoryApi'
-import type { BoardJSON, CollectionDef, ProjectBundle, ProjectInfo, ScriptRunRequest } from './model'
+import type {
+  BoardJSON,
+  CollectionDef,
+  ProjectBundle,
+  ProjectInfo,
+  ScriptRunRequest,
+  TestRequest,
+  TestResponse,
+} from './model'
 
 export interface CascadeApi {
   listProjects(): Promise<ProjectInfo[]>
@@ -17,6 +25,8 @@ export interface CascadeApi {
   deleteCollection(projectId: string, id: string): Promise<void>
   /** Runs one transform script in the Go goja sandbox; resolves with the result body. */
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
+  /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
+  sendTestRequest(projectId: string, request: TestRequest): Promise<TestResponse>
 }
 
 // The generated bindings type results as wailsjs model classes; they are the
@@ -32,6 +42,8 @@ const wailsApi: CascadeApi = {
     GoApp.SaveCollection(projectId, collection as unknown as goStore.Collection),
   deleteCollection: (projectId, id) => GoApp.DeleteCollection(projectId, id),
   runTransformScript: (req) => GoApp.RunTransformScript(req as unknown as goMain.ScriptRunRequest),
+  sendTestRequest: (projectId, request) =>
+    GoApp.SendTestRequest(projectId, request as unknown as goMain.TestRequest) as unknown as Promise<TestResponse>,
 }
 
 declare global {

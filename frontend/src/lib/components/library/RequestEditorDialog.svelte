@@ -1,8 +1,8 @@
 <script lang="ts">
   // Library-first request editing (plan 08 B3): the exact A2 sectioned
-  // editor rendered over a draft RequestDef via the adapter. Nothing touches
-  // the canvas; save writes the definition into the collection. The Response
-  // schema and Test tabs land with plan 08 C8/C9.
+  // editor rendered over a draft RequestDef via the adapter, plus the two
+  // library-only tabs — Schemas (C8) and Test (C9). Nothing touches the
+  // canvas; save writes the definition into the collection.
   import { findRequest, libraryId } from '../../collections'
   import { dialogs, type RequestEditorContext } from '../../dialogs.svelte'
   import { HTTP_METHODS, isHttpMethod, type RequestDef } from '../../model'
@@ -11,12 +11,19 @@
   import { methodBadge } from '../../ui'
   import RequestSection from '../inspector/RequestSection.svelte'
   import ModalShell from './ModalShell.svelte'
+  import RequestSchemasPane from './RequestSchemasPane.svelte'
+  import RequestTestPane from './RequestTestPane.svelte'
 
   let { context }: { context: RequestEditorContext } = $props()
 
   const WS_TITLE = 'WebSocket requests land later'
-  const SCHEMA_TAB_TITLE = 'Schema editing lands with plan 08 C8'
-  const TEST_TAB_TITLE = 'Test requests land with plan 08 C9'
+
+  const TABS = [
+    { id: 'request', label: 'Request' },
+    { id: 'schemas', label: 'Schemas' },
+    { id: 'test', label: 'Test' },
+  ] as const
+  type TabId = (typeof TABS)[number]['id']
 
   // The dialog mounts fresh per open (App.svelte), so capturing the initial
   // context is deliberate; the draft is a deep-reactive copy the section
@@ -32,6 +39,7 @@
   )
   const target = draftTarget(draft)
 
+  let tab = $state<TabId>('request')
   let nameEl = $state<HTMLInputElement | null>(null)
   $effect(() => {
     nameEl?.focus()
@@ -56,7 +64,7 @@
   }
 </script>
 
-<ModalShell title={existing ? 'Edit request' : 'New request'} onclose={close}>
+<ModalShell title={existing ? 'Edit request' : 'New request'} onclose={close} wide>
   <div class="flex items-center gap-1" role="radiogroup" aria-label="Protocol">
     <button
       role="radio"
@@ -116,35 +124,39 @@
     </p>
   </div>
 
-  <RequestSection {target} />
-
-  <label class="block">
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Description</span>
-    <input
-      bind:value={draft.description}
-      class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-      placeholder="optional"
-    />
-  </label>
-
-  <div class="flex items-center gap-1 border-t border-zinc-800 pt-2">
-    <button
-      class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-zinc-600 uppercase disabled:cursor-not-allowed"
-      disabled
-      title={SCHEMA_TAB_TITLE}
-    >
-      Response schema
-    </button>
-    <button
-      class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-zinc-600 uppercase disabled:cursor-not-allowed"
-      disabled
-      title={TEST_TAB_TITLE}
-    >
-      Test
-    </button>
+  <div class="flex items-center gap-1 border-t border-zinc-800 pt-2" role="tablist" aria-label="Request editor tabs">
+    {#each TABS as t (t.id)}
+      <button
+        role="tab"
+        aria-selected={tab === t.id}
+        class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase {tab === t.id
+          ? 'bg-zinc-800 text-zinc-100'
+          : 'text-zinc-500 hover:text-zinc-300'}"
+        onclick={() => (tab = t.id)}
+      >
+        {t.label}
+      </button>
+    {/each}
   </div>
 
-  <div class="flex justify-end gap-1.5 pt-1">
+  {#if tab === 'request'}
+    <RequestSection {target} />
+
+    <label class="block">
+      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Description</span>
+      <input
+        bind:value={draft.description}
+        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+        placeholder="optional"
+      />
+    </label>
+  {:else if tab === 'schemas'}
+    <RequestSchemasPane {draft} />
+  {:else}
+    <RequestTestPane {draft} />
+  {/if}
+
+  <div class="flex justify-end gap-1.5 border-t border-zinc-800 pt-2">
     <button class="rounded px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onclick={close}>
       Cancel
     </button>

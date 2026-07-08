@@ -8,7 +8,8 @@ import helpersSource from '../../../core/transform/helpers.js?raw'
 import type { CascadeApi } from './api'
 import { serializeBoard } from './board'
 import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
-import type { ProjectBundle, ProjectInfo, ScriptRunRequest, SourceDef } from './model'
+import type { ProjectBundle, ProjectInfo, ScriptRunRequest, SourceDef, TestRequest, TestResponse } from './model'
+import { joinUrl } from './request'
 
 const DEFAULT_PROJECT_NAME = 'Default'
 const MAIN_BOARD_NAME = 'Main'
@@ -102,6 +103,43 @@ export function createInMemoryApi(): CascadeApi {
     },
     async runTransformScript(req) {
       return runScriptInBrowser(req)
+    },
+    // Canned on purpose (plan 08 B5): no project state is involved, so tests
+    // that assemble app state by hand can send without registering a project.
+    async sendTestRequest(_projectId, request) {
+      return cannedTestResponse(request)
+    },
+  }
+}
+
+/**
+ * Dev/vitest stand-in for the SendTestRequest binding (plan 08 B5): echoes
+ * the resolved request shape as a JSON success so the Test tab's send → view
+ * → parse-to-schema flow is exercisable without the Go side. Mirrors the
+ * redaction rule: a named credential never surfaces a value.
+ */
+function cannedTestResponse(request: TestRequest): TestResponse {
+  let path = request.path
+  for (const [name, value] of Object.entries(request.pathParams ?? {})) {
+    path = path.replaceAll(`{${name}}`, value)
+  }
+  const url = joinUrl(request.origin ?? request.envBase ?? '', path)
+  const body = {
+    ok: true,
+    method: request.method,
+    url,
+    ...(request.body !== undefined ? { echo: request.body } : {}),
+  }
+  return {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    bodyText: JSON.stringify(body),
+    durationMs: 12,
+    url,
+    sentHeaders: {
+      ...request.headers,
+      ...(request.credential ? { Authorization: '•••' } : {}),
     },
   }
 }

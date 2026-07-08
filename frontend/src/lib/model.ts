@@ -360,6 +360,44 @@ export type TransformLogEntry = LogEntryBase & {
 
 export type LogEntry = HttpLogEntry | TransformLogEntry
 
+/**
+ * One-off request execution outside any board run (plan 08 B4, mirrors
+ * main.TestRequest): everything is pre-resolved — literal values only, no
+ * bindings. `origin` (from an absolute request URL) takes precedence over
+ * `envBase`; the Go side joins, injects the named credential, and sends.
+ */
+export interface TestRequest {
+  protocol?: RequestProtocol
+  method: HttpMethod
+  origin?: string
+  envBase?: string
+  /** May contain {placeholders}, substituted from pathParams. */
+  path: string
+  pathParams?: Record<string, string>
+  query?: Record<string, string>
+  headers?: Record<string, string>
+  body?: unknown
+  rawBody?: RawBody
+  /** Credential name; empty/absent means none. Values never leave the Go side. */
+  credential?: string
+}
+
+/** The captured outcome of a test request (mirrors main.TestResponse). */
+export interface TestResponse {
+  status: number
+  headers?: Record<string, string>
+  /** Parsed body when it is JSON; absent otherwise. */
+  body?: unknown
+  /** Raw body text, capped at the capture limit. */
+  bodyText: string
+  truncated?: boolean
+  durationMs: number
+  /** The final URL sent (path substituted, query appended). */
+  url: string
+  /** Headers as sent, with credential-injected values redacted. */
+  sentHeaders?: Record<string, string>
+}
+
 /** One upstream output as handed to a transform script run (mirrors main.ScriptUpstream). */
 export interface ScriptUpstream {
   status: number

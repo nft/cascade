@@ -20,3 +20,5 @@ export function RunTransformScript(arg1:main.ScriptRunRequest):Promise<any>;
 export function SaveBoard(arg1:string,arg2:store.Board):Promise<void>;
 
 export function SaveCollection(arg1:string,arg2:store.Collection):Promise<void>;
+
+export function SendTestRequest(arg1:string,arg2:main.TestRequest):Promise<main.TestResponse>;

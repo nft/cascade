@@ -22,6 +22,22 @@ const buttonByText = (text: string) =>
     (b) => b.textContent?.trim() === text,
   )
 
+/** Buttons whose label follows an icon ligature (Send, Parse to schema, …). */
+const buttonContaining = (text: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
+    b.textContent?.includes(text),
+  )
+
+const dialogTab = (label: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Request editor tabs"] [role="tab"]')].find(
+    (b) => b.textContent?.trim() === label,
+  ) as HTMLButtonElement
+
+const settle = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  flushSync()
+}
+
 function setInput(el: HTMLInputElement, value: string) {
   el.value = value
   el.dispatchEvent(new Event('input', { bubbles: true }))
@@ -34,7 +50,7 @@ beforeEach(() => {
   app.project = {
     project: { id: 'p1', name: 'Test', defaults: {} },
     sources: [],
-    environments: [],
+    environments: [{ name: 'staging', baseUrl: 'https://staging.example.com' }],
     credentials: [],
     boards: [],
     collections: [structuredClone(demoCollection)],
@@ -116,5 +132,59 @@ describe('RequestEditorDialog (plan 08 C7)', () => {
       { key: 'body.currency', source: 'literal', value: 'EUR' },
     ])
     expect(billing?.requests).toHaveLength(2) // replaced, not duplicated
+  })
+
+  it('Schemas tab edits the response schema on the draft and save persists it (plan 08 C8)', () => {
+    mountDialog({ collectionId: demoCollection.id, folderId: 'root' })
+    setInput(document.querySelector<HTMLInputElement>('input[placeholder="Create invoice"]')!, 'Ping')
+    setInput(byLabel<HTMLInputElement>('Request URL')!, '/ping')
+
+    dialogTab('Schemas').click()
+    flushSync()
+    buttonByText('Start with an empty object')!.click()
+    flushSync()
+    byLabel<HTMLButtonElement>('Add property to body')!.click()
+    flushSync()
+    const key = byLabel<HTMLInputElement>('New property name in body')!
+    setInput(key, 'id')
+    key.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    flushSync()
+
+    buttonByText('Add to collection')!.click()
+    flushSync()
+    const created = app.collections[0].root.requests.find((r) => r.name === 'Ping')
+    expect(created?.responseSchema).toEqual({ type: 'object', properties: { id: { type: 'string' } } })
+  })
+
+  it('Test tab sends, parses the response to a schema, and saves both schemas (plan 08 C9)', async () => {
+    mountDialog({
+      collectionId: demoCollection.id,
+      folderId: 'billing',
+      requestId: 'create-invoice',
+    })
+    dialogTab('Test').click()
+    flushSync()
+
+    buttonContaining('Send')!.click()
+    await settle()
+    // The in-memory api answers with a canned JSON body echoing the request.
+    expect(document.body.textContent).toContain('200')
+
+    buttonContaining('Parse to schema')!.click()
+    flushSync()
+    buttonByText('Save as response schema')!.click()
+    flushSync()
+    buttonContaining('Use sent body as request schema')!.click()
+    flushSync()
+
+    buttonByText('Save changes')!.click()
+    flushSync()
+    const billing = app.collections[0].root.folders?.find((f) => f.id === 'billing')
+    const updated = billing?.requests.find((r) => r.id === 'create-invoice')
+    expect(Object.keys(updated?.responseSchema?.properties ?? {})).toEqual(['echo', 'method', 'ok', 'url'])
+    expect(updated?.requestSchema?.body).toEqual({
+      type: 'object',
+      properties: { amount: { type: 'string' }, currency: { type: 'string' } },
+    })
   })
 })
