@@ -4,6 +4,7 @@
 // and canvas-only layout (positions, viewport, last responses) in a sibling
 // `layout` key.
 import {
+  isHttpMethod,
   isNodeType,
   type AppEdge,
   type AppNode,
@@ -12,10 +13,11 @@ import {
   type BoardViewport,
   type CapturedResponse,
   type FieldRef,
-  type HttpMethod,
   type NodeExport,
   type NodeField,
   type OperationNodeData,
+  type RawBody,
+  type RequestRef,
   type SchemaJSON,
   type TransformNodeData,
 } from './model'
@@ -118,13 +120,20 @@ export function deserializeBoard(board: BoardJSON): {
           data: {
             name: wire.name ?? wire.id,
             key,
-            method: (partial.method ?? 'GET') as HttpMethod,
+            // An unknown method means a hand-edited/newer board; degrade to
+            // GET rather than carry an unrenderable value through the UI.
+            method: isHttpMethod(partial.method) ? partial.method : 'GET',
             path: String(partial.path ?? ''),
+            ...(typeof partial.origin === 'string' && partial.origin !== ''
+              ? { origin: partial.origin }
+              : {}),
             environment: String(partial.environment ?? ''),
             credential: String(partial.credential ?? ''),
             status: 'idle',
             repeat: Number(partial.repeat ?? 1),
             fields: Array.isArray(partial.fields) ? (partial.fields as NodeField[]) : [],
+            ...(isRawBody(partial.rawBody) ? { rawBody: partial.rawBody } : {}),
+            ...(isRequestRef(partial.requestRef) ? { requestRef: partial.requestRef } : {}),
             ...(Array.isArray(partial.exports)
               ? { exports: partial.exports as NodeExport[] }
               : {}),
@@ -144,6 +153,18 @@ export function deserializeBoard(board: BoardJSON): {
     target: e.to,
   }))
   return { nodes, edges, viewport: board.layout?.viewport, responses: board.layout?.responses ?? {} }
+}
+
+function isRawBody(value: unknown): value is RawBody {
+  if (!value || typeof value !== 'object') return false
+  const raw = value as Partial<RawBody>
+  return typeof raw.contentType === 'string' && typeof raw.text === 'string'
+}
+
+function isRequestRef(value: unknown): value is RequestRef {
+  if (!value || typeof value !== 'object') return false
+  const ref = value as Partial<RequestRef>
+  return typeof ref.collectionId === 'string' && typeof ref.requestId === 'string'
 }
 
 /**

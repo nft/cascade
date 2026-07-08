@@ -77,6 +77,49 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(edges).toEqual([{ id: 'a->b', source: 'a', target: 'b' }])
   })
 
+  it('round-trips origin, rawBody, and requestRef (plan 08 C1)', () => {
+    const node = httpNode('a')
+    node.data = {
+      ...node.data,
+      origin: 'https://api.other-service.io',
+      rawBody: { contentType: 'text/csv', text: 'a,b\n1,2' },
+      requestRef: { collectionId: 'col1', requestId: 'req1' },
+    }
+    const { nodes } = deserializeBoard(serializeBoard('b1', 'Main', [node], []))
+    const loaded = nodes[0] as HttpNode
+    expect(loaded.data.origin).toBe('https://api.other-service.io')
+    expect(loaded.data.rawBody).toEqual({ contentType: 'text/csv', text: 'a,b\n1,2' })
+    expect(loaded.data.requestRef).toEqual({ collectionId: 'col1', requestId: 'req1' })
+  })
+
+  it('drops malformed plan-08 fields instead of loading garbage', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        {
+          id: 'n1',
+          name: 'Node',
+          data: {
+            method: 'FETCH',
+            origin: 42,
+            rawBody: { contentType: 'text/plain' },
+            requestRef: { collectionId: 'col1' },
+          },
+        },
+      ],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    const loaded = nodes[0] as HttpNode
+    expect(loaded.data.method).toBe('GET')
+    expect(loaded.data.origin).toBeUndefined()
+    expect(loaded.data.rawBody).toBeUndefined()
+    expect(loaded.data.requestRef).toBeUndefined()
+  })
+
   it('applies engine defaults: absent type means http, missing layout/data get fallbacks', () => {
     const board: BoardJSON = {
       formatVersion: 1,

@@ -6,6 +6,8 @@ export const methodBadge: Record<HttpMethod, string> = {
   PUT: 'bg-amber-500/15 text-amber-300',
   PATCH: 'bg-violet-500/15 text-violet-300',
   DELETE: 'bg-rose-500/15 text-rose-400',
+  HEAD: 'bg-cyan-500/15 text-cyan-300',
+  OPTIONS: 'bg-zinc-500/15 text-zinc-300',
 }
 
 export const statusDot: Record<NodeStatus, string> = {

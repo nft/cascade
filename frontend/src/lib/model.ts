@@ -12,7 +12,12 @@ export function isNodeType(value: unknown): value is NodeType {
   return NODE_TYPES.includes(value as NodeType)
 }
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const
+export type HttpMethod = (typeof HTTP_METHODS)[number]
+
+export function isHttpMethod(value: unknown): value is HttpMethod {
+  return HTTP_METHODS.includes(value as HttpMethod)
+}
 
 export type NodeStatus = 'idle' | 'running' | 'success' | 'failed' | 'skipped' | 'stale'
 
@@ -96,13 +101,37 @@ export type RunnableNodeData = {
   exports?: NodeExport[]
 }
 
+/**
+ * Raw request body escape hatch (plan 08 A1) for non-JSON/exact-bytes
+ * payloads. When set, `body.*` fields are ignored; {{…}} templates
+ * interpolate in `text`.
+ */
+export interface RawBody {
+  contentType: string
+  text: string
+}
+
+/** Provenance link to the collection request a node was created from (plan 08 B3). */
+export interface RequestRef {
+  collectionId: string
+  requestId: string
+}
+
 export type OperationNodeData = RunnableNodeData & {
   method: HttpMethod
   path: string
+  /**
+   * Absolute base URL overriding the environment for this node (plan 08 A1).
+   * Empty/absent ⇒ resolve against the environment's baseUrl. Normalized on
+   * save: scheme+host required, no trailing slash.
+   */
+  origin?: string
   environment: string
   credential: string
   fields: NodeField[]
+  rawBody?: RawBody
   repeat: number
+  requestRef?: RequestRef
   /** Response schema pinned via "use last response as schema"; survives later runs. */
   responseSchema?: SchemaJSON
 }
