@@ -1,8 +1,11 @@
 package main
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -63,12 +66,11 @@ func TestSendTestRequest(t *testing.T) {
 	}
 }
 
-// Until plan 04's keychain lands there are no secret values anywhere, so a
-// named credential must fail loudly instead of silently sending without auth.
-func TestSendTestRequestCredentialNotStoredYet(t *testing.T) {
+// A named credential without a stored secret must fail loudly instead of
+// silently sending without auth; an unknown name is its own error.
+func TestSendTestRequestCredentialErrors(t *testing.T) {
 	app := newTestApp(t)
 	id := defaultProjectID(t, app)
-	// The bootstrapped Default project seeds credentials (seed/default.json).
 	p, err := app.store.Project(id)
 	if err != nil {
 		t.Fatalf("Project: %v", err)
@@ -80,8 +82,8 @@ func TestSendTestRequestCredentialNotStoredYet(t *testing.T) {
 	_, err = app.SendTestRequest(id, TestRequest{
 		Method: "GET", EnvBase: "https://x.io", Path: "/me", Credential: "staging-admin",
 	})
-	if err == nil || !strings.Contains(err.Error(), "plan 04") {
-		t.Errorf("named credential: err = %v, want the plan-04 explanation", err)
+	if err == nil || !strings.Contains(err.Error(), "no stored secret value") {
+		t.Errorf("named credential without secret: err = %v, want a no-stored-value explanation", err)
 	}
 
 	_, err = app.SendTestRequest(id, TestRequest{
@@ -89,6 +91,77 @@ func TestSendTestRequestCredentialNotStoredYet(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Errorf("unknown credential: err = %v, want a does-not-exist error", err)
+	}
+}
+
+// The plan 04 done-when at the backend level: a header-kind credential with a
+// template sends exactly <Header>: Token <secret>, the response redacts it,
+// and no file under the store root contains the secret value.
+func TestSendTestRequestWithStoredCredential(t *testing.T) {
+	var sawToken string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sawToken = r.Header.Get("X-Internal-Token")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	root := t.TempDir()
+	secrets, err := store.NewFileSecretStore(root)
+	if err != nil {
+		t.Fatalf("NewFileSecretStore: %v", err)
+	}
+	manager := store.NewManager(root, secrets)
+	if err := bootstrapDefaultProject(manager); err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	app := NewApp(manager)
+	id := defaultProjectID(t, app)
+
+	p, err := app.store.Project(id)
+	if err != nil {
+		t.Fatalf("Project: %v", err)
+	}
+	creds := []store.Credential{{Name: "internal", Kind: "header", Header: "X-Internal-Token", Template: "Token {secret}"}}
+	if err := p.SaveCredentials(creds); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
+	const secret = "s3cret-t0ken"
+	if err := app.SetCredentialSecret(id, "internal", secret); err != nil {
+		t.Fatalf("SetCredentialSecret: %v", err)
+	}
+	if err := app.SetCredentialSecret(id, "ghost", secret); err == nil {
+		t.Error("SetCredentialSecret accepted an unknown credential name")
+	}
+
+	resp, err := app.SendTestRequest(id, TestRequest{
+		Method: "GET", EnvBase: srv.URL, Path: "/me", Credential: "internal",
+	})
+	if err != nil {
+		t.Fatalf("SendTestRequest: %v", err)
+	}
+	if sawToken != "Token "+secret {
+		t.Errorf("server saw X-Internal-Token %q, want %q", sawToken, "Token "+secret)
+	}
+	if resp.SentHeaders["X-Internal-Token"] != "•••" {
+		t.Errorf("SentHeaders leaks the credential: %v", resp.SentHeaders)
+	}
+
+	// Nothing persisted anywhere under the store root may contain the secret.
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(raw), secret) {
+			t.Errorf("file %s contains the secret value", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk store root: %v", err)
 	}
 }
 

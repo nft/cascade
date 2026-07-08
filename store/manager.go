@@ -64,6 +64,9 @@ func NewManager(dir string, secrets SecretStore) *Manager {
 	return &Manager{root: dir, secrets: secrets, open: make(map[string]*Project)}
 }
 
+// Secrets exposes the secret store for credential value reads and writes.
+func (m *Manager) Secrets() SecretStore { return m.secrets }
+
 // ListProjects returns the index entries in index order.
 func (m *Manager) ListProjects() ([]ProjectInfo, error) {
 	m.mu.Lock()
@@ -218,6 +221,15 @@ func (m *Manager) DeleteProject(id string) error {
 		return fmt.Errorf("project %q: %w", id, ErrNotFound)
 	}
 	dir := m.resolveDir(index[i].Path)
+	// The keychain cannot enumerate entries, so read the credential names
+	// while credentials.json still exists; a missing/corrupt file just means
+	// no secrets to clean up.
+	credNames := []string{}
+	if creds, err := readListFile[Credential](filepath.Join(dir, credentialsFile)); err == nil {
+		for _, c := range creds {
+			credNames = append(credNames, c.Name)
+		}
+	}
 	if err := m.writeIndex(slices.Delete(index, i, i+1)); err != nil {
 		return err
 	}
@@ -225,7 +237,7 @@ func (m *Manager) DeleteProject(id string) error {
 	if err := os.RemoveAll(dir); err != nil {
 		return fmt.Errorf("delete project files: %w", err)
 	}
-	if leftover, err := m.secrets.DeleteProjectSecrets(id); err != nil || len(leftover) > 0 {
+	if leftover, err := m.secrets.DeleteProjectSecrets(id, credNames); err != nil || len(leftover) > 0 {
 		return &SecretCleanupError{ProjectID: id, Leftover: leftover, Err: err}
 	}
 	return nil

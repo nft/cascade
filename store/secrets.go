@@ -1,23 +1,62 @@
 package store
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-// SecretStore owns credential secret values, which never touch project files.
-// The real implementation lands with plan 04: values live in the OS keychain
-// under service "cascade", account "<projectID>/<credentialName>", and that
-// implementation is also where the engine-facing CredentialResolver (M1
-// design decision 3) reads values lazily at run time.
+// SecretStore owns credential secret values, which never touch project files
+// (plan 04 K4). Values are keyed by project ID and credential name; the
+// engine-facing resolver reads them lazily at run time.
 type SecretStore interface {
-	// DeleteProjectSecrets removes every secret belonging to the project,
-	// best-effort. It returns the accounts it could not remove.
-	DeleteProjectSecrets(projectID string) (leftover []string, err error)
+	// SetSecret stores (or replaces — rotation) one credential's value.
+	SetSecret(projectID, credentialName, value string) error
+	// GetSecret returns the stored value, or ErrSecretNotFound.
+	GetSecret(projectID, credentialName string) (string, error)
+	// DeleteSecret removes one value; a missing entry is not an error.
+	DeleteSecret(projectID, credentialName string) error
+	// DeleteProjectSecrets removes the named credentials' secrets, best-effort.
+	// The caller supplies the names (read from credentials.json before the
+	// project dir is removed) because the OS keychain cannot enumerate
+	// entries. It returns the names it could not remove.
+	DeleteProjectSecrets(projectID string, credentialNames []string) (leftover []string, err error)
 }
 
-// NoopSecretStore stands in until plan 04: no secrets are stored anywhere,
-// so there is never anything to clean up.
+// ErrSecretNotFound reports that a credential has no stored value (never
+// entered, or the keychain entry was removed externally).
+var ErrSecretNotFound = errors.New("secret value not found")
+
+// secretAccount is the store-wide key for one secret: the keychain account
+// name, and the map key in the file fallback.
+func secretAccount(projectID, credentialName string) string {
+	return projectID + "/" + credentialName
+}
+
+// deleteEach implements DeleteProjectSecrets on top of a per-entry delete.
+func deleteEach(store SecretStore, projectID string, names []string) (leftover []string, err error) {
+	var firstErr error
+	for _, name := range names {
+		if delErr := store.DeleteSecret(projectID, name); delErr != nil {
+			leftover = append(leftover, name)
+			if firstErr == nil {
+				firstErr = delErr
+			}
+		}
+	}
+	return leftover, firstErr
+}
+
+// NoopSecretStore discards writes and never finds values. It backs a nil
+// Manager store in tests; real deployments get KeychainSecretStore or
+// FileSecretStore.
 type NoopSecretStore struct{}
 
-func (NoopSecretStore) DeleteProjectSecrets(string) ([]string, error) { return nil, nil }
+func (NoopSecretStore) SetSecret(string, string, string) error   { return nil }
+func (NoopSecretStore) GetSecret(string, string) (string, error) { return "", ErrSecretNotFound }
+func (NoopSecretStore) DeleteSecret(string, string) error        { return nil }
+func (NoopSecretStore) DeleteProjectSecrets(string, []string) ([]string, error) {
+	return nil, nil
+}
 
 // SecretCleanupError reports keychain entries left behind by DeleteProject.
 // The project's files and index entry are already gone when it is returned,

@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cascade/core/httpcall"
+	"cascade/store"
 )
 
 // TestRequest is one one-off request execution from the request editor's Test
@@ -75,29 +77,64 @@ func (a *App) SendTestRequest(projectID string, req TestRequest) (TestResponse, 
 	}, nil
 }
 
-// resolveCredential turns a credential name into an httpcall injection. Names
-// resolve against the project's credential metadata, but secret *values* live
-// in the OS keychain, which lands with plan 04 — until then any named
-// credential is an explicit, actionable error rather than a silent no-auth
-// call the user would misread as authenticated.
+// resolveCredential turns a credential name into an httpcall injection: the
+// project's metadata gives the kind/rule, the secret store gives the value.
+// A named credential without a stored value is an explicit, actionable error
+// rather than a silent no-auth call the user would misread as authenticated.
 func (a *App) resolveCredential(projectID, name string) (*httpcall.Credential, error) {
 	if name == "" {
 		return nil, nil
 	}
-	p, err := a.store.Project(projectID)
+	c, err := a.findCredential(projectID, name)
 	if err != nil {
 		return nil, err
+	}
+	secret, err := a.store.Secrets().GetSecret(projectID, name)
+	if errors.Is(err, store.ErrSecretNotFound) {
+		return nil, fmt.Errorf(
+			"credential %q has no stored secret value — set one in the Credentials tab, or pick None to send without auth",
+			name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &httpcall.Credential{
+		Kind:     c.Kind,
+		Header:   c.Header,
+		Param:    c.Param,
+		Template: c.Template,
+		Secret:   secret,
+		Username: c.Username,
+	}, nil
+}
+
+// findCredential returns the named credential's metadata.
+func (a *App) findCredential(projectID, name string) (store.Credential, error) {
+	p, err := a.store.Project(projectID)
+	if err != nil {
+		return store.Credential{}, err
 	}
 	credentials, err := p.Credentials()
 	if err != nil {
-		return nil, err
+		return store.Credential{}, err
 	}
 	for _, c := range credentials {
 		if c.Name == name {
-			return nil, fmt.Errorf(
-				"credential %q: secret values are not stored yet (they land with plan 04) — pick None to send without auth",
-				name)
+			return c, nil
 		}
 	}
-	return nil, fmt.Errorf("credential %q does not exist in this project", name)
+	return store.Credential{}, fmt.Errorf("credential %q does not exist in this project", name)
+}
+
+// SetCredentialSecret stores (or rotates) a credential's secret value. The
+// value goes straight to the secret store — never into project files — and is
+// write-only: no binding reads it back.
+func (a *App) SetCredentialSecret(projectID, name, value string) error {
+	if value == "" {
+		return fmt.Errorf("secret value must not be empty")
+	}
+	if _, err := a.findCredential(projectID, name); err != nil {
+		return err
+	}
+	return a.store.Secrets().SetSecret(projectID, name, value)
 }

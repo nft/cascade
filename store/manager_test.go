@@ -148,15 +148,18 @@ func TestRenameProjectUpdatesIndexAndMetaButNotPath(t *testing.T) {
 	}
 }
 
-// recordingSecrets fakes the plan-04 keychain to observe cleanup calls.
+// recordingSecrets fakes the keychain to observe cleanup calls.
 type recordingSecrets struct {
+	NoopSecretStore
 	deleted  []string
+	names    []string
 	leftover []string
 	err      error
 }
 
-func (r *recordingSecrets) DeleteProjectSecrets(projectID string) ([]string, error) {
+func (r *recordingSecrets) DeleteProjectSecrets(projectID string, names []string) ([]string, error) {
 	r.deleted = append(r.deleted, projectID)
+	r.names = append(r.names, names...)
 	return r.leftover, r.err
 }
 
@@ -167,6 +170,9 @@ func TestDeleteProjectRemovesDirIndexAndSecrets(t *testing.T) {
 	doomed := mustCreate(t, m, "Doomed")
 	p, _ := m.Project(doomed.ID)
 	dir := p.Dir()
+	if err := p.SaveCredentials([]Credential{{Name: "staging-admin", Kind: "bearer"}}); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
 
 	if err := m.DeleteProject(doomed.ID); err != nil {
 		t.Fatalf("DeleteProject: %v", err)
@@ -180,6 +186,11 @@ func TestDeleteProjectRemovesDirIndexAndSecrets(t *testing.T) {
 	}
 	if len(secrets.deleted) != 1 || secrets.deleted[0] != doomed.ID {
 		t.Fatalf("secrets cleanup calls = %v", secrets.deleted)
+	}
+	// The credential names were read before the dir vanished, so the
+	// keychain cleanup knows which accounts to remove.
+	if len(secrets.names) != 1 || secrets.names[0] != "staging-admin" {
+		t.Fatalf("secrets cleanup names = %v", secrets.names)
 	}
 	if _, err := m.Project(doomed.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("deleted project still resolves: %v", err)

@@ -25,8 +25,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("resolve user config dir: %v", err)
 	}
-	// The keychain-backed SecretStore lands with plan 04; nil means no-op.
-	manager := store.NewManager(filepath.Join(configDir, appDataDirName), nil)
+	dataDir := filepath.Join(configDir, appDataDirName)
+	// OS keychain when available; otherwise the encrypted-file fallback in
+	// the data dir (plan 04 K4).
+	secrets, err := store.NewSecretStore(dataDir)
+	if err != nil {
+		log.Fatalf("open secret store: %v", err)
+	}
+	manager := store.NewManager(dataDir, secrets)
 	if err := bootstrapDefaultProject(manager); err != nil {
 		log.Fatalf("bootstrap default project: %v", err)
 	}
