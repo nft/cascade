@@ -37,6 +37,7 @@ type ProjectBundle struct {
 	Environments []store.Environment `json:"environments"`
 	Credentials  []store.Credential  `json:"credentials"`
 	Boards       []store.Board       `json:"boards"`
+	Collections  []store.Collection  `json:"collections"`
 }
 
 // ListProjects returns the project index.
@@ -94,12 +95,17 @@ func (a *App) OpenProject(id string) (ProjectBundle, error) {
 	if err != nil {
 		return ProjectBundle{}, err
 	}
+	collections, err := p.Collections()
+	if err != nil {
+		return ProjectBundle{}, err
+	}
 	return ProjectBundle{
 		Project:      meta,
 		Sources:      sources,
 		Environments: environments,
 		Credentials:  credentials,
 		Boards:       boards,
+		Collections:  collections,
 	}, nil
 }
 
@@ -159,4 +165,23 @@ func (a *App) SaveBoard(projectID string, board store.Board) error {
 		return err
 	}
 	return p.SaveBoard(board)
+}
+
+// SaveCollection persists one request collection of a project (plan 08 B5).
+func (a *App) SaveCollection(projectID string, collection store.Collection) error {
+	p, err := a.store.Project(projectID)
+	if err != nil {
+		return err
+	}
+	return p.SaveCollection(collection)
+}
+
+// DeleteCollection removes one request collection. Boards referencing its
+// requests keep working: a requestRef is provenance only (plan 08 B3).
+func (a *App) DeleteCollection(projectID, id string) error {
+	p, err := a.store.Project(projectID)
+	if err != nil {
+		return err
+	}
+	return p.DeleteCollection(id)
 }

@@ -25,6 +25,7 @@ type seedData struct {
 	Source       store.Source        `json:"source"`
 	Environments []store.Environment `json:"environments"`
 	Credentials  []store.Credential  `json:"credentials"`
+	Collection   store.Collection    `json:"collection"`
 	Board        store.Board         `json:"board"`
 }
 
@@ -68,6 +69,12 @@ func bootstrapDefaultProject(m *store.Manager) error {
 		return err
 	}
 	if err := p.SaveCredentials(seed.Credentials); err != nil {
+		return err
+	}
+	if seed.Collection.ID, err = store.NewID(); err != nil {
+		return err
+	}
+	if err := p.SaveCollection(seed.Collection); err != nil {
 		return err
 	}
 

@@ -26,6 +26,7 @@ const (
 	credentialsFile  = "credentials.json"
 	sourcesDirName   = "sources"
 	boardsDirName    = "boards"
+	collectionsDir   = "collections"
 	logsDirName      = "logs"
 	jsonExt          = ".json"
 )
@@ -99,7 +100,7 @@ func (m *Manager) CreateProject(name string) (info ProjectInfo, err error) {
 		}
 	}()
 
-	for _, sub := range []string{sourcesDirName, boardsDirName, logsDirName} {
+	for _, sub := range []string{sourcesDirName, boardsDirName, collectionsDir, logsDirName} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), dirPerm); err != nil {
 			return ProjectInfo{}, err
 		}

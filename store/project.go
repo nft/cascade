@@ -183,6 +183,61 @@ func (p *Project) SaveBoard(b Board) error {
 	return writeJSONAtomic(filepath.Join(p.dir, boardsDirName, b.ID+jsonExt), b)
 }
 
+// Collections returns all of the project's request collections, ordered by
+// file name.
+func (p *Project) Collections() ([]Collection, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	collections := []Collection{}
+	err := p.eachJSONFile(collectionsDir, func(path string) error {
+		var c Collection
+		if err := readJSON(path, &c); err != nil {
+			return err
+		}
+		if c.FormatVersion > CollectionFormatVersion {
+			return fmt.Errorf("collection %q: format version %d is newer than supported version %d",
+				c.ID, c.FormatVersion, CollectionFormatVersion)
+		}
+		c.normalize()
+		collections = append(collections, c)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return collections, nil
+}
+
+// SaveCollection validates the collection (safe id, depth cap, known
+// protocols) and writes it atomically; the id is the file name.
+func (p *Project) SaveCollection(c Collection) error {
+	c.normalize()
+	if err := c.validate(); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	// Projects created before collections existed lack the subdirectory.
+	if err := os.MkdirAll(filepath.Join(p.dir, collectionsDir), dirPerm); err != nil {
+		return err
+	}
+	return writeJSONAtomic(filepath.Join(p.dir, collectionsDir, c.ID+jsonExt), c)
+}
+
+// DeleteCollection removes one collection file.
+func (p *Project) DeleteCollection(id string) error {
+	if !validFileID(id) {
+		return fmt.Errorf("collection id %q: %w", id, errBadFileID)
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	err := os.Remove(filepath.Join(p.dir, collectionsDir, id+jsonExt))
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("collection %q: %w", id, ErrNotFound)
+	}
+	return err
+}
+
 // eachJSONFile calls fn for every *.json file in the project subdirectory,
 // in lexical order. A missing directory is treated as empty.
 func (p *Project) eachJSONFile(subdir string, fn func(path string) error) error {

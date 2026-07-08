@@ -24,6 +24,48 @@
     { "name": "staging-admin", "kind": "bearer", "createdAt": "2026-07-01" },
     { "name": "sandbox-service", "kind": "basic", "createdAt": "2026-07-02" }
   ],
+  "collection": {
+    "formatVersion": 1,
+    "name": "Internal APIs",
+    "root": {
+      "id": "root",
+      "name": "",
+      "requests": [
+        {
+          "id": "health-check",
+          "name": "Health check",
+          "protocol": "http",
+          "method": "GET",
+          "url": "https://status.example.com/healthz"
+        }
+      ],
+      "folders": [
+        {
+          "id": "billing",
+          "name": "Billing",
+          "requests": [
+            {
+              "id": "create-invoice",
+              "name": "Create invoice",
+              "protocol": "http",
+              "method": "POST",
+              "url": "/v1/invoices",
+              "defaults": [
+                { "key": "body.amount", "source": "literal", "value": "100" },
+                { "key": "body.currency", "source": "literal", "value": "EUR" }
+              ]
+            },
+            {
+              "id": "invoice-events",
+              "name": "Invoice events",
+              "protocol": "ws",
+              "url": "/v1/invoices/events"
+            }
+          ]
+        }
+      ]
+    }
+  },
   "board": {
     "formatVersion": 1,
     "name": "Main",
