@@ -5,6 +5,7 @@ export type ContextMenuKind = 'pane' | 'node' | 'edge'
 
 export type MenuAction =
   | 'add-node'
+  | 'add-custom-request'
   | 'add-transform'
   | 'add-note'
   | 'paste'
@@ -38,6 +39,7 @@ export function menuItems(
     case 'pane':
       return [
         { action: 'add-node', icon: 'add_circle', label: 'Add node…' },
+        { action: 'add-custom-request', icon: 'http', label: 'Add custom request' },
         { action: 'add-transform', icon: 'function', label: 'Add transform' },
         { action: 'add-note', icon: 'sticky_note_2', label: 'Add note' },
         { action: 'paste', icon: 'content_paste', label: 'Paste', disabled: true, title: CLIPBOARD_TITLE },

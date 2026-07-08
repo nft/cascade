@@ -5,10 +5,14 @@ import {
   joinUrl,
   methodAllowsBody,
   normalizeOrigin,
+  paramRows,
   pathPlaceholders,
+  sectionFields,
+  sectionKey,
+  sectionOfKey,
   urlHost,
 } from './request'
-import { HTTP_METHODS } from './model'
+import { HTTP_METHODS, type NodeField } from './model'
 
 describe('methodAllowsBody (plan 08 A1)', () => {
   it('refuses bodies only on GET and HEAD', () => {
@@ -78,5 +82,62 @@ describe('pathPlaceholders', () => {
   it('ignores empty or blank braces and paths without placeholders', () => {
     expect(pathPlaceholders('/v1/users/{}/x/{ }')).toEqual([])
     expect(pathPlaceholders('/v1/users')).toEqual([])
+  })
+})
+
+describe('sectioned editor grouping (plan 08 A2)', () => {
+  const field = (key: string): NodeField => ({ key, source: 'literal', value: 'x' })
+  const fields = [
+    field('body.email'),
+    field('path.id'),
+    field('query.limit'),
+    field('header.X-Api-Key'),
+    field('body.user.name'),
+  ]
+
+  it('sectionOfKey groups prefixed keys; unknown prefixes are unsectioned', () => {
+    expect(sectionOfKey('path.id')).toBe('params')
+    expect(sectionOfKey('query.limit')).toBe('params')
+    expect(sectionOfKey('header.X-Foo')).toBe('headers')
+    expect(sectionOfKey('body.user.name')).toBe('body')
+    expect(sectionOfKey('weird')).toBeNull()
+  })
+
+  it('sectionFields filters by section', () => {
+    expect(sectionFields(fields, 'headers').map((f) => f.key)).toEqual(['header.X-Api-Key'])
+    expect(sectionFields(fields, 'body').map((f) => f.key)).toEqual(['body.email', 'body.user.name'])
+    expect(sectionFields(fields, 'params').map((f) => f.key)).toEqual(['path.id', 'query.limit'])
+  })
+
+  it('sectionKey auto-prefixes; dots inside a body name stay the nesting syntax', () => {
+    expect(sectionKey('headers', 'X-Internal-Token', '')).toBe('header.X-Internal-Token')
+    expect(sectionKey('body', 'user.name', '')).toBe('body.user.name')
+    expect(sectionKey('params', 'limit', '/v1/users/{id}')).toBe('query.limit')
+    // A name matching a current placeholder becomes a path param instead.
+    expect(sectionKey('params', 'id', '/v1/users/{id}')).toBe('path.id')
+  })
+})
+
+describe('paramRows (plan 08 A2)', () => {
+  const field = (key: string, value = 'x'): NodeField => ({ key, source: 'literal', value })
+
+  it('seeds an empty required row per placeholder, backed by the stored field when present', () => {
+    const rows = paramRows([field('path.orgId', 'org_1')], '/v1/orgs/{orgId}/members/{id}')
+    expect(rows.map((r) => r.field.key)).toEqual(['path.orgId', 'path.id'])
+    expect(rows[0].field.value).toBe('org_1')
+    expect(rows[1].field.value).toBe('')
+    expect(rows.every((r) => r.kind === 'path' && r.required && !r.orphan)).toBe(true)
+  })
+
+  it('flags stored path rows whose placeholder left the path as orphans', () => {
+    const rows = paramRows([field('path.id')], '/v1/users')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].orphan).toBe(true)
+    expect(rows[0].required).toBe(false)
+  })
+
+  it('lists query rows after path rows', () => {
+    const rows = paramRows([field('query.limit'), field('path.id')], '/v1/users/{id}')
+    expect(rows.map((r) => `${r.kind}:${r.field.key}`)).toEqual(['path:path.id', 'query:query.limit'])
   })
 })

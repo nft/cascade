@@ -21,7 +21,8 @@ import {
   type ProjectInfo,
   type TransformNode,
 } from './model'
-import { makeHttpNode, makeNoteNode, makeTransformNode } from './nodeFactory'
+import { makeCustomHttpNode, makeHttpNode, makeNoteNode, makeTransformNode } from './nodeFactory'
+import { normalizeOrigin } from './request'
 import {
   directUpstreams,
   isValidKey,
@@ -256,6 +257,15 @@ class AppState {
     )
   }
 
+  /** Ad-hoc request node (plan 08 A3) — hand-configured, credential none. */
+  addCustomHttpNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    const defaults = this.project?.project.defaults
+    this.insertNode(
+      makeCustomHttpNode(`custom-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
+    )
+  }
+
   addTransformNode(position?: { x: number; y: number }) {
     this.addCounter += 1
     this.insertNode(
@@ -331,6 +341,22 @@ class AppState {
     if (!isValidKey(key)) return 'keys are letters, digits and _, starting with a letter ("res" and "i" are reserved)'
     if (takenKeys(this.nodes, id).has(key)) return `key "${key}" is already used on this board`
     this.updateNodeData(id, { key })
+    return null
+  }
+
+  /**
+   * Set or clear a node's origin override (plan 08 A1). Returns an error
+   * message when the value is not an absolute http(s) URL; null on success.
+   * An empty value clears the override back to the environment's base URL.
+   */
+  setNodeOrigin(id: string, raw: string): string | null {
+    if (raw.trim() === '') {
+      this.updateNodeData(id, { origin: undefined })
+      return null
+    }
+    const origin = normalizeOrigin(raw)
+    if (!origin) return 'origin must be an absolute http(s) URL, e.g. https://api.example.com'
+    this.updateNodeData(id, { origin })
     return null
   }
 

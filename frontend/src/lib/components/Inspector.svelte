@@ -3,9 +3,10 @@
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
-  import FieldsSection from './inspector/FieldsSection.svelte'
   import NameKeySection from './inspector/NameKeySection.svelte'
   import OutputsSection from './inspector/OutputsSection.svelte'
+  import RequestSection from './inspector/RequestSection.svelte'
+  import RequestTargetSection from './inspector/RequestTargetSection.svelte'
   import ResponseSchemaSection from './inspector/ResponseSchemaSection.svelte'
   import TransformSection from './inspector/TransformSection.svelte'
 
@@ -41,6 +42,8 @@
       <NameKeySection {node} />
 
       {#if isHttpNode(node)}
+        <RequestTargetSection {node} />
+
         <div class="grid grid-cols-2 gap-2">
           <label class="block">
             <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Environment</span>
@@ -61,6 +64,7 @@
               value={node.data.credential}
               onchange={(e) => app.updateNodeData(node.id, { credential: e.currentTarget.value })}
             >
+              <option value="">none</option>
               {#each app.credentials as cred (cred.name)}
                 <option value={cred.name}>{cred.name}</option>
               {/each}
@@ -79,7 +83,7 @@
           />
         </label>
 
-        <FieldsSection {node} />
+        <RequestSection {node} />
 
         <OutputsSection {node} />
 

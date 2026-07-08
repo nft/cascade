@@ -47,6 +47,9 @@
       case 'add-node':
         paletteOpen = true
         return // keep the menu open, showing the palette
+      case 'add-custom-request':
+        app.addCustomHttpNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
       case 'add-transform':
         app.addTransformNode(menu.flow ?? screenToFlowPosition(menu.screen))
         break

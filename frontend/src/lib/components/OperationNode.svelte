@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
   import type { OperationNodeData } from '../model'
+  import { urlHost } from '../request'
   import { app } from '../state.svelte'
   import { methodBadge, statusDot, statusLabel } from '../ui'
   import Icon from './Icon.svelte'
@@ -42,8 +43,21 @@
   <div class="space-y-1.5 px-3 py-2">
     <p class="truncate font-mono text-[11px] text-zinc-500">{data.path}</p>
     <div class="flex items-center gap-1.5">
-      <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{data.environment}</span>
-      <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">{data.credential}</span>
+      {#if data.origin}
+        <!-- Origin override (plan 08 A1): "this node talks elsewhere" must be visible on the canvas. -->
+        <span
+          class="flex min-w-0 items-center gap-0.5 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-300"
+          title={data.origin}
+        >
+          <Icon name="public" size={11} />
+          <span class="truncate">{urlHost(data.origin)}</span>
+        </span>
+      {:else}
+        <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{data.environment}</span>
+      {/if}
+      <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] {data.credential ? 'text-zinc-500' : 'text-zinc-600'}">
+        {data.credential || 'none'}
+      </span>
     </div>
     <div class="flex items-center gap-1.5 pt-0.5">
       <span class="h-2 w-2 rounded-full {statusDot[data.status]}"></span>

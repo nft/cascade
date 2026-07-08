@@ -29,6 +29,36 @@ export function makeHttpNode(
   }
 }
 
+/**
+ * An ad-hoc request node (plan 08 A3): no spec, no collection — the user
+ * configures method/path/origin/fields by hand. Credential deliberately
+ * starts as none: a node pointed at an arbitrary origin must opt into
+ * secrets, never inherit the project default.
+ */
+export function makeCustomHttpNode(
+  id: string,
+  existing: readonly AppNode[],
+  defaults: ProjectDefaults | undefined,
+  position: { x: number; y: number },
+): AppNode {
+  return {
+    id,
+    type: 'http',
+    position,
+    data: {
+      name: 'Custom request',
+      key: uniqueKey('request', takenKeys(existing)),
+      method: 'GET',
+      path: '',
+      environment: defaults?.environment ?? '',
+      credential: '',
+      status: 'idle',
+      repeat: 1,
+      fields: [],
+    },
+  }
+}
+
 /** A transform node (plan 06): Pick mode by default, no target/env — it only reshapes. */
 export function makeTransformNode(
   id: string,

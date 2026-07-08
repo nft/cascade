@@ -6,12 +6,30 @@
   import Icon from '../Icon.svelte'
   import BindingPicker from './BindingPicker.svelte'
 
-  let { nodeId, field }: { nodeId: string; field: NodeField } = $props()
+  let {
+    nodeId,
+    field,
+    kindBadge,
+    required = false,
+    orphan = false,
+    removable = true,
+  }: {
+    nodeId: string
+    field: NodeField
+    /** Small path/query chip on Params rows (plan 08 A2). */
+    kindBadge?: 'path' | 'query'
+    /** Placeholder-backed row that must be filled before the request can run. */
+    required?: boolean
+    /** Stored path row whose placeholder left the path. */
+    orphan?: boolean
+    removable?: boolean
+  } = $props()
 
   const keys = $derived(keyByNodeId(app.nodes))
   const display = $derived(fieldDisplayValue(field, keys))
   const error = $derived(validateFieldRefs(field, nodeId, app.nodes, app.edges))
   const isBound = $derived(field.source !== 'literal')
+  const missing = $derived(required && display.trim() === '')
 
   let inputEl = $state<HTMLInputElement | null>(null)
   let pickerOpen = $state(false)
@@ -42,9 +60,32 @@
   }
 </script>
 
-<div class="rounded-md border bg-zinc-900/60 px-2 py-1.5 {error ? 'border-rose-500/40' : 'border-zinc-800'}">
+<div
+  class="rounded-md border bg-zinc-900/60 px-2 py-1.5 {error
+    ? 'border-rose-500/40'
+    : missing || orphan
+      ? 'border-amber-500/40'
+      : 'border-zinc-800'}"
+>
   <div class="flex items-center gap-1">
+    {#if kindBadge}
+      <span
+        class="shrink-0 rounded px-1 py-px font-mono text-[9px] {kindBadge === 'path'
+          ? 'bg-sky-500/15 text-sky-300'
+          : 'bg-zinc-800 text-zinc-500'}"
+      >
+        {kindBadge}
+      </span>
+    {/if}
     <p class="min-w-0 flex-1 truncate font-mono text-[11px] text-zinc-400">{field.key}</p>
+    {#if orphan}
+      <span
+        class="shrink-0 rounded bg-amber-500/15 px-1 py-px font-mono text-[9px] text-amber-300"
+        title="No matching placeholder in the path — remove the row or restore the placeholder"
+      >
+        unused
+      </span>
+    {/if}
     {#if isBound}
       <span class="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-500/15 px-1 py-px font-mono text-[9px] text-violet-300">
         <Icon name="link" size={10} />
@@ -61,14 +102,16 @@
     >
       <Icon name="add_link" size={14} />
     </button>
-    <button
-      class="flex shrink-0 items-center rounded px-1 py-0.5 text-zinc-600 hover:bg-zinc-800 hover:text-rose-400"
-      onclick={() => app.removeField(nodeId, field.key)}
-      title="Remove field"
-      aria-label="Remove field {field.key}"
-    >
-      <Icon name="close" size={12} />
-    </button>
+    {#if removable}
+      <button
+        class="flex shrink-0 items-center rounded px-1 py-0.5 text-zinc-600 hover:bg-zinc-800 hover:text-rose-400"
+        onclick={() => app.removeField(nodeId, field.key)}
+        title="Remove field"
+        aria-label="Remove field {field.key}"
+      >
+        <Icon name="close" size={12} />
+      </button>
+    {/if}
   </div>
   <input
     bind:this={inputEl}
@@ -81,6 +124,8 @@
   />
   {#if error}
     <p class="mt-1 text-[10px] text-rose-400">{error}</p>
+  {:else if missing}
+    <p class="mt-1 text-[10px] text-amber-400">required path parameter</p>
   {/if}
   {#if pickerOpen}
     <BindingPicker {nodeId} onInsert={insert} />
