@@ -13,6 +13,7 @@
     ROOT_FOLDER_ID,
   } from '../../collections'
   import { libraryMenuItems, type LibraryMenuKind } from '../../contextMenu'
+  import { dialogs } from '../../dialogs.svelte'
   import type { CollectionDef, CollectionFolder, RequestDef } from '../../model'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
@@ -94,6 +95,18 @@
     if (!menu) return
     const m = menu
     switch (action) {
+      case 'new-request':
+        dialogs.requestEditor = { collectionId: m.collectionId, folderId: m.folderId }
+        break
+      case 'edit-request':
+        if (m.requestId) {
+          dialogs.requestEditor = {
+            collectionId: m.collectionId,
+            folderId: m.folderId,
+            requestId: m.requestId,
+          }
+        }
+        break
       case 'new-folder': {
         const id = app.addCollectionFolder(m.collectionId, m.folderId, DEFAULT_FOLDER_NAME)
         if (id) {

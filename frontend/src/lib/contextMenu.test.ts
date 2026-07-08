@@ -48,6 +48,22 @@ describe('context menu contents (plan 03 §2)', () => {
     expect(withResponse.find((i) => i.action === 'use-as-schema')?.disabled).toBe(false)
   })
 
+  it('http node menu offers the library flows (plan 08 B3)', () => {
+    const unlinked = menuItems('node', { isRunning: false, nodeType: 'http', library: 'none' })
+    expect(unlinked.some((i) => i.action === 'save-to-collection')).toBe(true)
+    // The update entry hides entirely without a resolvable requestRef.
+    expect(unlinked.some((i) => i.action === 'update-collection-request')).toBe(false)
+
+    const clean = menuItems('node', { isRunning: false, nodeType: 'http', library: 'clean' })
+    expect(clean.find((i) => i.action === 'update-collection-request')?.disabled).toBe(true)
+
+    const diverged = menuItems('node', { isRunning: false, nodeType: 'http', library: 'diverged' })
+    expect(diverged.find((i) => i.action === 'update-collection-request')?.disabled).toBe(false)
+
+    const transform = menuItems('node', { isRunning: false, nodeType: 'transform' })
+    expect(transform.some((i) => i.action === 'save-to-collection')).toBe(false)
+  })
+
   it('disables run entries while a run is in flight', () => {
     const items = menuItems('node', { isRunning: true })
     expect(items.find((i) => i.action === 'run-node')?.disabled).toBe(true)
@@ -73,16 +89,17 @@ describe('collections tree menus (plan 08 B2)', () => {
     }
   })
 
-  it('request menu offers rename, duplicate and delete', () => {
+  it('request menu offers edit, rename, duplicate and delete', () => {
     expect(libraryMenuItems('request').map((i) => i.action)).toEqual([
+      'edit-request',
       'rename-item',
       'duplicate-request',
       'delete-item',
     ])
   })
 
-  it('new request stays disabled until the editor dialog lands (plan 08 C7)', () => {
-    expect(libraryMenuItems('collection').find((i) => i.action === 'new-request')?.disabled).toBe(true)
+  it('new request is live now that the editor dialog exists (plan 08 C7)', () => {
+    expect(libraryMenuItems('collection').find((i) => i.action === 'new-request')?.disabled).toBeUndefined()
   })
 
   it('new folder is disabled at the depth cap', () => {

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { useSvelteFlow } from '@xyflow/svelte'
   import { menuItems, type MenuItem } from '../contextMenu'
-  import type { Operation } from '../model'
+  import { dialogs } from '../dialogs.svelte'
+  import { libraryLinkState } from '../library'
+  import { isHttpNode, type Operation } from '../model'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -9,15 +11,16 @@
   const { screenToFlowPosition, fitView } = useSvelteFlow()
 
   const menu = $derived(app.contextMenu)
-  const items = $derived(
-    menu
-      ? menuItems(menu.kind, {
-          isRunning: app.isRunning,
-          hasResponse: menu.id !== undefined && menu.id in app.responses,
-          nodeType: menu.id !== undefined ? app.nodes.find((n) => n.id === menu.id)?.type : undefined,
-        })
-      : [],
-  )
+  const items = $derived.by(() => {
+    if (!menu) return []
+    const node = menu.id !== undefined ? app.nodes.find((n) => n.id === menu.id) : undefined
+    return menuItems(menu.kind, {
+      isRunning: app.isRunning,
+      hasResponse: menu.id !== undefined && menu.id in app.responses,
+      nodeType: node?.type,
+      library: node && isHttpNode(node) ? libraryLinkState(app.collections, node.data) : undefined,
+    })
+  })
 
   let paletteOpen = $state(false)
   let query = $state('')
@@ -73,6 +76,12 @@
         break
       case 'use-as-schema':
         if (menu.id) app.useLastResponseAsSchema(menu.id)
+        break
+      case 'save-to-collection':
+        if (menu.id) dialogs.saveToCollection = { nodeId: menu.id }
+        break
+      case 'update-collection-request':
+        if (menu.id) app.updateCollectionRequestFromNode(menu.id)
         break
       case 'delete-node':
         if (menu.id) app.removeNode(menu.id)

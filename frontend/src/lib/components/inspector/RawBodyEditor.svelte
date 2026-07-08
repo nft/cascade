@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { HttpNode, RawBody } from '../../model'
-  import { app } from '../../state.svelte'
+  import type { RawBody } from '../../model'
+  import type { RequestEditorTarget } from '../../requestEditor'
   import CodeEditor from './CodeEditor.svelte'
 
-  let { node, rawBody }: { node: HttpNode; rawBody: RawBody } = $props()
+  let { target, rawBody }: { target: RequestEditorTarget; rawBody: RawBody } = $props()
 
   function patch(change: Partial<RawBody>) {
-    app.updateNodeData(node.id, { rawBody: { ...rawBody, ...change } })
+    target.setRawBody?.({ ...rawBody, ...change })
   }
 </script>
 

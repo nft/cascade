@@ -1,6 +1,7 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { HttpNode } from '../../model'
+import type { HttpNode, RequestDef } from '../../model'
+import { draftTarget, nodeTarget } from '../../requestEditor'
 import { app } from '../../state.svelte'
 import RequestSection from './RequestSection.svelte'
 
@@ -32,7 +33,15 @@ function mountWith(node: HttpNode) {
   document.body.innerHTML = ''
   app.nodes = [node]
   app.edges = []
-  instance = mount(RequestSection, { target: document.body, props: { node } })
+  instance = mount(RequestSection, { target: document.body, props: { target: nodeTarget(node) } })
+  flushSync()
+}
+
+function mountDraft(draft: RequestDef) {
+  document.body.innerHTML = ''
+  app.nodes = []
+  app.edges = []
+  instance = mount(RequestSection, { target: document.body, props: { target: draftTarget(draft) } })
   flushSync()
 }
 
@@ -102,5 +111,48 @@ describe('RequestSection (plan 08 A2)', () => {
       }),
     )
     expect(document.body.textContent).toContain('unused')
+  })
+})
+
+describe('RequestSection over a library draft (plan 08 B3)', () => {
+  const mkDraft = (draft: Partial<RequestDef> = {}): RequestDef => ({
+    id: 'req-1',
+    name: 'Create invoice',
+    protocol: 'http',
+    method: 'POST',
+    url: '/v1/invoices/{id}',
+    defaults: [{ key: 'body.amount', source: 'literal', value: '100' }],
+    ...draft,
+  })
+
+  it('is literal-only: no binding pickers, no raw-body toggle', () => {
+    mountDraft(mkDraft())
+    expect(document.querySelector('[aria-label^="Insert reference"]')).toBeNull()
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('button')]
+    expect(buttons.some((b) => b.textContent?.trim() === 'raw')).toBe(false)
+    expect(document.body.textContent).toContain('literal defaults')
+  })
+
+  it('seeds Params rows from {placeholders} in the full URL', () => {
+    mountDraft(mkDraft({ url: 'https://api.example.com/v1/invoices/{id}' }))
+    expect(document.body.textContent).toContain('path.id')
+  })
+
+  it('adding in a section writes an auto-prefixed default onto the draft', () => {
+    const draft = mkDraft()
+    mountDraft(draft)
+    const tab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) =>
+      b.textContent?.includes('Body'),
+    )!
+    tab.click()
+    flushSync()
+    const input = document.querySelector<HTMLInputElement>('input[placeholder*="nests"]')!
+    input.value = 'user.name'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    flushSync()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    flushSync()
+    expect(draft.defaults?.map((d) => d.key)).toContain('body.user.name')
+    expect(app.nodes).toHaveLength(0) // nothing touched the board
   })
 })

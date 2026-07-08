@@ -6,6 +6,7 @@ import {
   flattenRequests,
   folderById,
   folderDepth,
+  folderOptions,
   makeCollection,
   makeFolder,
   removeFolder,
@@ -52,6 +53,14 @@ describe('collection tree lookups (plan 08 B1)', () => {
     expect(folderDepth(tree(), 'a')).toBe(1)
     expect(folderDepth(tree(), 'b')).toBe(2)
     expect(folderDepth(tree(), 'nope')).toBeNull()
+  })
+
+  it('folderOptions lists root first, then folders with breadcrumb labels', () => {
+    expect(folderOptions(tree())).toEqual([
+      { id: 'root', label: '/' },
+      { id: 'a', label: 'Billing' },
+      { id: 'b', label: 'Billing / Refunds' },
+    ])
   })
 
   it('findRequest searches all folders; flattenRequests keeps the folder trail', () => {

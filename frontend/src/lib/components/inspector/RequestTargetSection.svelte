@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { libraryLinkState } from '../../library'
   import { HTTP_METHODS, isHttpMethod, type HttpNode } from '../../model'
   import { urlHost } from '../../request'
   import { app } from '../../state.svelte'
@@ -6,6 +7,11 @@
   import Icon from '../Icon.svelte'
 
   let { node }: { node: HttpNode } = $props()
+
+  // Binding-blind divergence hint (plan 08 B3): only shows when the node's
+  // shape actually moved away from its library request — a clean or unlinked
+  // node renders nothing.
+  const linkState = $derived(libraryLinkState(app.collections, node.data))
 
   // The origin input keeps a local draft so half-typed URLs show a hint
   // without clobbering the stored (always-valid) origin. The draft is an
@@ -101,6 +107,20 @@
         credential <span class="font-mono">{node.data.credential}</span> will be sent to
         <span class="font-mono">{originHost}</span>, not the <span class="font-mono">{node.data.environment}</span> host
       </span>
+    </p>
+  {/if}
+
+  {#if linkState === 'diverged'}
+    <p class="mt-1.5 flex items-center gap-1 text-[10px] text-zinc-500">
+      <Icon name="library_books" size={12} />
+      differs from its library request
+      <button
+        class="ml-auto rounded px-1.5 py-0.5 text-[10px] text-sky-300 hover:bg-zinc-800"
+        onclick={() => app.updateCollectionRequestFromNode(node.id)}
+        title="Push this node's method, URL and fields back onto the collection request"
+      >
+        Update library
+      </button>
     </p>
   {/if}
 </div>

@@ -1,4 +1,5 @@
 // Context menu contents per kind (plan 03 §2), data-driven so tests can assert entries.
+import type { LibraryLinkState } from './library'
 import type { NodeType } from './model'
 
 export type ContextMenuKind = 'pane' | 'node' | 'edge'
@@ -16,6 +17,8 @@ export type MenuAction =
   | 'duplicate'
   | 'rename'
   | 'use-as-schema'
+  | 'save-to-collection'
+  | 'update-collection-request'
   | 'delete-node'
   | 'cut-edge'
 
@@ -30,10 +33,17 @@ export interface MenuItem {
 
 const CLIPBOARD_TITLE = 'Clipboard lands with board export / import (plan 07)'
 const NO_RESPONSE_TITLE = 'Run the node first — inference needs a captured response'
+const LIBRARY_CLEAN_TITLE = 'The node matches its library request'
 
 export function menuItems(
   kind: ContextMenuKind,
-  opts: { isRunning: boolean; hasResponse?: boolean; nodeType?: NodeType },
+  opts: {
+    isRunning: boolean
+    hasResponse?: boolean
+    nodeType?: NodeType
+    /** Library link of an http node; drives the collection entries (plan 08 B3). */
+    library?: LibraryLinkState
+  },
 ): MenuItem[] {
   switch (kind) {
     case 'pane':
@@ -72,6 +82,24 @@ export function menuItems(
                 title: opts.hasResponse ? undefined : NO_RESPONSE_TITLE,
               },
             ]),
+        // Library flows (plan 08 B3) are http-only; the update entry hides
+        // entirely on a dangling/absent requestRef (provenance only).
+        ...(opts.nodeType === 'http'
+          ? [
+              { action: 'save-to-collection' as const, icon: 'library_add', label: 'Save to collection…' },
+              ...(opts.library === 'clean' || opts.library === 'diverged'
+                ? [
+                    {
+                      action: 'update-collection-request' as const,
+                      icon: 'upload',
+                      label: 'Update collection request',
+                      disabled: opts.library === 'clean',
+                      title: opts.library === 'clean' ? LIBRARY_CLEAN_TITLE : undefined,
+                    },
+                  ]
+                : []),
+            ]
+          : []),
         { action: 'delete-node', icon: 'delete', label: 'Delete', danger: true },
       ]
     case 'edge':
@@ -87,6 +115,7 @@ export type LibraryMenuKind = 'collection' | 'folder' | 'request'
 export type LibraryMenuAction =
   | 'new-request'
   | 'new-folder'
+  | 'edit-request'
   | 'rename-item'
   | 'duplicate-request'
   | 'delete-item'
@@ -100,7 +129,6 @@ export interface LibraryMenuItem {
   title?: string
 }
 
-const NEW_REQUEST_TITLE = 'The request editor lands with plan 08 C7 — until then, save nodes from the canvas'
 const DEPTH_CAP_TITLE = 'Folders nest at most 3 levels deep'
 
 /**
@@ -119,15 +147,9 @@ export function libraryMenuItems(
       : 'Delete'
   const items: LibraryMenuItem[] = [
     ...(kind === 'request'
-      ? []
+      ? [{ action: 'edit-request' as const, icon: 'edit_note', label: 'Edit request…' }]
       : [
-          {
-            action: 'new-request' as const,
-            icon: 'http',
-            label: 'New request',
-            disabled: true,
-            title: NEW_REQUEST_TITLE,
-          },
+          { action: 'new-request' as const, icon: 'http', label: 'New request…' },
           {
             action: 'new-folder' as const,
             icon: 'create_new_folder',

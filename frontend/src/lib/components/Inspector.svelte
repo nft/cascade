@@ -1,5 +1,6 @@
 <script lang="ts">
   import { isHttpNode, isRunnableNode } from '../model'
+  import { nodeTarget } from '../requestEditor'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -83,7 +84,7 @@
           />
         </label>
 
-        <RequestSection {node} />
+        <RequestSection target={nodeTarget(node)} />
 
         <OutputsSection {node} />
 

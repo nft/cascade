@@ -15,6 +15,11 @@ import {
 } from './collections'
 import type { ContextMenuKind } from './contextMenu'
 import {
+  saveNodeToCollection,
+  updateCollectionRequestFromNode,
+  upsertCollectionRequest,
+} from './library'
+import {
   isHttpNode,
   type AppEdge,
   type AppNode,
@@ -431,9 +436,10 @@ export class AppState {
   /**
    * Apply an immutable tree operation to one collection and persist the
    * result. A null from the operation means "target not found / invariant
-   * would break" — the state is left untouched.
+   * would break" — the state is left untouched. Public so library flows
+   * (library.ts) can compose it; components use the named methods below.
    */
-  private mutateCollection(
+  mutateCollection(
     collectionId: string,
     fn: (collection: CollectionDef) => CollectionDef | null,
   ): boolean {
@@ -542,6 +548,21 @@ export class AppState {
       const root = removeRequest(c.root, requestId)
       return root ? { ...c, root } : null
     })
+  }
+
+  /** "Save to collection…" (plan 08 B3); returns the new request's id, or null. */
+  saveNodeToCollection(nodeId: string, collectionId: string, folderId: string, name: string): string | null {
+    return saveNodeToCollection(this, nodeId, collectionId, folderId, name)
+  }
+
+  /** Explicitly push a node's shape back onto its library request (plan 08 B3). */
+  updateCollectionRequestFromNode(nodeId: string): boolean {
+    return updateCollectionRequestFromNode(this, nodeId)
+  }
+
+  /** Request editor dialog save: replace in place, or add to the folder (plan 08 B3). */
+  upsertCollectionRequest(collectionId: string, folderId: string, request: RequestDef): boolean {
+    return upsertCollectionRequest(this, collectionId, folderId, request)
   }
 
   /** Instantiate a collection request as a canvas node (plan 08 B3). */

@@ -159,6 +159,23 @@ export function flattenRequests(
   return out
 }
 
+/**
+ * Flat select options for "save into folder" pickers: the root first
+ * (labelled '/'), then every folder depth-first with a breadcrumb label.
+ */
+export function folderOptions(root: CollectionFolder): { id: string; label: string }[] {
+  const out = [{ id: root.id, label: '/' }]
+  const walk = (folder: CollectionFolder, trail: string[]) => {
+    for (const sub of folder.folders ?? []) {
+      const path = [...trail, sub.name]
+      out.push({ id: sub.id, label: path.join(' / ') })
+      walk(sub, path)
+    }
+  }
+  walk(root, [])
+  return out
+}
+
 /** Case-insensitive match over method (protocol for ws), url and name — same fields the operations search uses. */
 export function requestMatches(request: RequestDef, query: string): boolean {
   return `${request.method ?? request.protocol} ${request.url} ${request.name}`

@@ -1,5 +1,6 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { dialogs } from '../../dialogs.svelte'
 import { demoCollection } from '../../mock'
 import type { HttpNode } from '../../model'
 import { app } from '../../state.svelte'
@@ -21,6 +22,7 @@ const rowByText = (text: string) =>
 beforeEach(() => {
   app.nodes = []
   app.edges = []
+  dialogs.requestEditor = null
   app.project = {
     project: { id: 'test-project', name: 'Test', defaults: { environment: 'staging', credential: 'admin' } },
     sources: [],
@@ -108,5 +110,38 @@ describe('CollectionsTree (plan 08 B2)', () => {
     del.click()
     flushSync()
     expect(app.collections[0].root.requests).toHaveLength(0)
+  })
+
+  it('"New request" on a folder opens the editor dialog aimed at that folder (plan 08 C7)', () => {
+    mountTree()
+    rowByText('Billing')!.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }),
+    )
+    flushSync()
+    const entry = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) =>
+      b.textContent?.includes('New request'),
+    )!
+    expect(entry.disabled).toBe(false)
+    entry.click()
+    flushSync()
+    expect(dialogs.requestEditor).toEqual({ collectionId: demoCollection.id, folderId: 'billing' })
+  })
+
+  it('"Edit request…" on a request row opens the editor dialog for it (plan 08 C7)', () => {
+    mountTree()
+    rowByText('Create invoice')!.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }),
+    )
+    flushSync()
+    const entry = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) =>
+      b.textContent?.includes('Edit request'),
+    )!
+    entry.click()
+    flushSync()
+    expect(dialogs.requestEditor).toEqual({
+      collectionId: demoCollection.id,
+      folderId: 'billing',
+      requestId: 'create-invoice',
+    })
   })
 })

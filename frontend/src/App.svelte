@@ -2,9 +2,12 @@
   import { onMount } from 'svelte'
   import GraphCanvas from './lib/components/GraphCanvas.svelte'
   import Inspector from './lib/components/Inspector.svelte'
+  import RequestEditorDialog from './lib/components/library/RequestEditorDialog.svelte'
+  import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
+  import { dialogs } from './lib/dialogs.svelte'
   import { handleGlobalKeydown } from './lib/keyboard'
   import { app } from './lib/state.svelte'
 
@@ -25,3 +28,11 @@
     <Inspector />
   </div>
 </div>
+
+<!-- Library dialogs (plan 08 B3) remount per open, so their drafts init fresh. -->
+{#if dialogs.saveToCollection}
+  <SaveToCollectionDialog nodeId={dialogs.saveToCollection.nodeId} />
+{/if}
+{#if dialogs.requestEditor}
+  <RequestEditorDialog context={dialogs.requestEditor} />
+{/if}

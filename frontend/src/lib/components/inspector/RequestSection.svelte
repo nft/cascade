@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { HttpNode } from '../../model'
   import {
     methodAllowsBody,
     paramRows,
@@ -7,24 +6,27 @@
     sectionKey,
     type RequestSectionId,
   } from '../../request'
-  import { app } from '../../state.svelte'
+  import type { RequestEditorTarget } from '../../requestEditor'
   import Icon from '../Icon.svelte'
   import FieldRow from './FieldRow.svelte'
   import RawBodyEditor from './RawBodyEditor.svelte'
 
-  let { node }: { node: HttpNode } = $props()
+  // Renders over the adapter, not an HttpNode (plan 08 B3), so the request
+  // editor dialog reuses the exact same sections over a library draft.
+  let { target }: { target: RequestEditorTarget } = $props()
 
   // The active tab is derived: an explicit user pick wins while it stays
-  // valid (same node, tab still shown); otherwise the first section with
+  // valid (same target, tab still shown); otherwise the first section with
   // rows — a POST with only body fields must not greet with empty Params.
-  let picked = $state<{ nodeId: string; tab: RequestSectionId } | null>(null)
+  let picked = $state<{ targetId: string; tab: RequestSectionId } | null>(null)
   let newName = $state('')
 
-  const params = $derived(paramRows(node.data.fields, node.data.path))
-  const headers = $derived(sectionFields(node.data.fields, 'headers'))
-  const body = $derived(sectionFields(node.data.fields, 'body'))
-  const allowsBody = $derived(methodAllowsBody(node.data.method))
-  const rawMode = $derived(node.data.rawBody !== undefined)
+  const params = $derived(paramRows(target.fields, target.path))
+  const headers = $derived(sectionFields(target.fields, 'headers'))
+  const body = $derived(sectionFields(target.fields, 'body'))
+  const allowsBody = $derived(methodAllowsBody(target.method))
+  const supportsRaw = $derived(target.setRawBody !== undefined)
+  const rawMode = $derived(target.rawBody !== undefined)
 
   const defaultTab = $derived<RequestSectionId>(
     params.length > 0
@@ -36,7 +38,7 @@
           : 'params',
   )
   const tab = $derived(
-    picked?.nodeId === node.id && (picked.tab !== 'body' || allowsBody) ? picked.tab : defaultTab,
+    picked?.targetId === target.id && (picked.tab !== 'body' || allowsBody) ? picked.tab : defaultTab,
   )
 
   const tabs = $derived([
@@ -54,16 +56,14 @@
   function addField() {
     const name = newName.trim()
     if (name === '') return
-    const key = sectionKey(tab, name, node.data.path)
-    if (node.data.fields.some((f) => f.key === key)) return
-    app.setField(node.id, { key, source: 'literal', value: '' })
+    const key = sectionKey(tab, name, target.path)
+    if (target.fields.some((f) => f.key === key)) return
+    target.setField({ key, source: 'literal', value: '' })
     newName = ''
   }
 
   function setRawMode(on: boolean) {
-    app.updateNodeData(node.id, {
-      rawBody: on ? (node.data.rawBody ?? { contentType: 'application/json', text: '' }) : undefined,
-    })
+    target.setRawBody?.(on ? (target.rawBody ?? { contentType: 'application/json', text: '' }) : undefined)
   }
 </script>
 
@@ -77,21 +77,25 @@
           class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase {tab === t.id
             ? 'bg-zinc-800 text-zinc-100'
             : 'text-zinc-500 hover:text-zinc-300'}"
-          onclick={() => (picked = { nodeId: node.id, tab: t.id })}
+          onclick={() => (picked = { targetId: target.id, tab: t.id })}
         >
           {t.label}
           <span class="font-mono text-[9px] {tab === t.id ? 'text-zinc-400' : 'text-zinc-600'}">{t.count}</span>
         </button>
       {/each}
     </div>
-    <span class="text-[10px] text-zinc-600">literal · res.path · {'{{'}…{'}}'}</span>
+    {#if target.nodeId}
+      <span class="text-[10px] text-zinc-600">literal · res.path · {'{{'}…{'}}'}</span>
+    {:else}
+      <span class="text-[10px] text-zinc-600">literal defaults</span>
+    {/if}
   </div>
 
   <div class="mt-1.5 space-y-1.5">
     {#if tab === 'params'}
       {#each params as row (row.field.key)}
         <FieldRow
-          nodeId={node.id}
+          {target}
           field={row.field}
           kindBadge={row.kind}
           required={row.required}
@@ -105,36 +109,38 @@
       {/each}
     {:else if tab === 'headers'}
       {#each headers as field (field.key)}
-        <FieldRow nodeId={node.id} {field} />
+        <FieldRow {target} {field} />
       {:else}
         <p class="rounded-md border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-600">
           No headers — add one below, e.g. <span class="font-mono">X-Internal-Token</span>.
         </p>
       {/each}
     {:else}
-      <div class="flex items-center gap-1">
-        <button
-          class="rounded px-1.5 py-0.5 text-[10px] {rawMode
-            ? 'text-zinc-500 hover:text-zinc-300'
-            : 'bg-zinc-800 text-zinc-100'}"
-          onclick={() => setRawMode(false)}
-        >
-          fields
-        </button>
-        <button
-          class="rounded px-1.5 py-0.5 text-[10px] {rawMode
-            ? 'bg-zinc-800 text-zinc-100'
-            : 'text-zinc-500 hover:text-zinc-300'}"
-          onclick={() => setRawMode(true)}
-        >
-          raw
-        </button>
-      </div>
-      {#if rawMode}
-        <RawBodyEditor {node} rawBody={node.data.rawBody!} />
+      {#if supportsRaw}
+        <div class="flex items-center gap-1">
+          <button
+            class="rounded px-1.5 py-0.5 text-[10px] {rawMode
+              ? 'text-zinc-500 hover:text-zinc-300'
+              : 'bg-zinc-800 text-zinc-100'}"
+            onclick={() => setRawMode(false)}
+          >
+            fields
+          </button>
+          <button
+            class="rounded px-1.5 py-0.5 text-[10px] {rawMode
+              ? 'bg-zinc-800 text-zinc-100'
+              : 'text-zinc-500 hover:text-zinc-300'}"
+            onclick={() => setRawMode(true)}
+          >
+            raw
+          </button>
+        </div>
+      {/if}
+      {#if rawMode && target.rawBody}
+        <RawBodyEditor {target} rawBody={target.rawBody} />
       {:else}
         {#each body as field (field.key)}
-          <FieldRow nodeId={node.id} {field} />
+          <FieldRow {target} {field} />
         {:else}
           <p class="rounded-md border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-600">
             No body fields — add one below; <span class="font-mono">user.name</span> nests.

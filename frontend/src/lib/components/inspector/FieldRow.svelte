@@ -1,20 +1,22 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import type { NodeField } from '../../model'
+  import type { RequestEditorTarget } from '../../requestEditor'
   import { fieldDisplayValue, keyByNodeId, nodeIdByKey, parseFieldInput, validateFieldRefs } from '../../refs'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
   import BindingPicker from './BindingPicker.svelte'
 
   let {
-    nodeId,
+    target,
     field,
     kindBadge,
     required = false,
     orphan = false,
     removable = true,
   }: {
-    nodeId: string
+    /** The node or library draft being edited (plan 08 B3). */
+    target: RequestEditorTarget
     field: NodeField
     /** Small path/query chip on Params rows (plan 08 A2). */
     kindBadge?: 'path' | 'query'
@@ -25,9 +27,12 @@
     removable?: boolean
   } = $props()
 
+  // Bindings/templates only exist on board nodes; a library draft edits
+  // literal defaults, so refs parsing/validation and the picker are skipped.
+  const boundNodeId = $derived(target.nodeId ?? null)
   const keys = $derived(keyByNodeId(app.nodes))
-  const display = $derived(fieldDisplayValue(field, keys))
-  const error = $derived(validateFieldRefs(field, nodeId, app.nodes, app.edges))
+  const display = $derived(boundNodeId ? fieldDisplayValue(field, keys) : field.value)
+  const error = $derived(boundNodeId ? validateFieldRefs(field, boundNodeId, app.nodes, app.edges) : null)
   const isBound = $derived(field.source !== 'literal')
   const missing = $derived(required && display.trim() === '')
 
@@ -35,9 +40,10 @@
   let pickerOpen = $state(false)
 
   function commit(input: string) {
-    app.setField(
-      nodeId,
-      parseFieldInput(field.key, input, nodeIdByKey(app.nodes), new Set(app.nodes.map((n) => n.id))),
+    target.setField(
+      boundNodeId
+        ? parseFieldInput(field.key, input, nodeIdByKey(app.nodes), new Set(app.nodes.map((n) => n.id)))
+        : { key: field.key, source: 'literal', value: input },
     )
   }
 
@@ -92,20 +98,22 @@
         {field.source}
       </span>
     {/if}
-    <button
-      class="flex shrink-0 items-center rounded px-1 py-0.5 hover:bg-zinc-800 {pickerOpen
-        ? 'text-violet-300'
-        : 'text-zinc-500 hover:text-zinc-200'}"
-      onclick={() => (pickerOpen = !pickerOpen)}
-      title="Insert reference…"
-      aria-label="Insert reference into {field.key}"
-    >
-      <Icon name="add_link" size={14} />
-    </button>
+    {#if boundNodeId}
+      <button
+        class="flex shrink-0 items-center rounded px-1 py-0.5 hover:bg-zinc-800 {pickerOpen
+          ? 'text-violet-300'
+          : 'text-zinc-500 hover:text-zinc-200'}"
+        onclick={() => (pickerOpen = !pickerOpen)}
+        title="Insert reference…"
+        aria-label="Insert reference into {field.key}"
+      >
+        <Icon name="add_link" size={14} />
+      </button>
+    {/if}
     {#if removable}
       <button
         class="flex shrink-0 items-center rounded px-1 py-0.5 text-zinc-600 hover:bg-zinc-800 hover:text-rose-400"
-        onclick={() => app.removeField(nodeId, field.key)}
+        onclick={() => target.removeField(field.key)}
         title="Remove field"
         aria-label="Remove field {field.key}"
       >
@@ -120,14 +128,14 @@
       : 'border-zinc-800 text-zinc-200'}"
     value={display}
     oninput={(e) => commit(e.currentTarget.value)}
-    placeholder="literal, res.path or {'{{'}nodeKey.path{'}}'}"
+    placeholder={boundNodeId ? `literal, res.path or {{nodeKey.path}}` : 'literal default'}
   />
   {#if error}
     <p class="mt-1 text-[10px] text-rose-400">{error}</p>
   {:else if missing}
     <p class="mt-1 text-[10px] text-amber-400">required path parameter</p>
   {/if}
-  {#if pickerOpen}
-    <BindingPicker {nodeId} onInsert={insert} />
+  {#if pickerOpen && boundNodeId}
+    <BindingPicker nodeId={boundNodeId} onInsert={insert} />
   {/if}
 </div>
