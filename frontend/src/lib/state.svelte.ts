@@ -14,6 +14,8 @@ import {
   updateRequest,
 } from './collections'
 import type { ContextMenuKind } from './contextMenu'
+import { deleteCredential, saveCredential } from './credentialActions.svelte'
+import { credentialRefCount } from './credentials'
 import {
   saveNodeToCollection,
   updateCollectionRequestFromNode,
@@ -37,6 +39,7 @@ import {
   type RequestDef,
 } from './model'
 import {
+  duplicateAppNode,
   makeCustomHttpNode,
   makeHttpNode,
   makeHttpNodeFromRequest,
@@ -44,7 +47,7 @@ import {
   makeTransformNode,
 } from './nodeFactory'
 import { normalizeOrigin } from './request'
-import { isValidKey, takenKeys, uniqueKey } from './refs'
+import { isValidKey, takenKeys } from './refs'
 import { inferSchema } from './schema'
 import { simulateRun } from './sim'
 
@@ -311,26 +314,9 @@ export class AppState {
     const src = this.nodes.find((n) => n.id === id)
     if (!src) return
     this.addCounter += 1
-    const newId = `${src.id}-copy-${this.addCounter}`
-    const data = structuredClone(src.data)
-    if ('status' in data) {
-      data.status = 'idle'
-      data.note = undefined
-    }
-    // The copy needs its own board-unique key; refs elsewhere keep pointing
-    // at the original (they store its node ID).
-    if ('key' in data) data.key = uniqueKey(data.key, takenKeys(this.nodes))
-    this.nodes = [
-      ...this.nodes,
-      {
-        ...src,
-        id: newId,
-        position: { x: src.position.x + 40, y: src.position.y + 40 },
-        selected: false,
-        data,
-      } as AppNode,
-    ]
-    this.selectedNodeId = newId
+    const copy = duplicateAppNode(src, `${src.id}-copy-${this.addCounter}`, this.nodes)
+    this.nodes = [...this.nodes, copy]
+    this.selectedNodeId = copy.id
     this.scheduleBoardSave()
   }
 
@@ -427,6 +413,28 @@ export class AppState {
     await simulateRun(this, targetId, scope)
   }
 
+  // --- credentials (plan 04 K2): flow bodies live in credentialActions.svelte.ts
+
+  saveCredential(def: CredentialDef, secret?: string): Promise<string | null> {
+    return saveCredential(this, def, secret)
+  }
+
+  deleteCredential(name: string): Promise<void> {
+    return deleteCredential(this, name)
+  }
+
+  /** Nodes across all boards (the open one included) referencing the credential. */
+  credentialNodeRefCount(name: string): number {
+    return credentialRefCount(this.allNodeData(), name)
+  }
+
+  /** Node data across saved boards (minus the open one) plus the live canvas. */
+  private allNodeData() {
+    if (!this.project) return []
+    const saved = this.project.boards.filter((b) => b.id !== this.boardId).flatMap((b) => b.nodes)
+    return [...saved, ...this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))]
+  }
+
   // --- collections (plan 08 B1/B2) -------------------------------------------
 
   get collections(): CollectionDef[] {
@@ -491,11 +499,7 @@ export class AppState {
 
   /** Nodes across all boards (the open one included) referencing the collection. */
   collectionRefCount(collectionId: string, requestId?: string): number {
-    if (!this.project) return 0
-    const savedBoards = this.project.boards.filter((b) => b.id !== this.boardId)
-    const savedNodes = savedBoards.flatMap((b) => b.nodes)
-    const canvasNodes = this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))
-    return requestRefCount([...savedNodes, ...canvasNodes], collectionId, requestId)
+    return requestRefCount(this.allNodeData(), collectionId, requestId)
   }
 
   /** Returns the new folder's id, or null when the parent is missing or the depth cap would break. */

@@ -2,6 +2,7 @@
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
   import CollectionsTree from './sidebar/CollectionsTree.svelte'
+  import CredentialsPanel from './sidebar/CredentialsPanel.svelte'
   import OperationsList from './sidebar/OperationsList.svelte'
 
   let query = $state('')
@@ -58,28 +59,6 @@
       </button>
     </div>
   {:else}
-    <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-      {#each app.credentials as cred (cred.name)}
-        <div class="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-medium text-zinc-200">{cred.name}</p>
-            <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{cred.kind}</span>
-          </div>
-          <p class="pt-1 font-mono text-[11px] tracking-widest text-zinc-600">••••••••••••</p>
-          <p class="pt-0.5 text-[10px] text-zinc-600">added {cred.createdAt}</p>
-        </div>
-      {:else}
-        <p class="p-1 text-center text-[11px] leading-relaxed text-zinc-600">
-          No credentials in <em>{app.projectName}</em> yet.
-        </p>
-      {/each}
-      <button class="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">
-        <Icon name="add" size={14} />
-        Add credential
-      </button>
-      <p class="px-1 text-[10px] leading-relaxed text-zinc-600">
-        Values are write-only after saving and stored in the OS keychain — never in project files.
-      </p>
-    </div>
+    <CredentialsPanel />
   {/if}
 </aside>

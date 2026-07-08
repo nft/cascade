@@ -122,3 +122,24 @@ export function makeTransformNode(
 export function makeNoteNode(id: string, position: { x: number; y: number }): AppNode {
   return { id, type: 'note', position, data: { text: '' } }
 }
+
+/**
+ * A copy of an existing node, offset and reset: run products cleared, and a
+ * fresh board-unique key — refs elsewhere keep pointing at the original
+ * (they store its node ID).
+ */
+export function duplicateAppNode(src: AppNode, id: string, existing: readonly AppNode[]): AppNode {
+  const data = structuredClone(src.data)
+  if ('status' in data) {
+    data.status = 'idle'
+    data.note = undefined
+  }
+  if ('key' in data) data.key = uniqueKey(data.key, takenKeys(existing))
+  return {
+    ...src,
+    id,
+    position: { x: src.position.x + 40, y: src.position.y + 40 },
+    selected: false,
+    data,
+  } as AppNode
+}

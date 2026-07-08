@@ -7,6 +7,7 @@ import { createInMemoryApi } from './inMemoryApi'
 import type {
   BoardJSON,
   CollectionDef,
+  CredentialDef,
   ProjectBundle,
   ProjectInfo,
   ScriptRunRequest,
@@ -23,6 +24,12 @@ export interface CascadeApi {
   saveBoard(projectId: string, board: BoardJSON): Promise<void>
   saveCollection(projectId: string, collection: CollectionDef): Promise<void>
   deleteCollection(projectId: string, id: string): Promise<void>
+  /** Replaces the credential metadata list (plan 04 K2) — never carries values. */
+  saveCredentials(projectId: string, credentials: CredentialDef[]): Promise<void>
+  /** Removes one credential's metadata and its stored secret. */
+  deleteCredential(projectId: string, name: string): Promise<void>
+  /** Stores or rotates a secret value; write-only — nothing reads it back. */
+  setCredentialSecret(projectId: string, name: string, value: string): Promise<void>
   /** Runs one transform script in the Go goja sandbox; resolves with the result body. */
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
   /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
@@ -41,6 +48,10 @@ const wailsApi: CascadeApi = {
   saveCollection: (projectId, collection) =>
     GoApp.SaveCollection(projectId, collection as unknown as goStore.Collection),
   deleteCollection: (projectId, id) => GoApp.DeleteCollection(projectId, id),
+  saveCredentials: (projectId, credentials) =>
+    GoApp.SaveCredentials(projectId, credentials as unknown as goStore.Credential[]),
+  deleteCredential: (projectId, name) => GoApp.DeleteCredential(projectId, name),
+  setCredentialSecret: (projectId, name, value) => GoApp.SetCredentialSecret(projectId, name, value),
   runTransformScript: (req) => GoApp.RunTransformScript(req as unknown as goMain.ScriptRunRequest),
   sendTestRequest: (projectId, request) =>
     GoApp.SendTestRequest(projectId, request as unknown as goMain.TestRequest) as unknown as Promise<TestResponse>,

@@ -16,9 +16,19 @@ export interface SaveToCollectionContext {
   nodeId: string
 }
 
+/**
+ * Credential dialog (plan 04 K2). `create` is a fresh draft; `edit` changes
+ * metadata only (no secret field — values are write-only); `rotate` re-enters
+ * just the value.
+ */
+export type CredentialDialogContext =
+  | { mode: 'create' }
+  | { mode: 'edit' | 'rotate'; name: string }
+
 class DialogsState {
   requestEditor = $state<RequestEditorContext | null>(null)
   saveToCollection = $state<SaveToCollectionContext | null>(null)
+  credential = $state<CredentialDialogContext | null>(null)
 }
 
 export const dialogs = new DialogsState()

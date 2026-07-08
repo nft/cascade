@@ -10,6 +10,10 @@ export function DeleteCollection(arg1, arg2) {
   return window['go']['main']['App']['DeleteCollection'](arg1, arg2);
 }
 
+export function DeleteCredential(arg1, arg2) {
+  return window['go']['main']['App']['DeleteCredential'](arg1, arg2);
+}
+
 export function DeleteProject(arg1) {
   return window['go']['main']['App']['DeleteProject'](arg1);
 }
@@ -36,6 +40,10 @@ export function SaveBoard(arg1, arg2) {
 
 export function SaveCollection(arg1, arg2) {
   return window['go']['main']['App']['SaveCollection'](arg1, arg2);
+}
+
+export function SaveCredentials(arg1, arg2) {
+  return window['go']['main']['App']['SaveCredentials'](arg1, arg2);
 }
 
 export function SendTestRequest(arg1, arg2) {

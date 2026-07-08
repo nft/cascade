@@ -4,6 +4,7 @@
   import Inspector from './lib/components/Inspector.svelte'
   import RequestEditorDialog from './lib/components/library/RequestEditorDialog.svelte'
   import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
+  import CredentialDialog from './lib/components/sidebar/CredentialDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
@@ -35,4 +36,7 @@
 {/if}
 {#if dialogs.requestEditor}
   <RequestEditorDialog context={dialogs.requestEditor} />
+{/if}
+{#if dialogs.credential}
+  <CredentialDialog context={dialogs.credential} />
 {/if}

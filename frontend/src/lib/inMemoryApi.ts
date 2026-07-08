@@ -101,6 +101,17 @@ export function createInMemoryApi(): CascadeApi {
       const stored = get(projectId)
       stored.bundle.collections = stored.bundle.collections.filter((c) => c.id !== id)
     },
+    async saveCredentials(projectId, credentials) {
+      const stored = get(projectId)
+      stored.bundle.credentials = structuredClone(credentials)
+    },
+    async deleteCredential(projectId, name) {
+      const stored = get(projectId)
+      stored.bundle.credentials = stored.bundle.credentials.filter((c) => c.name !== name)
+    },
+    // Values are write-only and never surface anywhere, so the browser
+    // stand-in simply discards them.
+    async setCredentialSecret() {},
     async runTransformScript(req) {
       return runScriptInBrowser(req)
     },

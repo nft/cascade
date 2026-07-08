@@ -7,6 +7,8 @@ export function CreateProject(arg1:string):Promise<store.ProjectInfo>;
 
 export function DeleteCollection(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteCredential(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteProject(arg1:string):Promise<void>;
 
 export function ListProjects():Promise<Array<store.ProjectInfo>>;
@@ -20,6 +22,8 @@ export function RunTransformScript(arg1:main.ScriptRunRequest):Promise<any>;
 export function SaveBoard(arg1:string,arg2:store.Board):Promise<void>;
 
 export function SaveCollection(arg1:string,arg2:store.Collection):Promise<void>;
+
+export function SaveCredentials(arg1:string,arg2:Array<store.Credential>):Promise<void>;
 
 export function SendTestRequest(arg1:string,arg2:main.TestRequest):Promise<main.TestResponse>;
 
