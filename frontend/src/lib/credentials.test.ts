@@ -3,7 +3,9 @@ import {
   credentialFromDraft,
   credentialRefCount,
   draftFromCredential,
+  groupCredentialsByKind,
   injectionPreview,
+  isDanglingCredential,
   SECRET_MASK,
   validateCredentialDraft,
   type CredentialDraft,
@@ -77,6 +79,37 @@ describe('draft round trip', () => {
       createdAt: '2026-01-01T00:00:00Z',
     }
     expect(credentialFromDraft(draftFromCredential(def), def.createdAt)).toEqual(def)
+  })
+})
+
+describe('groupCredentialsByKind', () => {
+  it('buckets in kind order and omits empty kinds', () => {
+    const cred = (name: string, kind: CredentialDef['kind']): CredentialDef => ({
+      name,
+      kind,
+      createdAt: '2026-01-01T00:00:00Z',
+    })
+    const groups = groupCredentialsByKind([
+      cred('internal', 'header'),
+      cred('admin', 'bearer'),
+      cred('legacy', 'header'),
+    ])
+    expect(groups.map(([kind, creds]) => [kind, creds.map((c) => c.name)])).toEqual([
+      ['bearer', ['admin']],
+      ['header', ['internal', 'legacy']],
+    ])
+    expect(groupCredentialsByKind([])).toEqual([])
+  })
+})
+
+describe('isDanglingCredential', () => {
+  const creds: CredentialDef[] = [{ name: 'internal', kind: 'bearer', createdAt: '2026-01-01T00:00:00Z' }]
+
+  it('flags only a non-empty reference to a missing name', () => {
+    expect(isDanglingCredential(creds, 'ghost')).toBe(true)
+    expect(isDanglingCredential(creds, 'internal')).toBe(false)
+    expect(isDanglingCredential(creds, '')).toBe(false) // None is a valid choice, not a dangle
+    expect(isDanglingCredential(creds, undefined)).toBe(false)
   })
 })
 

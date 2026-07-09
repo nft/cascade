@@ -4,6 +4,7 @@
   // never travels back to the frontend, so there is nothing to repopulate.
   import { rotateCredentialSecret } from '../../credentialActions.svelte'
   import {
+    CREDENTIAL_KIND_LABELS,
     credentialFromDraft,
     draftFromCredential,
     injectionPreview,
@@ -11,18 +12,11 @@
     type CredentialDraft,
   } from '../../credentials'
   import { dialogs, type CredentialDialogContext } from '../../dialogs.svelte'
-  import { CREDENTIAL_KINDS, type CredentialKind } from '../../model'
+  import { CREDENTIAL_KINDS } from '../../model'
   import { app } from '../../state.svelte'
   import ModalShell from '../library/ModalShell.svelte'
 
   let { context }: { context: CredentialDialogContext } = $props()
-
-  const KIND_LABELS: Record<CredentialKind, string> = {
-    bearer: 'Bearer token',
-    basic: 'Basic auth',
-    header: 'Custom header',
-    query: 'Query parameter',
-  }
 
   const TITLES: Record<CredentialDialogContext['mode'], string> = {
     create: 'New credential',
@@ -94,7 +88,7 @@
         class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
       >
         {#each CREDENTIAL_KINDS as kind (kind)}
-          <option value={kind}>{KIND_LABELS[kind]}</option>
+          <option value={kind}>{CREDENTIAL_KIND_LABELS[kind]}</option>
         {/each}
       </select>
     </label>

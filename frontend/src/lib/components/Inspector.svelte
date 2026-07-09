@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { isDanglingCredential } from '../credentials'
   import { isHttpNode, isRunnableNode } from '../model'
   import { nodeTarget } from '../requestEditor'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
+  import CredentialOptions from './CredentialOptions.svelte'
   import Icon from './Icon.svelte'
   import NameKeySection from './inspector/NameKeySection.svelte'
   import OutputsSection from './inspector/OutputsSection.svelte'
@@ -14,6 +16,11 @@
   // http and transform nodes get an inspector; notes edit inline on the card.
   const node = $derived(
     app.selectedNode && isRunnableNode(app.selectedNode) ? app.selectedNode : null,
+  )
+  const danglingCredential = $derived(
+    !!node &&
+      isHttpNode(node) &&
+      isDanglingCredential(app.credentials, node.data.credential),
   )
 </script>
 
@@ -51,6 +58,7 @@
             <select
               class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
               value={node.data.environment}
+              aria-label="Environment"
               onchange={(e) => app.updateNodeData(node.id, { environment: e.currentTarget.value })}
             >
               {#each app.environments as env (env.name)}
@@ -63,15 +71,23 @@
             <select
               class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
               value={node.data.credential}
+              aria-label="Credential"
               onchange={(e) => app.updateNodeData(node.id, { credential: e.currentTarget.value })}
             >
-              <option value="">none</option>
-              {#each app.credentials as cred (cred.name)}
-                <option value={cred.name}>{cred.name}</option>
-              {/each}
+              <CredentialOptions current={node.data.credential} />
             </select>
           </label>
         </div>
+
+        {#if danglingCredential}
+          <p class="flex items-start gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-amber-300">
+            <Icon name="warning" size={12} />
+            <span>
+              credential <span class="font-mono">{node.data.credential}</span> no longer exists —
+              runs will fail until you pick another one or None
+            </span>
+          </p>
+        {/if}
 
         <label class="block">
           <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Repeat</span>

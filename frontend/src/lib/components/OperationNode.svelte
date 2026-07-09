@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
+  import { isDanglingCredential } from '../credentials'
   import type { OperationNodeData } from '../model'
   import { urlHost } from '../request'
   import { app } from '../state.svelte'
@@ -7,6 +8,11 @@
   import Icon from './Icon.svelte'
 
   let { id, data, selected = false }: { id: string; data: OperationNodeData; selected?: boolean } = $props()
+
+  // Dangling reference (plan 04 K5): the credential was deleted after this
+  // node was pointed at it. The run fails loudly Go-side; the badge makes the
+  // problem visible before anything is sent.
+  const danglingCredential = $derived(isDanglingCredential(app.credentials, data.credential))
 </script>
 
 <div
@@ -55,9 +61,19 @@
       {:else}
         <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{data.environment}</span>
       {/if}
-      <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] {data.credential ? 'text-zinc-500' : 'text-zinc-600'}">
-        {data.credential || 'none'}
-      </span>
+      {#if danglingCredential}
+        <span
+          class="flex min-w-0 items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300"
+          title="credential {data.credential} no longer exists — pick another one or None in the inspector"
+        >
+          <Icon name="warning" size={11} />
+          <span class="truncate">{data.credential}</span>
+        </span>
+      {:else}
+        <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] {data.credential ? 'text-zinc-500' : 'text-zinc-600'}">
+          {data.credential || 'none'}
+        </span>
+      {/if}
     </div>
     <div class="flex items-center gap-1.5 pt-0.5">
       <span class="h-2 w-2 rounded-full {statusDot[data.status]}"></span>

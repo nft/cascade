@@ -14,6 +14,14 @@ const AUTHORIZATION_HEADER = 'Authorization'
 const BEARER_PREFIX = 'Bearer'
 const BASIC_PREFIX = 'Basic'
 
+/** Human labels for the kind selector and kind-grouped dropdowns. */
+export const CREDENTIAL_KIND_LABELS: Record<CredentialKind, string> = {
+  bearer: 'Bearer token',
+  basic: 'Basic auth',
+  header: 'Custom header',
+  query: 'Query parameter',
+}
+
 /** Editable credential fields; identity (name) and createdAt are handled by the caller. */
 export interface CredentialDraft {
   name: string
@@ -86,6 +94,27 @@ export function validateCredentialDraft(draft: CredentialDraft, takenNames: Read
     return `template must contain the ${SECRET_PLACEHOLDER} placeholder exactly once`
   }
   return null
+}
+
+/** Credentials bucketed by kind in CREDENTIAL_KINDS order; empty kinds are omitted. */
+export function groupCredentialsByKind(
+  credentials: readonly CredentialDef[],
+): Array<[CredentialKind, CredentialDef[]]> {
+  return CREDENTIAL_KINDS.map(
+    (kind): [CredentialKind, CredentialDef[]] => [kind, credentials.filter((c) => c.kind === kind)],
+  ).filter(([, group]) => group.length > 0)
+}
+
+/**
+ * True when `name` references a credential that no longer exists (plan 04 K5)
+ * — e.g. it was deleted after nodes were pointed at it. Such references must
+ * surface as warnings, never silently fall back to unauthenticated.
+ */
+export function isDanglingCredential(
+  credentials: readonly CredentialDef[],
+  name: string | undefined,
+): boolean {
+  return !!name && !credentials.some((c) => c.name === name)
 }
 
 /** Count nodes whose credential setting references `name` (delete confirm). */

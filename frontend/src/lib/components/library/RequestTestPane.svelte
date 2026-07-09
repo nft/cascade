@@ -11,6 +11,7 @@
   import { app } from '../../state.svelte'
   import { buildTestRequest } from '../../testRequest'
   import { httpStatusClass } from '../../ui'
+  import CredentialOptions from '../CredentialOptions.svelte'
   import Icon from '../Icon.svelte'
   import SchemaEditor from '../schema/SchemaEditor.svelte'
 
@@ -97,10 +98,7 @@
         bind:value={credential}
         aria-label="Test credential"
       >
-        <option value={NO_CREDENTIAL}>None</option>
-        {#each app.credentials as cred (cred.name)}
-          <option value={cred.name}>{cred.name}</option>
-        {/each}
+        <CredentialOptions current={credential} />
       </select>
     </label>
     <button
