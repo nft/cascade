@@ -208,8 +208,8 @@ export class AppState {
     this.saveTimer = undefined
   }
 
-  /** Run a pending debounced save immediately (before the board swaps out from under it). */
-  private async flushBoardSave() {
+  /** Run a pending debounced save immediately (project switch, board export). */
+  async flushBoardSave() {
     if (this.saveTimer === undefined) return
     this.cancelBoardSave()
     await this.saveBoardNow()

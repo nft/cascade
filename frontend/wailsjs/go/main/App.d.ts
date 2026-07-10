@@ -3,6 +3,10 @@
 import {store} from '../models';
 import {main} from '../models';
 
+export function CopyBoardJSON(arg1:string,arg2:string):Promise<void>;
+
+export function CopySelection(arg1:string,arg2:store.Board,arg3:Array<string>):Promise<void>;
+
 export function CreateProject(arg1:string):Promise<store.ProjectInfo>;
 
 export function DeleteCollection(arg1:string,arg2:string):Promise<void>;
@@ -10,6 +14,8 @@ export function DeleteCollection(arg1:string,arg2:string):Promise<void>;
 export function DeleteCredential(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteProject(arg1:string):Promise<void>;
+
+export function ExportBoardToFile(arg1:string,arg2:string):Promise<string>;
 
 export function ListProjects():Promise<Array<store.ProjectInfo>>;
 

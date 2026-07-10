@@ -1,4 +1,6 @@
-// App-wide keyboard handling (plan 03): Escape priority chain and canvas tool keys.
+// App-wide keyboard handling (plan 03): Escape priority chain, canvas tool
+// keys, and clipboard copy (plan 07 E2).
+import { copyNodes, selectionForCopy } from './shareActions'
 import { app } from './state.svelte'
 
 const FIELD_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
@@ -14,6 +16,14 @@ export function handleGlobalKeydown(event: KeyboardEvent) {
     return
   }
   if (typing) return
+  if (event.metaKey || event.ctrlKey) {
+    // Native copy wins when the user has text selected somewhere on the page.
+    if ((event.key === 'c' || event.key === 'C') && !window.getSelection()?.toString()) {
+      const ids = selectionForCopy(app.nodes)
+      if (ids.length > 0) void copyNodes(app, ids)
+    }
+    return // never treat shortcut chords as canvas tool keys
+  }
   if (event.key === 'x' || event.key === 'X') {
     app.canvasTool = app.canvasTool === 'scissors' ? 'select' : 'scissors'
   } else if (event.key === 'v' || event.key === 'V') {

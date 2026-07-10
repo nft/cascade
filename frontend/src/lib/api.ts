@@ -30,6 +30,12 @@ export interface CascadeApi {
   deleteCredential(projectId: string, name: string): Promise<void>
   /** Stores or rotates a secret value; write-only — nothing reads it back. */
   setCredentialSecret(projectId: string, name: string, value: string): Promise<void>
+  /** Board export via save dialog (plan 07 E2); resolves with the chosen path, '' when cancelled. */
+  exportBoardToFile(projectId: string, boardId: string): Promise<string>
+  /** Puts the whole saved board's envelope on the system clipboard. */
+  copyBoardJSON(projectId: string, boardId: string): Promise<void>
+  /** Puts a selection envelope (nodes + edges between them) on the system clipboard. */
+  copySelection(projectId: string, board: BoardJSON, nodeIds: string[]): Promise<void>
   /** Runs one transform script in the Go goja sandbox; resolves with the result body. */
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
   /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
@@ -52,6 +58,10 @@ const wailsApi: CascadeApi = {
     GoApp.SaveCredentials(projectId, credentials as unknown as goStore.Credential[]),
   deleteCredential: (projectId, name) => GoApp.DeleteCredential(projectId, name),
   setCredentialSecret: (projectId, name, value) => GoApp.SetCredentialSecret(projectId, name, value),
+  exportBoardToFile: (projectId, boardId) => GoApp.ExportBoardToFile(projectId, boardId),
+  copyBoardJSON: (projectId, boardId) => GoApp.CopyBoardJSON(projectId, boardId),
+  copySelection: (projectId, board, nodeIds) =>
+    GoApp.CopySelection(projectId, board as unknown as goStore.Board, nodeIds),
   runTransformScript: (req) => GoApp.RunTransformScript(req as unknown as goMain.ScriptRunRequest),
   sendTestRequest: (projectId, request) =>
     GoApp.SendTestRequest(projectId, request as unknown as goMain.TestRequest) as unknown as Promise<TestResponse>,

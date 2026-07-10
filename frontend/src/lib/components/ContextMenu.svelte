@@ -4,6 +4,7 @@
   import { dialogs } from '../dialogs.svelte'
   import { libraryLinkState } from '../library'
   import { isHttpNode, type Operation } from '../model'
+  import { copyNodes, selectionForCopy } from '../shareActions'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -68,6 +69,9 @@
         break
       case 'run-chain':
         if (menu.id) app.simulateRun(menu.id, 'component')
+        break
+      case 'copy':
+        if (menu.id) void copyNodes(app, selectionForCopy(app.nodes, menu.id))
         break
       case 'duplicate':
         if (menu.id) app.duplicateNode(menu.id)

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from '../state.svelte'
+  import BoardMenu from './BoardMenu.svelte'
   import Icon from './Icon.svelte'
   import ProjectSwitcher from './ProjectSwitcher.svelte'
   import Button from './ui/Button.svelte'
@@ -27,5 +28,7 @@
       <Icon name="stop" size={14} />
       Stop
     </Button>
+    <div class="mx-1 h-5 w-px bg-zinc-800"></div>
+    <BoardMenu />
   </div>
 </header>

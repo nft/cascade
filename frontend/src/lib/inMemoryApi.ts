@@ -8,7 +8,15 @@ import helpersSource from '../../../core/transform/helpers.js?raw'
 import type { CascadeApi } from './api'
 import { serializeBoard } from './board'
 import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
-import type { ProjectBundle, ProjectInfo, ScriptRunRequest, SourceDef, TestRequest, TestResponse } from './model'
+import type {
+  BoardJSON,
+  ProjectBundle,
+  ProjectInfo,
+  ScriptRunRequest,
+  SourceDef,
+  TestRequest,
+  TestResponse,
+} from './model'
 import { joinUrl } from './request'
 
 const DEFAULT_PROJECT_NAME = 'Default'
@@ -112,6 +120,24 @@ export function createInMemoryApi(): CascadeApi {
     // Values are write-only and never surface anywhere, so the browser
     // stand-in simply discards them.
     async setCredentialSecret() {},
+    async exportBoardToFile(projectId, boardId) {
+      const stored = get(projectId)
+      const board = stored.bundle.boards.find((b) => b.id === boardId)
+      if (!board) throw new Error(`board ${boardId} not found`)
+      return downloadInBrowser(
+        `${stored.info.name}-${board.name}.cascade.json`,
+        devEnvelope('board', board),
+      )
+    },
+    async copyBoardJSON(projectId, boardId) {
+      const stored = get(projectId)
+      const board = stored.bundle.boards.find((b) => b.id === boardId)
+      if (!board) throw new Error(`board ${boardId} not found`)
+      await navigator.clipboard?.writeText(devEnvelope('board', board))
+    },
+    async copySelection(_projectId, board, nodeIds) {
+      await navigator.clipboard?.writeText(devEnvelope('selection', board, nodeIds))
+    },
     async runTransformScript(req) {
       return runScriptInBrowser(req)
     },
@@ -153,6 +179,61 @@ function cannedTestResponse(request: TestRequest): TestResponse {
       ...(request.credential ? { Authorization: '•••' } : {}),
     },
   }
+}
+
+const DEV_ENVELOPE_FORMAT_VERSION = 1
+const DEV_PRODUCER = 'cascade/dev'
+
+/**
+ * Dev/vitest stand-in for the share package's exporter: same envelope shape
+ * so paste flows are exercisable in the browser, but without the authoritative
+ * rules (dangling-binding rewrite, run-state sanitization, requires kinds,
+ * collection embedding) — those live in share/ and apply inside Wails.
+ */
+function devEnvelope(kind: 'board' | 'selection', board: BoardJSON, nodeIds?: string[]): string {
+  let { nodes, edges } = board
+  let positions = board.layout?.positions ?? {}
+  if (nodeIds) {
+    const keep = new Set(nodeIds)
+    nodes = nodes.filter((n) => keep.has(n.id))
+    edges = edges.filter((e) => keep.has(e.from) && keep.has(e.to))
+    positions = Object.fromEntries(Object.entries(positions).filter(([id]) => keep.has(id)))
+  }
+  const named = (key: 'environment' | 'credential') =>
+    [...new Set(nodes.map((n) => n.data?.[key]).filter((v): v is string => typeof v === 'string' && v !== ''))].sort()
+  const envelope = {
+    cascade: {
+      kind,
+      formatVersion: DEV_ENVELOPE_FORMAT_VERSION,
+      app: DEV_PRODUCER,
+      board: {
+        formatVersion: board.formatVersion,
+        // A selection has no identity of its own (share/export.go).
+        id: kind === 'board' ? board.id : '',
+        name: kind === 'board' ? board.name : '',
+        nodes,
+        edges,
+        layout: { positions },
+      },
+      requires: {
+        environments: named('environment'),
+        credentials: named('credential').map((name) => ({ name })),
+        sources: [],
+      },
+    },
+  }
+  return `${JSON.stringify(envelope, null, 2)}\n`
+}
+
+/** Browser stand-in for the Wails save dialog: a plain download; returns the filename. */
+function downloadInBrowser(filename: string, content: string): string {
+  const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+  return filename
 }
 
 /**

@@ -31,7 +31,7 @@ export interface MenuItem {
   title?: string
 }
 
-const CLIPBOARD_TITLE = 'Clipboard lands with board export / import (plan 07)'
+const CLIPBOARD_TITLE = 'Paste lands with the import pipeline (plan 07 E3)'
 const NO_RESPONSE_TITLE = 'Run the node first — inference needs a captured response'
 const LIBRARY_CLEAN_TITLE = 'The node matches its library request'
 
@@ -66,7 +66,7 @@ export function menuItems(
       return [
         { action: 'run-node', icon: 'play_arrow', label: 'Run this node', disabled: opts.isRunning },
         { action: 'run-chain', icon: 'play_circle', label: 'Run chain', disabled: opts.isRunning },
-        { action: 'copy', icon: 'content_copy', label: 'Copy', disabled: true, title: CLIPBOARD_TITLE },
+        { action: 'copy', icon: 'content_copy', label: 'Copy' },
         { action: 'duplicate', icon: 'control_point_duplicate', label: 'Duplicate' },
         { action: 'rename', icon: 'edit', label: 'Rename' },
         // Schema pinning is an http concern: transforms carry no OpenAPI

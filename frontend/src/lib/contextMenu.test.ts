@@ -37,7 +37,8 @@ describe('context menu contents (plan 03 §2)', () => {
       'Use last response as schema',
       'Delete',
     ])
-    expect(items.find((i) => i.action === 'copy')?.disabled).toBe(true)
+    // Copy is live since plan 07 E2; paste stays disabled until the import pipeline (E3).
+    expect(items.find((i) => i.action === 'copy')?.disabled).toBeUndefined()
     expect(items.find((i) => i.action === 'run-node')?.disabled).toBe(false)
   })
 
