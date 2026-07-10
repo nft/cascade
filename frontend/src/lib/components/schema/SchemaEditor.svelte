@@ -7,6 +7,8 @@
   import type { SchemaJSON } from '../../model'
   import { inferSchema } from '../../schema'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
+  import Textarea from '../ui/Textarea.svelte'
   import SchemaEditorNode from './SchemaEditorNode.svelte'
 
   let {
@@ -45,49 +47,40 @@
 
 <div class="space-y-1.5">
   {#if pasting}
-    <textarea
-      class="h-28 w-full resize-y rounded-md border border-zinc-800 bg-zinc-950 p-2 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+    <Textarea
+      size="dense"
+      mono
+      class="h-28 w-full resize-y"
       placeholder={'{"id": "usr_1", "email": "a@b.co", …} — the schema is inferred from it'}
       aria-label="Example JSON"
       bind:value={pasteText}
-    ></textarea>
+    />
     {#if pasteError}
       <p class="text-[11px] text-rose-400">{pasteError}</p>
     {/if}
     <div class="flex items-center gap-1.5">
-      <button
-        class="rounded-md bg-zinc-800 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={pasteText.trim() === ''}
-        onclick={inferFromPaste}
-      >
+      <Button variant="secondary" size="sm" disabled={pasteText.trim() === ''} onclick={inferFromPaste}>
         Infer schema
-      </button>
-      <button
-        class="rounded-md px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
         onclick={() => {
           pasting = false
           pasteError = null
         }}
       >
         Cancel
-      </button>
+      </Button>
     </div>
   {:else if schema === undefined}
     <div class="rounded-md border border-dashed border-zinc-800 px-2 py-3 text-center">
       <p class="text-[11px] text-zinc-600">{emptyHint}</p>
       <div class="mt-2 flex items-center justify-center gap-1.5">
-        <button
-          class="rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-          onclick={() => onChange({ type: 'object', properties: {} })}
-        >
+        <Button variant="secondary" size="sm" onclick={() => onChange({ type: 'object', properties: {} })}>
           Start with an empty object
-        </button>
-        <button
-          class="rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-          onclick={() => (pasting = true)}
-        >
-          Paste example JSON
-        </button>
+        </Button>
+        <Button variant="secondary" size="sm" onclick={() => (pasting = true)}>Paste example JSON</Button>
       </div>
     </div>
   {:else}

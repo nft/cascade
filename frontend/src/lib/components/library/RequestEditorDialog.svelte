@@ -8,8 +8,13 @@
   import { HTTP_METHODS, isHttpMethod, type RequestDef } from '../../model'
   import { draftTarget } from '../../requestEditor'
   import { app } from '../../state.svelte'
-  import { methodBadge } from '../../ui'
+  import { methodText } from '../../ui'
   import RequestSection from '../inspector/RequestSection.svelte'
+  import Button from '../ui/Button.svelte'
+  import { FIELD_LABEL } from '../ui/classes'
+  import Field from '../ui/Field.svelte'
+  import Input from '../ui/Input.svelte'
+  import Select from '../ui/Select.svelte'
   import ModalShell from './ModalShell.svelte'
   import RequestSchemasPane from './RequestSchemasPane.svelte'
   import RequestTestPane from './RequestTestPane.svelte'
@@ -84,23 +89,16 @@
     </button>
   </div>
 
-  <label class="block">
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Name</span>
-    <input
-      bind:this={nameEl}
-      bind:value={draft.name}
-      class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-      placeholder="Create invoice"
-    />
-  </label>
+  <Field label="Name">
+    <Input bind:el={nameEl} bind:value={draft.name} class="mt-1 w-full" placeholder="Create invoice" />
+  </Field>
 
   <div>
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Request</span>
+    <span class={FIELD_LABEL}>Request</span>
     <div class="mt-1 flex items-center gap-1.5">
-      <select
-        class="shrink-0 rounded-md border border-zinc-800 bg-zinc-950 px-1.5 py-1.5 text-[11px] font-semibold outline-none focus:border-zinc-500 {methodBadge[
-          draft.method ?? 'GET'
-        ]}"
+      <Select
+        size="dense"
+        class="shrink-0 font-semibold {methodText[draft.method ?? 'GET']}"
         value={draft.method ?? 'GET'}
         aria-label="HTTP method"
         onchange={(e) => {
@@ -111,10 +109,12 @@
         {#each HTTP_METHODS as method (method)}
           <option value={method}>{method}</option>
         {/each}
-      </select>
-      <input
+      </Select>
+      <Input
         bind:value={draft.url}
-        class="min-w-0 flex-1 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+        size="dense"
+        mono
+        class="min-w-0 flex-1"
         placeholder="/v1/invoices or https://api.example.com/v1/invoices"
         aria-label="Request URL"
       />
@@ -142,14 +142,9 @@
   {#if tab === 'request'}
     <RequestSection {target} />
 
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Description</span>
-      <input
-        bind:value={draft.description}
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-        placeholder="optional"
-      />
-    </label>
+    <Field label="Description">
+      <Input bind:value={draft.description} class="mt-1 w-full" placeholder="optional" />
+    </Field>
   {:else if tab === 'schemas'}
     <RequestSchemasPane {draft} />
   {:else}
@@ -157,15 +152,9 @@
   {/if}
 
   <div class="flex justify-end gap-1.5 border-t border-zinc-800 pt-2">
-    <button class="rounded px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onclick={close}>
-      Cancel
-    </button>
-    <button
-      class="rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={!canSave}
-      onclick={save}
-    >
+    <Button variant="ghost" onclick={close}>Cancel</Button>
+    <Button variant="primary" disabled={!canSave} onclick={save}>
       {existing ? 'Save changes' : 'Add to collection'}
-    </button>
+    </Button>
   </div>
 </ModalShell>

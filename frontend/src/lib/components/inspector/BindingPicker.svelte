@@ -3,6 +3,8 @@
   import { app } from '../../state.svelte'
   import { inferSchema, schemaTree } from '../../schema'
   import Icon from '../Icon.svelte'
+  import IconButton from '../ui/IconButton.svelte'
+  import Input from '../ui/Input.svelte'
   import SchemaTree from './SchemaTree.svelte'
 
   let {
@@ -80,23 +82,25 @@
         <SchemaTree node={schemaTree(source.schema)} onPick={(path) => insertRef(node.data.key, path)} />
       {:else}
         <div class="flex items-center gap-1 px-1">
-          <input
-            class="min-w-0 flex-1 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 font-mono text-[10px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+          <Input
+            size="xs"
+            surface="raised"
+            mono
+            class="min-w-0 flex-1"
             placeholder="body.path.to.value — no schema yet; run the node once"
             bind:value={freePaths[node.id]}
             onkeydown={(e) => {
               if (e.key === 'Enter' && (freePaths[node.id] ?? '') !== '') insertRef(node.data.key, freePaths[node.id])
             }}
           />
-          <button
-            class="flex items-center rounded px-1 py-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-700"
+          <IconButton
+            icon="keyboard_return"
+            iconSize={13}
             disabled={(freePaths[node.id] ?? '') === ''}
             onclick={() => insertRef(node.data.key, freePaths[node.id])}
             title="Insert path reference"
-            aria-label="Insert path reference"
-          >
-            <Icon name="keyboard_return" size={13} />
-          </button>
+            label="Insert path reference"
+          />
         </div>
       {/if}
     </section>

@@ -4,6 +4,8 @@
   // per-mutation, so there is no unsaved state to guard.
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
+  import Button from './ui/Button.svelte'
+  import Input from './ui/Input.svelte'
 
   type Mode = 'closed' | 'list' | 'create' | 'rename' | 'confirm-delete'
 
@@ -70,27 +72,20 @@
     <div class="absolute top-full left-0 z-50 mt-1 w-64 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
       {#if mode === 'create' || mode === 'rename'}
         <div class="px-2 py-1.5">
-          <input
-            bind:this={inputEl}
+          <Input
+            bind:el={inputEl}
             bind:value={draft}
             onkeydown={onInputKeydown}
-            class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+            size="sm"
+            surface="popover"
+            class="w-full"
             placeholder={mode === 'create' ? 'New project name…' : 'Project name…'}
           />
           <div class="flex justify-end gap-1 pt-1.5">
-            <button
-              class="rounded px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-              onclick={() => (mode = 'list')}
-            >
-              Cancel
-            </button>
-            <button
-              class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!draft.trim()}
-              onclick={submit}
-            >
+            <Button variant="ghost" size="sm" onclick={() => (mode = 'list')}>Cancel</Button>
+            <Button variant="primary" size="sm" disabled={!draft.trim()} onclick={submit}>
               {mode === 'create' ? 'Create' : 'Rename'}
-            </button>
+            </Button>
           </div>
         </div>
       {:else}

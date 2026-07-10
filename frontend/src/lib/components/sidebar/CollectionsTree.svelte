@@ -17,6 +17,8 @@
   import type { CollectionDef, CollectionFolder, RequestDef } from '../../model'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
+  import Input from '../ui/Input.svelte'
   import RequestRow from './RequestRow.svelte'
 
   let { query }: { query: string } = $props()
@@ -179,15 +181,17 @@
      lazy getters, so a binding would still read `editing` after commit nulls it
      while a blur is in flight. -->
 {#snippet renameInput(draft: string)}
-  <input
-    bind:this={renameEl}
+  <Input
+    bind:el={renameEl}
     value={draft}
     oninput={(e) => {
       if (editing) editing.draft = e.currentTarget.value
     }}
     onkeydown={onRenameKeydown}
     onblur={commitRename}
-    class="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-[11px] outline-none focus:border-zinc-500"
+    size="2xs"
+    surface="popover"
+    class="min-w-0 flex-1"
     aria-label="Rename"
   />
 {/snippet}
@@ -294,13 +298,10 @@
   {/if}
 {/each}
 
-<button
-  class="mt-1.5 flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300"
-  onclick={newCollection}
->
+<Button variant="dashed" class="mt-1.5 w-full" onclick={newCollection}>
   <Icon name="add" size={14} />
   New collection
-</button>
+</Button>
 
 {#if menu}
   <div

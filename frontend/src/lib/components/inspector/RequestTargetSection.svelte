@@ -3,8 +3,12 @@
   import { HTTP_METHODS, isHttpMethod, type HttpNode } from '../../model'
   import { urlHost } from '../../request'
   import { app } from '../../state.svelte'
-  import { methodBadge } from '../../ui'
+  import { methodText } from '../../ui'
   import Icon from '../Icon.svelte'
+  import { FIELD_LABEL } from '../ui/classes'
+  import IconButton from '../ui/IconButton.svelte'
+  import Input from '../ui/Input.svelte'
+  import Select from '../ui/Select.svelte'
 
   let { node }: { node: HttpNode } = $props()
 
@@ -47,10 +51,12 @@
 </script>
 
 <div>
-  <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Request</span>
+  <span class={FIELD_LABEL}>Request</span>
   <div class="mt-1 flex items-center gap-1.5">
-    <select
-      class="shrink-0 rounded-md border border-zinc-800 bg-zinc-900 px-1.5 py-1.5 text-[11px] font-semibold outline-none focus:border-zinc-500 {methodBadge[node.data.method]}"
+    <Select
+      size="dense"
+      surface="raised"
+      class="shrink-0 font-semibold {methodText[node.data.method]}"
       value={node.data.method}
       aria-label="HTTP method"
       onchange={(e) => {
@@ -61,31 +67,33 @@
       {#each HTTP_METHODS as method (method)}
         <option value={method}>{method}</option>
       {/each}
-    </select>
-    <input
-      class="min-w-0 flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+    </Select>
+    <Input
+      size="dense"
+      surface="raised"
+      mono
+      class="min-w-0 flex-1"
       value={node.data.path}
       placeholder="/v1/users/{'{id}'}"
       aria-label="Request path"
       oninput={(e) => app.updateNodeData(node.id, { path: e.currentTarget.value })}
     />
-    <button
-      class="flex shrink-0 items-center rounded px-1 py-1 hover:bg-zinc-800 {showOrigin
-        ? 'text-sky-300'
-        : 'text-zinc-500 hover:text-zinc-200'}"
+    <IconButton
+      icon="public"
+      tone={showOrigin ? 'info' : 'default'}
       onclick={toggleOrigin}
       title="Origin override — call a different host than the environment"
-      aria-label="Toggle origin override"
-    >
-      <Icon name="public" size={14} />
-    </button>
+      label="Toggle origin override"
+    />
   </div>
 
   {#if showOrigin}
-    <input
-      class="mt-1.5 w-full rounded-md border bg-zinc-900 px-2 py-1.5 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500 {originError
-        ? 'border-rose-500/40'
-        : 'border-zinc-800'}"
+    <Input
+      size="dense"
+      surface="raised"
+      mono
+      tone={originError ? 'error' : 'default'}
+      class="mt-1.5 w-full"
       value={originDraft}
       placeholder="origin override, e.g. https://api.other-service.io"
       aria-label="Origin override"

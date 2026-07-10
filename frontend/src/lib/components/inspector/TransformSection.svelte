@@ -3,6 +3,8 @@
   import { app } from '../../state.svelte'
   import { executeTransform } from '../../transform'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
+  import { FIELD_LABEL } from '../ui/classes'
   import CodeEditor from './CodeEditor.svelte'
   import PickRowsSection from './PickRowsSection.svelte'
 
@@ -43,7 +45,7 @@
 
 <div>
   <div class="flex items-center justify-between">
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Transform</span>
+    <span class={FIELD_LABEL}>Transform</span>
     <div class="flex rounded-md border border-zinc-800 p-0.5">
       {#each TRANSFORM_MODES as mode (mode)}
         <button
@@ -69,15 +71,16 @@
     {/if}
   </div>
 
-  <button
-    class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-zinc-800 px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-600"
+  <Button
+    variant="secondary"
+    class="mt-2 w-full"
     disabled={testing}
     onclick={test}
     title="Run this transform against the upstreams' last captured responses"
   >
     <Icon name="science" size={14} />
     {testing ? 'Testing…' : 'Test against last responses'}
-  </button>
+  </Button>
 
   {#if testError}
     <p class="mt-1.5 rounded-md border border-rose-500/30 bg-rose-500/5 px-2 py-1.5 text-[11px] text-rose-400">

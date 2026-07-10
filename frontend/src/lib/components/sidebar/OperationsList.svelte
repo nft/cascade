@@ -3,6 +3,7 @@
   // operations, read-only, grouped as before — extracted from Sidebar.svelte.
   import { app } from '../../state.svelte'
   import { methodBadge } from '../../ui'
+  import { FIELD_LABEL } from '../ui/classes'
 
   let { query }: { query: string } = $props()
 
@@ -26,7 +27,7 @@
 {:else}
   <p class="px-1 pb-2 text-[10px] text-zinc-600">{sourcesLabel} · click to add to canvas</p>
   {#each groups as group (group)}
-    <p class="px-1 pt-2 pb-1 text-[10px] font-medium tracking-wide text-zinc-500 uppercase">{group}</p>
+    <p class="px-1 pt-2 pb-1 {FIELD_LABEL}">{group}</p>
     {#each filtered.filter((op) => op.group === group) as op (op.ref)}
       <button
         class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-zinc-800/70"

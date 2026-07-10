@@ -14,6 +14,9 @@
   import CredentialOptions from '../CredentialOptions.svelte'
   import Icon from '../Icon.svelte'
   import SchemaEditor from '../schema/SchemaEditor.svelte'
+  import Button from '../ui/Button.svelte'
+  import Field from '../ui/Field.svelte'
+  import Select from '../ui/Select.svelte'
 
   let { draft }: { draft: RequestDef } = $props()
 
@@ -79,36 +82,22 @@
 
 <div class="space-y-2">
   <div class="flex items-end gap-1.5">
-    <label class="min-w-0 flex-1">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Environment</span>
-      <select
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-1.5 py-1.5 text-[11px] outline-none focus:border-zinc-500"
-        bind:value={environment}
-        aria-label="Test environment"
-      >
+    <Field label="Environment" class="min-w-0 flex-1">
+      <Select size="dense" class="mt-1 w-full" bind:value={environment} aria-label="Test environment">
         {#each app.environments as env (env.name)}
           <option value={env.name}>{env.name}</option>
         {/each}
-      </select>
-    </label>
-    <label class="min-w-0 flex-1">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Credential</span>
-      <select
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-1.5 py-1.5 text-[11px] outline-none focus:border-zinc-500"
-        bind:value={credential}
-        aria-label="Test credential"
-      >
+      </Select>
+    </Field>
+    <Field label="Credential" class="min-w-0 flex-1">
+      <Select size="dense" class="mt-1 w-full" bind:value={credential} aria-label="Test credential">
         <CredentialOptions current={credential} />
-      </select>
-    </label>
-    <button
-      class="flex shrink-0 items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={sending || draft.url.trim() === ''}
-      onclick={send}
-    >
+      </Select>
+    </Field>
+    <Button variant="primary" class="shrink-0" disabled={sending || draft.url.trim() === ''} onclick={send}>
       <Icon name="send" size={13} />
       {sending ? 'Sending…' : 'Send'}
-    </button>
+    </Button>
   </div>
   <p class="text-[10px] leading-relaxed text-zinc-600">
     Sends once through the Go side — outside any board or run. Params/headers/body come from the
@@ -143,8 +132,9 @@
         <pre class="max-h-48 overflow-auto rounded bg-zinc-950 p-2 font-mono text-[10px] leading-relaxed text-zinc-300">{bodyPreview}</pre>
       {/if}
       <div class="flex flex-wrap items-center gap-1.5">
-        <button
-          class="flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-700"
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={result.body === undefined}
           title={result.body === undefined
             ? 'The response body is not JSON — nothing to infer from'
@@ -153,16 +143,17 @@
         >
           <Icon name="schema" size={13} />
           Parse to schema
-        </button>
+        </Button>
         {#if sentBody !== undefined}
-          <button
-            class="flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          <Button
+            variant="secondary"
+            size="sm"
             title="Infer the request body schema from what was just sent"
             onclick={useSentBodyAsRequestSchema}
           >
             <Icon name="input" size={13} />
             Use sent body as request schema
-          </button>
+          </Button>
         {/if}
       </div>
     </div>
@@ -175,20 +166,18 @@
       </p>
       <SchemaEditor schema={parsed} onChange={(schema) => (parsed = schema)} />
       <div class="flex items-center gap-1.5">
-        <button
-          class="rounded-md bg-violet-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-violet-500"
-          onclick={() => saveResponseSchema('replace')}
-        >
+        <Button variant="accent" size="sm" onclick={() => saveResponseSchema('replace')}>
           {draft.responseSchema ? 'Replace response schema' : 'Save as response schema'}
-        </button>
+        </Button>
         {#if draft.responseSchema}
-          <button
-            class="rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          <Button
+            variant="secondary"
+            size="sm"
             title="Keep your existing edits; add only keys the new response introduced"
             onclick={() => saveResponseSchema('merge')}
           >
             Merge with existing
-          </button>
+          </Button>
         {/if}
       </div>
     </div>

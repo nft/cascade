@@ -4,6 +4,7 @@
   import { app } from '../state.svelte'
   import { httpStatusClass, methodBadge } from '../ui'
   import Icon from './Icon.svelte'
+  import Select from './ui/Select.svelte'
 
   let statusFilter = $state<'all' | 'success' | 'failed'>('all')
   let query = $state('')
@@ -38,17 +39,15 @@
     {#if app.logsOpen}
       <div class="ml-auto flex items-center gap-1.5">
         <Icon name="filter_list" size={14} class="text-zinc-500" />
-        <select
-          class="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] outline-none"
-          bind:value={statusFilter}
-        >
+        <Select size="sm" surface="raised" bind:value={statusFilter}>
           <option value="all">all statuses</option>
           <option value="success">success only</option>
           <option value="failed">failed only</option>
-        </select>
+        </Select>
       </div>
       <div class="relative">
         <Icon name="search" size={14} class="absolute top-1/2 left-2 -translate-y-1/2 text-zinc-600" />
+        <!-- Stays raw: the leading-icon inset (pl-7) conflicts with ui/Input's size-owned padding. -->
         <input
           class="w-56 rounded-md border border-zinc-800 bg-zinc-900 py-1 pr-2 pl-7 text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
           placeholder="Filter by node, URL, run…"

@@ -15,6 +15,11 @@
   import { CREDENTIAL_KINDS } from '../../model'
   import { app } from '../../state.svelte'
   import ModalShell from '../library/ModalShell.svelte'
+  import Button from '../ui/Button.svelte'
+  import { FIELD_LABEL } from '../ui/classes'
+  import Field from '../ui/Field.svelte'
+  import Input from '../ui/Input.svelte'
+  import Select from '../ui/Select.svelte'
 
   let { context }: { context: CredentialDialogContext } = $props()
 
@@ -67,63 +72,43 @@
 
 <ModalShell title={TITLES[context.mode]} onclose={close}>
   {#if context.mode !== 'rotate'}
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Name</span>
-      <input
-        bind:this={firstEl}
+    <Field label="Name">
+      <Input
+        bind:el={firstEl}
         bind:value={draft.name}
         disabled={context.mode === 'edit'}
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500 disabled:opacity-50"
+        class="mt-1 w-full"
         placeholder="internal"
       />
       {#if context.mode === 'edit'}
         <span class="text-[10px] text-zinc-600">Nodes reference credentials by name, so it cannot change.</span>
       {/if}
-    </label>
+    </Field>
 
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Kind</span>
-      <select
-        bind:value={draft.kind}
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
-      >
+    <Field label="Kind">
+      <Select bind:value={draft.kind} class="mt-1 w-full">
         {#each CREDENTIAL_KINDS as kind (kind)}
           <option value={kind}>{CREDENTIAL_KIND_LABELS[kind]}</option>
         {/each}
-      </select>
-    </label>
+      </Select>
+    </Field>
 
     {#if draft.kind === 'basic'}
-      <label class="block">
-        <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Username</span>
-        <input
-          bind:value={draft.username}
-          class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-          placeholder="service-account"
-        />
-      </label>
+      <Field label="Username">
+        <Input bind:value={draft.username} class="mt-1 w-full" placeholder="service-account" />
+      </Field>
     {/if}
 
     {#if draft.kind === 'header'}
-      <label class="block">
-        <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Header name</span>
-        <input
-          bind:value={draft.header}
-          class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-          placeholder="X-Internal-Token"
-        />
-      </label>
+      <Field label="Header name">
+        <Input bind:value={draft.header} mono class="mt-1 w-full" placeholder="X-Internal-Token" />
+      </Field>
     {/if}
 
     {#if draft.kind === 'query'}
-      <label class="block">
-        <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Query parameter</span>
-        <input
-          bind:value={draft.param}
-          class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-          placeholder="api_key"
-        />
-      </label>
+      <Field label="Query parameter">
+        <Input bind:value={draft.param} mono class="mt-1 w-full" placeholder="api_key" />
+      </Field>
       <p class="rounded-md border border-amber-900/50 bg-amber-950/30 p-2 text-[10px] leading-relaxed text-amber-500">
         The secret rides in the URL, so it can land in the target server's access logs. Prefer a
         header kind when the API supports one.
@@ -131,18 +116,13 @@
     {/if}
 
     {#if draft.kind === 'header' || draft.kind === 'query'}
-      <label class="block">
-        <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Value template (optional)</span>
-        <input
-          bind:value={draft.template}
-          class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-          placeholder={'Token {secret}'}
-        />
-      </label>
+      <Field label="Value template (optional)">
+        <Input bind:value={draft.template} mono class="mt-1 w-full" placeholder={'Token {secret}'} />
+      </Field>
     {/if}
 
     <div>
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Sends</span>
+      <span class={FIELD_LABEL}>Sends</span>
       <code class="mt-1 block truncate rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-[11px] text-zinc-400">
         {injectionPreview(draft)}
       </code>
@@ -150,19 +130,19 @@
   {/if}
 
   {#if needsSecret}
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Secret value</span>
-      <input
+    <Field label="Secret value">
+      <Input
         type="password"
         bind:value={secret}
         autocomplete="off"
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+        mono
+        class="mt-1 w-full"
         placeholder={context.mode === 'rotate' ? 'new value' : ''}
         onkeydown={(e) => {
           if (e.key === 'Enter') void save()
         }}
       />
-    </label>
+    </Field>
     <p class="text-[10px] leading-relaxed text-zinc-600">
       Stored in the OS keychain and write-only after saving — it never appears here again.
     </p>
@@ -179,15 +159,7 @@
   {/if}
 
   <div class="flex justify-end gap-1.5 pt-1">
-    <button class="rounded px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onclick={close}>
-      Cancel
-    </button>
-    <button
-      class="rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={!canSave}
-      onclick={() => void save()}
-    >
-      Save
-    </button>
+    <Button variant="ghost" onclick={close}>Cancel</Button>
+    <Button variant="primary" disabled={!canSave} onclick={() => void save()}>Save</Button>
   </div>
 </ModalShell>

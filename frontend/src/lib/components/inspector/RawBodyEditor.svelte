@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RawBody } from '../../model'
   import type { RequestEditorTarget } from '../../requestEditor'
+  import Input from '../ui/Input.svelte'
   import CodeEditor from './CodeEditor.svelte'
 
   let { target, rawBody }: { target: RequestEditorTarget; rawBody: RawBody } = $props()
@@ -11,8 +12,11 @@
 </script>
 
 <div class="space-y-1.5">
-  <input
-    class="w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+  <Input
+    size="sm"
+    surface="raised"
+    mono
+    class="w-full"
     value={rawBody.contentType}
     placeholder="content type, e.g. application/json"
     aria-label="Raw body content type"

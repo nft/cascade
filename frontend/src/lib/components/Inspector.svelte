@@ -12,6 +12,11 @@
   import RequestTargetSection from './inspector/RequestTargetSection.svelte'
   import ResponseSchemaSection from './inspector/ResponseSchemaSection.svelte'
   import TransformSection from './inspector/TransformSection.svelte'
+  import Button from './ui/Button.svelte'
+  import Field from './ui/Field.svelte'
+  import IconButton from './ui/IconButton.svelte'
+  import Input from './ui/Input.svelte'
+  import Select from './ui/Select.svelte'
 
   // http and transform nodes get an inspector; notes edit inline on the card.
   const node = $derived(
@@ -36,14 +41,13 @@
         </span>
         <span class="truncate font-mono text-[11px] text-zinc-400">transform step</span>
       {/if}
-      <button
-        class="ml-auto flex items-center rounded px-1.5 py-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+      <IconButton
+        icon="close"
+        class="ml-auto"
         onclick={() => (app.selectedNodeId = null)}
         title="Close inspector"
-        aria-label="Close inspector"
-      >
-        <Icon name="close" size={14} />
-      </button>
+        label="Close inspector"
+      />
     </div>
 
     <div class="flex-1 space-y-4 p-3">
@@ -53,10 +57,10 @@
         <RequestTargetSection {node} />
 
         <div class="grid grid-cols-2 gap-2">
-          <label class="block">
-            <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Environment</span>
-            <select
-              class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
+          <Field label="Environment">
+            <Select
+              surface="raised"
+              class="mt-1 w-full"
               value={node.data.environment}
               aria-label="Environment"
               onchange={(e) => app.updateNodeData(node.id, { environment: e.currentTarget.value })}
@@ -64,19 +68,19 @@
               {#each app.environments as env (env.name)}
                 <option value={env.name}>{env.name}</option>
               {/each}
-            </select>
-          </label>
-          <label class="block">
-            <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Credential</span>
-            <select
-              class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
+            </Select>
+          </Field>
+          <Field label="Credential">
+            <Select
+              surface="raised"
+              class="mt-1 w-full"
               value={node.data.credential}
               aria-label="Credential"
               onchange={(e) => app.updateNodeData(node.id, { credential: e.currentTarget.value })}
             >
               <CredentialOptions current={node.data.credential} />
-            </select>
-          </label>
+            </Select>
+          </Field>
         </div>
 
         {#if danglingCredential}
@@ -89,16 +93,16 @@
           </p>
         {/if}
 
-        <label class="block">
-          <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Repeat</span>
-          <input
+        <Field label="Repeat">
+          <Input
             type="number"
             min="1"
-            class="mt-1 w-24 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
+            surface="raised"
+            class="mt-1 w-24"
             value={node.data.repeat}
             oninput={(e) => app.updateNodeData(node.id, { repeat: Math.max(1, Number(e.currentTarget.value) || 1) })}
           />
-        </label>
+        </Field>
 
         <RequestSection target={nodeTarget(node)} />
 
@@ -113,14 +117,10 @@
     </div>
 
     <div class="mt-auto border-t border-zinc-800 p-3">
-      <button
-        class="flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/30 px-2 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10"
-        onclick={() => app.removeNode(node.id)}
-        title="Delete node"
-      >
+      <Button variant="danger" class="w-full" onclick={() => app.removeNode(node.id)} title="Delete node">
         <Icon name="delete" size={14} />
         Delete node
-      </button>
+      </Button>
     </div>
   </aside>
 {/if}

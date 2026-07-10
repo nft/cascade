@@ -1,14 +1,31 @@
-import type { HttpMethod, NodeStatus } from './model'
+import { HTTP_METHODS, type HttpMethod, type NodeStatus } from './model'
 
-export const methodBadge: Record<HttpMethod, string> = {
-  GET: 'bg-sky-500/15 text-sky-400',
-  POST: 'bg-emerald-500/15 text-emerald-400',
-  PUT: 'bg-amber-500/15 text-amber-300',
-  PATCH: 'bg-violet-500/15 text-violet-300',
-  DELETE: 'bg-rose-500/15 text-rose-400',
-  HEAD: 'bg-cyan-500/15 text-cyan-300',
-  OPTIONS: 'bg-zinc-500/15 text-zinc-300',
+// Split so method <select>s can take the text color alone — their background
+// is owned by the Select surface, and stacking the tint on top of it made the
+// rendered color ambiguous. Badges/chips use the composed methodBadge.
+export const methodText: Record<HttpMethod, string> = {
+  GET: 'text-sky-400',
+  POST: 'text-emerald-400',
+  PUT: 'text-amber-300',
+  PATCH: 'text-violet-300',
+  DELETE: 'text-rose-400',
+  HEAD: 'text-cyan-300',
+  OPTIONS: 'text-zinc-300',
 }
+
+export const methodTint: Record<HttpMethod, string> = {
+  GET: 'bg-sky-500/15',
+  POST: 'bg-emerald-500/15',
+  PUT: 'bg-amber-500/15',
+  PATCH: 'bg-violet-500/15',
+  DELETE: 'bg-rose-500/15',
+  HEAD: 'bg-cyan-500/15',
+  OPTIONS: 'bg-zinc-500/15',
+}
+
+export const methodBadge: Record<HttpMethod, string> = Object.fromEntries(
+  HTTP_METHODS.map((m) => [m, `${methodTint[m]} ${methodText[m]}`]),
+) as Record<HttpMethod, string>
 
 export const statusDot: Record<NodeStatus, string> = {
   idle: 'bg-zinc-500',

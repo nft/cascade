@@ -15,6 +15,10 @@
     type SchemaType,
   } from '../../schemaEdit'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
+  import IconButton from '../ui/IconButton.svelte'
+  import Input from '../ui/Input.svelte'
+  import Select from '../ui/Select.svelte'
   import SchemaEditorNode from './SchemaEditorNode.svelte'
 
   // Rows expand two levels by default, like the read-only SchemaTree.
@@ -87,6 +91,8 @@
     {#if fixed}
       <span class="shrink-0 font-mono text-[11px] text-zinc-400">{label}</span>
     {:else}
+      <!-- Stays raw: reads as plain text until hover/focus reveals the field — a
+           different interaction pattern than ui/Input's always-boxed look. -->
       <input
         class="w-0 min-w-16 flex-1 basis-16 rounded border border-transparent bg-transparent px-1 py-0.5 font-mono text-[11px] text-zinc-300 outline-none hover:border-zinc-800 focus:border-zinc-500 focus:bg-zinc-950"
         value={label}
@@ -98,8 +104,9 @@
       />
     {/if}
 
-    <select
-      class="shrink-0 rounded border border-zinc-800 bg-zinc-950 px-1 py-0.5 text-[10px] text-zinc-400 outline-none focus:border-zinc-500"
+    <Select
+      size="2xs"
+      class="shrink-0"
       value={primaryType}
       aria-label="Type of {pathLabel}"
       onchange={(e) => {
@@ -113,11 +120,13 @@
       {#each SCHEMA_TYPES as type (type)}
         <option value={type}>{type}</option>
       {/each}
-    </select>
+    </Select>
 
     {#if primaryType === 'string'}
-      <input
-        class="w-16 shrink-0 rounded border border-zinc-800 bg-zinc-950 px-1 py-0.5 font-mono text-[10px] text-zinc-400 outline-none placeholder:text-zinc-700 focus:border-zinc-500"
+      <Input
+        size="2xs"
+        mono
+        class="w-16 shrink-0"
         value={schema.format ?? ''}
         placeholder="format"
         aria-label="Format of {pathLabel}"
@@ -141,24 +150,24 @@
     </button>
 
     {#if isObject}
-      <button
-        class="flex shrink-0 items-center rounded p-0.5 text-zinc-600 hover:text-zinc-300"
-        aria-label="Add property to {pathLabel}"
+      <IconButton
+        icon="add"
+        iconSize={13}
+        tone="quiet"
+        label="Add property to {pathLabel}"
         title="Add property"
         onclick={() => (adding = !adding)}
-      >
-        <Icon name="add" size={13} />
-      </button>
+      />
     {/if}
     {#if !fixed}
-      <button
-        class="flex shrink-0 items-center rounded p-0.5 text-zinc-600 hover:text-rose-400"
-        aria-label="Delete {pathLabel}"
+      <IconButton
+        icon="close"
+        iconSize={13}
+        tone="quiet-danger"
+        label="Delete {pathLabel}"
         title="Delete key"
         onclick={() => edit((root) => removePropertyAt(root, path.slice(0, -1), label))}
-      >
-        <Icon name="close" size={13} />
-      </button>
+      />
     {/if}
   </div>
 
@@ -166,9 +175,11 @@
     <div class="mt-1 flex items-center gap-1 pl-(--indent)">
       <span class="w-3.5 shrink-0"></span>
       <!-- The row only exists because the user clicked Add, so stealing focus is the point. -->
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        class="min-w-0 flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+      <Input
+        size="sm"
+        surface="raised"
+        mono
+        class="min-w-0 flex-1"
         placeholder="new key"
         aria-label="New property name in {pathLabel}"
         autofocus
@@ -181,13 +192,7 @@
           }
         }}
       />
-      <button
-        class="rounded-md border border-zinc-800 px-1.5 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-700"
-        disabled={newKey.trim() === ''}
-        onclick={addProperty}
-      >
-        Add
-      </button>
+      <Button variant="secondary" size="xs" disabled={newKey.trim() === ''} onclick={addProperty}>Add</Button>
     </div>
   {/if}
 

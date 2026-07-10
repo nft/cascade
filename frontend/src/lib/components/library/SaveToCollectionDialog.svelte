@@ -5,6 +5,10 @@
   import { folderOptions, ROOT_FOLDER_ID } from '../../collections'
   import { dialogs } from '../../dialogs.svelte'
   import { app } from '../../state.svelte'
+  import Button from '../ui/Button.svelte'
+  import Field from '../ui/Field.svelte'
+  import Input from '../ui/Input.svelte'
+  import Select from '../ui/Select.svelte'
   import ModalShell from './ModalShell.svelte'
 
   let { nodeId }: { nodeId: string } = $props()
@@ -51,23 +55,21 @@
 </script>
 
 <ModalShell title="Save to collection" onclose={close}>
-  <label class="block">
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Request name</span>
-    <input
-      bind:this={nameEl}
+  <Field label="Request name">
+    <Input
+      bind:el={nameEl}
       bind:value={name}
-      class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+      class="mt-1 w-full"
       placeholder="Create invoice"
       onkeydown={(e) => {
         if (e.key === 'Enter') save()
       }}
     />
-  </label>
+  </Field>
 
-  <label class="block">
-    <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Collection</span>
-    <select
-      class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
+  <Field label="Collection">
+    <Select
+      class="mt-1 w-full"
       value={collectionId}
       onchange={(e) => {
         collectionId = e.currentTarget.value
@@ -78,30 +80,21 @@
         <option value={c.id}>{c.name}</option>
       {/each}
       <option value={NEW_COLLECTION}>New collection…</option>
-    </select>
-  </label>
+    </Select>
+  </Field>
 
   {#if collectionId === NEW_COLLECTION}
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Collection name</span>
-      <input
-        bind:value={newCollectionName}
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-        placeholder="Payments"
-      />
-    </label>
+    <Field label="Collection name">
+      <Input bind:value={newCollectionName} class="mt-1 w-full" placeholder="Payments" />
+    </Field>
   {:else if folders.length > 1}
-    <label class="block">
-      <span class="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">Folder</span>
-      <select
-        class="mt-1 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs outline-none focus:border-zinc-500"
-        bind:value={folderId}
-      >
+    <Field label="Folder">
+      <Select class="mt-1 w-full" bind:value={folderId}>
         {#each folders as folder (folder.id)}
           <option value={folder.id}>{folder.label}</option>
         {/each}
-      </select>
-    </label>
+      </Select>
+    </Field>
   {/if}
 
   <p class="text-[10px] leading-relaxed text-zinc-600">
@@ -109,15 +102,7 @@
   </p>
 
   <div class="flex justify-end gap-1.5 pt-1">
-    <button class="rounded px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onclick={close}>
-      Cancel
-    </button>
-    <button
-      class="rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={!canSave}
-      onclick={save}
-    >
-      Save
-    </button>
+    <Button variant="ghost" onclick={close}>Cancel</Button>
+    <Button variant="primary" disabled={!canSave} onclick={save}>Save</Button>
   </div>
 </ModalShell>

@@ -8,6 +8,8 @@
   } from '../../request'
   import type { RequestEditorTarget } from '../../requestEditor'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
+  import Input from '../ui/Input.svelte'
   import FieldRow from './FieldRow.svelte'
   import RawBodyEditor from './RawBodyEditor.svelte'
 
@@ -151,23 +153,27 @@
 
     {#if tab !== 'body' || !rawMode}
       <div class="flex items-center gap-1">
-        <input
-          class="min-w-0 flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+        <Input
+          size="sm"
+          surface="raised"
+          mono
+          class="min-w-0 flex-1"
           placeholder={addPlaceholder}
           bind:value={newName}
           onkeydown={(e) => {
             if (e.key === 'Enter') addField()
           }}
         />
-        <button
-          class="flex items-center gap-1 rounded-md border border-zinc-800 px-1.5 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:cursor-not-allowed disabled:text-zinc-700"
+        <Button
+          variant="secondary"
+          size="xs"
           disabled={newName.trim() === ''}
           onclick={addField}
           title="Add {tab === 'params' ? 'query param' : tab === 'headers' ? 'header' : 'body field'}"
         >
           <Icon name="add" size={13} />
           Add
-        </button>
+        </Button>
       </div>
     {/if}
   </div>

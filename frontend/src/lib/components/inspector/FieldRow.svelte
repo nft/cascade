@@ -5,6 +5,8 @@
   import { fieldDisplayValue, keyByNodeId, nodeIdByKey, parseFieldInput, validateFieldRefs } from '../../refs'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
+  import IconButton from '../ui/IconButton.svelte'
+  import Input from '../ui/Input.svelte'
   import BindingPicker from './BindingPicker.svelte'
 
   let {
@@ -99,33 +101,31 @@
       </span>
     {/if}
     {#if boundNodeId}
-      <button
-        class="flex shrink-0 items-center rounded px-1 py-0.5 hover:bg-zinc-800 {pickerOpen
-          ? 'text-violet-300'
-          : 'text-zinc-500 hover:text-zinc-200'}"
+      <IconButton
+        icon="add_link"
+        tone={pickerOpen ? 'accent' : 'default'}
         onclick={() => (pickerOpen = !pickerOpen)}
         title="Insert reference…"
-        aria-label="Insert reference into {field.key}"
-      >
-        <Icon name="add_link" size={14} />
-      </button>
+        label="Insert reference into {field.key}"
+      />
     {/if}
     {#if removable}
-      <button
-        class="flex shrink-0 items-center rounded px-1 py-0.5 text-zinc-600 hover:bg-zinc-800 hover:text-rose-400"
+      <IconButton
+        icon="close"
+        iconSize={12}
+        tone="danger"
         onclick={() => target.removeField(field.key)}
         title="Remove field"
-        aria-label="Remove field {field.key}"
-      >
-        <Icon name="close" size={12} />
-      </button>
+        label="Remove field {field.key}"
+      />
     {/if}
   </div>
-  <input
-    bind:this={inputEl}
-    class="mt-1 w-full rounded border bg-zinc-950 px-1.5 py-1 font-mono text-[11px] outline-none focus:border-zinc-500 {isBound
-      ? 'border-violet-500/30 text-violet-200'
-      : 'border-zinc-800 text-zinc-200'}"
+  <Input
+    bind:el={inputEl}
+    size="xs"
+    mono
+    tone={isBound ? 'accent' : 'default'}
+    class="mt-1 w-full"
     value={display}
     oninput={(e) => commit(e.currentTarget.value)}
     placeholder={boundNodeId ? `literal, res.path or {{nodeKey.path}}` : 'literal default'}

@@ -7,6 +7,7 @@
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
+  import Input from './ui/Input.svelte'
 
   const { screenToFlowPosition, fitView } = useSvelteFlow()
 
@@ -118,10 +119,12 @@
   >
     {#if paletteOpen}
       <div class="px-1.5 pb-1.5">
-        <input
-          bind:this={searchEl}
+        <Input
+          bind:el={searchEl}
           bind:value={query}
-          class="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+          size="sm"
+          surface="popover"
+          class="w-full"
           placeholder="Search operations…"
         />
       </div>

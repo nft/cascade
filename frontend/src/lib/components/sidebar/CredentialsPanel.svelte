@@ -6,6 +6,7 @@
   import { dialogs } from '../../dialogs.svelte'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
+  import Button from '../ui/Button.svelte'
 
   /** Name of the credential whose delete is armed; second click deletes. */
   let confirmingDelete = $state<string | null>(null)
@@ -70,13 +71,10 @@
       No credentials in <em>{app.projectName}</em> yet.
     </p>
   {/each}
-  <button
-    class="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 py-1.5 text-xs text-zinc-500 hover:text-zinc-300"
-    onclick={() => (dialogs.credential = { mode: 'create' })}
-  >
+  <Button variant="dashed" class="w-full" onclick={() => (dialogs.credential = { mode: 'create' })}>
     <Icon name="add" size={14} />
     Add credential
-  </button>
+  </Button>
   <p class="px-1 text-[10px] leading-relaxed text-zinc-600">
     Values are write-only after saving and stored in the OS keychain — never in project files.
   </p>
