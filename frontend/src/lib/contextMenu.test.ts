@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { libraryMenuItems, menuItems } from './contextMenu'
 
 describe('context menu contents (plan 03 §2)', () => {
-  it('pane menu offers add-node, custom request, add-transform, add-note, paste (disabled until plan 07) and fit view', () => {
+  it('pane menu offers add-node, custom request, add-transform, add-note, paste and fit view', () => {
     const items = menuItems('pane', { isRunning: false })
     expect(items.map((i) => i.label)).toEqual([
       'Add node…',
@@ -12,7 +12,8 @@ describe('context menu contents (plan 03 §2)', () => {
       'Paste',
       'Fit view',
     ])
-    expect(items.find((i) => i.action === 'paste')?.disabled).toBe(true)
+    // Paste is live since plan 07 E3.
+    expect(items.find((i) => i.action === 'paste')?.disabled).toBeUndefined()
   })
 
   it('note node menu is annotation-only: duplicate and delete (plan 06 T6)', () => {

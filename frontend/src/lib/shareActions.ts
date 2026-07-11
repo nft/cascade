@@ -4,7 +4,9 @@
 // logged, never taking down the canvas.
 import { api } from './api'
 import { serializeBoard } from './board'
-import type { AppNode } from './model'
+import { dialogs } from './dialogs.svelte'
+import type { AppNode, ClipboardEnvelope } from './model'
+import { buildPaste } from './paste'
 import type { AppState } from './state.svelte'
 
 /**
@@ -59,5 +61,62 @@ export async function exportBoardToFile(app: AppState): Promise<string | null> {
   } catch (err) {
     console.error('board export failed:', err)
     return null
+  }
+}
+
+// --- import side (plan 07 E3) ------------------------------------------------
+
+/** Paste target when the canvas cannot provide one. */
+const FALLBACK_PASTE_POSITION = { x: 240, y: 240 }
+
+const PASTE_FAILED_TITLE = 'Paste failed'
+const IMPORT_FAILED_TITLE = 'Import failed'
+
+const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err))
+
+/**
+ * Pastes the clipboard envelope onto the canvas as a fresh, group-selected
+ * subgraph (paste.ts does the id/key/binding work). A clipboard that holds
+ * no envelope at all is silently ignored; one that IS an envelope but
+ * malformed or from a newer Cascade gets a notice dialog.
+ */
+export async function pasteFromClipboard(
+  app: AppState,
+  target?: { x: number; y: number },
+): Promise<boolean> {
+  if (app.boardId === null) return false
+  let probe: ClipboardEnvelope
+  try {
+    probe = await api.readClipboardEnvelope()
+  } catch (err) {
+    dialogs.notice = { title: PASTE_FAILED_TITLE, message: errorMessage(err) }
+    return false
+  }
+  if (!probe.found || !probe.payload) return false
+  const at = target ?? app.pasteTarget?.() ?? FALLBACK_PASTE_POSITION
+  const pasted = buildPaste(probe.payload.board, app.nodes, at)
+  if (pasted.nodes.length === 0) return false
+  app.nodes = [...app.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)), ...pasted.nodes]
+  app.edges = [...app.edges, ...pasted.edges]
+  // The inspector is single-node; a group paste keeps it closed.
+  app.selectedNodeId = pasted.nodes.length === 1 ? pasted.nodes[0].id : null
+  app.scheduleBoardSave()
+  return true
+}
+
+/** Imports an envelope file as a new board of the project and switches to it. */
+export async function importBoardFromFile(app: AppState): Promise<boolean> {
+  const projectId = app.projectId
+  if (projectId === null || app.project === null) return false
+  try {
+    const result = await api.importBoardFromFile(projectId)
+    if (result.cancelled) return false
+    await app.flushBoardSave() // the current board's pending edits, before switching away
+    app.project.boards = [...app.project.boards, result.board]
+    app.openBoard(result.board)
+    return true
+  } catch (err) {
+    dialogs.notice = { title: IMPORT_FAILED_TITLE, message: errorMessage(err) }
+    return false
   }
 }

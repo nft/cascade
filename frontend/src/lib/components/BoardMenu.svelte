@@ -1,8 +1,8 @@
 <script lang="ts">
-  // Board overflow menu in the top bar (plan 07 E2): file export and
+  // Board overflow menu in the top bar (plan 07): file export/import and
   // copy-as-JSON for chat-sized boards. Copy feedback is inline — the row
   // flips to "Copied" briefly — since there is no toast infrastructure yet.
-  import { copyBoardJson, exportBoardToFile } from '../shareActions'
+  import { copyBoardJson, exportBoardToFile, importBoardFromFile } from '../shareActions'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
   import IconButton from './ui/IconButton.svelte'
@@ -27,6 +27,11 @@
   async function onExport() {
     close()
     await exportBoardToFile(app)
+  }
+
+  async function onImport() {
+    close()
+    await importBoardFromFile(app)
   }
 
   async function onCopy() {
@@ -60,6 +65,14 @@
       >
         <Icon name="download" size={14} />
         Export board…
+      </button>
+      <button
+        role="menuitem"
+        class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+        onclick={onImport}
+      >
+        <Icon name="file_open" size={14} />
+        Import board…
       </button>
       <button
         role="menuitem"

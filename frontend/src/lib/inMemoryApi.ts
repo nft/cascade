@@ -10,6 +10,7 @@ import { serializeBoard } from './board'
 import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
 import type {
   BoardJSON,
+  EnvelopePayload,
   ProjectBundle,
   ProjectInfo,
   ScriptRunRequest,
@@ -138,6 +139,25 @@ export function createInMemoryApi(): CascadeApi {
     async copySelection(_projectId, board, nodeIds) {
       await navigator.clipboard?.writeText(devEnvelope('selection', board, nodeIds))
     },
+    async readClipboardEnvelope() {
+      const text = (await navigator.clipboard?.readText?.()) ?? ''
+      const payload = parseDevEnvelope(text)
+      return payload ? { found: true, payload } : { found: false }
+    },
+    async importBoardFromFile(projectId) {
+      const stored = get(projectId)
+      const text = await pickFileText()
+      if (text === null) return { cancelled: true, board: serializeBoard('', '', [], []) }
+      const payload = parseDevEnvelope(text)
+      if (!payload) throw new Error('not a cascade envelope')
+      const board: BoardJSON = {
+        ...payload.board,
+        id: newId('board'),
+        name: dedupBoardName(payload.board.name || 'Imported board', stored.bundle.boards),
+      }
+      stored.bundle.boards.push(structuredClone(board))
+      return { cancelled: false, board }
+    },
     async runTransformScript(req) {
       return runScriptInBrowser(req)
     },
@@ -223,6 +243,53 @@ function devEnvelope(kind: 'board' | 'selection', board: BoardJSON, nodeIds?: st
     },
   }
   return `${JSON.stringify(envelope, null, 2)}\n`
+}
+
+/**
+ * Dev stand-in for share.Parse: the same gates (no envelope at all → null;
+ * malformed or newer-version envelope → throw) so paste flows behave like
+ * the Go side in the browser.
+ */
+function parseDevEnvelope(text: string): EnvelopePayload | null {
+  let root: unknown
+  try {
+    root = JSON.parse(text)
+  } catch {
+    return null
+  }
+  if (!root || typeof root !== 'object' || !('cascade' in root)) return null
+  const payload = (root as { cascade: unknown }).cascade as EnvelopePayload
+  if (!payload || typeof payload !== 'object' || !payload.board) {
+    throw new Error('malformed cascade envelope')
+  }
+  if (payload.formatVersion > DEV_ENVELOPE_FORMAT_VERSION) {
+    throw new Error(
+      `this was made with a newer Cascade (format version ${payload.formatVersion}, this app supports up to ${DEV_ENVELOPE_FORMAT_VERSION}) — update to import it`,
+    )
+  }
+  return payload
+}
+
+function dedupBoardName(name: string, boards: BoardJSON[]): string {
+  const taken = new Set(boards.map((b) => b.name))
+  if (!taken.has(name)) return name
+  for (let n = 2; ; n++) if (!taken.has(`${name} ${n}`)) return `${name} ${n}`
+}
+
+/** Browser stand-in for the open-file dialog; resolves null when dismissed. */
+function pickFileText(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (!file) return resolve(null)
+      void file.text().then(resolve)
+    }
+    input.oncancel = () => resolve(null)
+    input.click()
+  })
 }
 
 /** Browser stand-in for the Wails save dialog: a plain download; returns the filename. */

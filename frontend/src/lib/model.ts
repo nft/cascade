@@ -58,6 +58,12 @@ export type NodeField = {
    */
   value: string
   ref?: FieldRef
+  /**
+   * Written by selection export (plan 07) when the field's reference left
+   * the selection: what it was bound to, by the upstream's key, so the
+   * receiving side can show "was bound to createUser.body.id" and re-bind.
+   */
+  dangling?: { originalKey: string; path: string }
 }
 
 /** A named alias a node declares for a value of its own response (plan 05 §9b). */
@@ -340,6 +346,36 @@ export interface BoardJSON {
   nodes: BoardNodeJSON[]
   edges: BoardEdgeJSON[]
   layout: BoardLayoutJSON
+}
+
+// --- share envelope (plan 07): mirrors share/envelope.go ---------------------
+
+export interface EnvelopeRequires {
+  environments: string[]
+  credentials: { name: string; kind?: CredentialKind }[]
+  /** Reserved — exporters emit an empty list until nodes reference sources. */
+  sources: unknown[]
+}
+
+export interface EnvelopePayload {
+  kind: 'board' | 'selection'
+  formatVersion: number
+  app: string
+  board: BoardJSON
+  requires: EnvelopeRequires
+  collections?: CollectionDef[]
+}
+
+/** Paste probe result (mirrors main.ClipboardEnvelope); found=false means no envelope. */
+export interface ClipboardEnvelope {
+  found: boolean
+  payload?: EnvelopePayload
+}
+
+/** File import result (mirrors main.ImportBoardResult); cancelled means dialog dismissed. */
+export interface ImportBoardResult {
+  cancelled: boolean
+  board: BoardJSON
 }
 
 interface LogEntryBase {

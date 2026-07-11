@@ -31,7 +31,6 @@ export interface MenuItem {
   title?: string
 }
 
-const CLIPBOARD_TITLE = 'Paste lands with the import pipeline (plan 07 E3)'
 const NO_RESPONSE_TITLE = 'Run the node first — inference needs a captured response'
 const LIBRARY_CLEAN_TITLE = 'The node matches its library request'
 
@@ -52,7 +51,7 @@ export function menuItems(
         { action: 'add-custom-request', icon: 'http', label: 'Add custom request' },
         { action: 'add-transform', icon: 'function', label: 'Add transform' },
         { action: 'add-note', icon: 'sticky_note_2', label: 'Add note' },
-        { action: 'paste', icon: 'content_paste', label: 'Paste', disabled: true, title: CLIPBOARD_TITLE },
+        { action: 'paste', icon: 'content_paste', label: 'Paste' },
         { action: 'fit-view', icon: 'fit_screen', label: 'Fit view' },
       ]
     case 'node':

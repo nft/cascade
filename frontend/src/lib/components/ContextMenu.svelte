@@ -4,7 +4,7 @@
   import { dialogs } from '../dialogs.svelte'
   import { libraryLinkState } from '../library'
   import { isHttpNode, type Operation } from '../model'
-  import { copyNodes, selectionForCopy } from '../shareActions'
+  import { copyNodes, pasteFromClipboard, selectionForCopy } from '../shareActions'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -60,6 +60,9 @@
         break
       case 'add-note':
         app.addNoteNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
+      case 'paste':
+        void pasteFromClipboard(app, menu.flow ?? screenToFlowPosition(menu.screen))
         break
       case 'fit-view':
         fitView()

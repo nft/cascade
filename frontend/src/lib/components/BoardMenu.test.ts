@@ -36,11 +36,12 @@ afterEach(() => {
 })
 
 describe('BoardMenu (plan 07 E2)', () => {
-  it('opens with the export and copy entries', () => {
+  it('opens with the export, import and copy entries', () => {
     menuButton().click()
     flushSync()
-    expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(2)
+    expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(3)
     expect(menuRow('Export board…')).toBeDefined()
+    expect(menuRow('Import board…')).toBeDefined()
     expect(menuRow('Copy board as JSON')).toBeDefined()
   })
 

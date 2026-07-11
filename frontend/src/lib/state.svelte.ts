@@ -25,6 +25,7 @@ import {
   isHttpNode,
   type AppEdge,
   type AppNode,
+  type BoardJSON,
   type BoardViewport,
   type CapturedResponse,
   type CollectionDef,
@@ -99,6 +100,8 @@ export class AppState {
   canvasTool = $state<CanvasTool>('select')
   /** Bumped by requestRename; the inspector focuses its name field when it changes. */
   renameSignal = $state(0)
+  /** Set by the canvas while mounted: the canvas center as a flow position (paste target). */
+  pasteTarget: (() => { x: number; y: number }) | null = null
   private viewport: BoardViewport | undefined
   private saveTimer: ReturnType<typeof setTimeout> | undefined
   private addCounter = 0
@@ -139,22 +142,26 @@ export class AppState {
     await this.flushBoardSave()
     const bundle = await api.openProject(id)
     this.project = bundle
-    const board = bundle.boards[0]
-    this.boardId = board?.id ?? null
-    this.boardName = board?.name ?? ''
+    this.openBoard(bundle.boards[0])
+    this.logs = []
+    this.contextMenu = null
+    // Refresh the index so lastOpenedAt ordering stays current.
+    this.projects = await api.listProjects()
+  }
+
+  /** Swap the active board in place (project open, board import; tabs later). */
+  openBoard(board: BoardJSON | undefined) {
     const loaded = board
       ? deserializeBoard(board)
       : { nodes: [], edges: [], viewport: undefined, responses: {} }
+    this.boardId = board?.id ?? null
+    this.boardName = board?.name ?? ''
     this.nodes = loaded.nodes
     this.edges = loaded.edges
     this.viewport = loaded.viewport
     this.responses = loaded.responses
-    this.logs = []
     this.selectedNodeId = null
-    this.contextMenu = null
     this.activeRunIds = null
-    // Refresh the index so lastOpenedAt ordering stays current.
-    this.projects = await api.listProjects()
   }
 
   async createProject(name: string): Promise<ProjectInfo> {

@@ -30,12 +30,20 @@ export function ExportBoardToFile(arg1, arg2) {
   return window['go']['main']['App']['ExportBoardToFile'](arg1, arg2);
 }
 
+export function ImportBoardFromFile(arg1) {
+  return window['go']['main']['App']['ImportBoardFromFile'](arg1);
+}
+
 export function ListProjects() {
   return window['go']['main']['App']['ListProjects']();
 }
 
 export function OpenProject(arg1) {
   return window['go']['main']['App']['OpenProject'](arg1);
+}
+
+export function ReadClipboardEnvelope() {
+  return window['go']['main']['App']['ReadClipboardEnvelope']();
 }
 
 export function RenameProject(arg1, arg2) {

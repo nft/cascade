@@ -6,8 +6,10 @@ import type { main as goMain, store as goStore } from '../../wailsjs/go/models'
 import { createInMemoryApi } from './inMemoryApi'
 import type {
   BoardJSON,
+  ClipboardEnvelope,
   CollectionDef,
   CredentialDef,
+  ImportBoardResult,
   ProjectBundle,
   ProjectInfo,
   ScriptRunRequest,
@@ -36,6 +38,10 @@ export interface CascadeApi {
   copyBoardJSON(projectId: string, boardId: string): Promise<void>
   /** Puts a selection envelope (nodes + edges between them) on the system clipboard. */
   copySelection(projectId: string, board: BoardJSON, nodeIds: string[]): Promise<void>
+  /** Probes the clipboard for a Cascade envelope (plan 07 E3); non-envelopes report found=false. */
+  readClipboardEnvelope(): Promise<ClipboardEnvelope>
+  /** Imports an envelope file as a new board of the project (never a silent merge). */
+  importBoardFromFile(projectId: string): Promise<ImportBoardResult>
   /** Runs one transform script in the Go goja sandbox; resolves with the result body. */
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
   /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
@@ -62,6 +68,8 @@ const wailsApi: CascadeApi = {
   copyBoardJSON: (projectId, boardId) => GoApp.CopyBoardJSON(projectId, boardId),
   copySelection: (projectId, board, nodeIds) =>
     GoApp.CopySelection(projectId, board as unknown as goStore.Board, nodeIds),
+  readClipboardEnvelope: () => GoApp.ReadClipboardEnvelope() as Promise<ClipboardEnvelope>,
+  importBoardFromFile: (projectId) => GoApp.ImportBoardFromFile(projectId) as Promise<ImportBoardResult>,
   runTransformScript: (req) => GoApp.RunTransformScript(req as unknown as goMain.ScriptRunRequest),
   sendTestRequest: (projectId, request) =>
     GoApp.SendTestRequest(projectId, request as unknown as goMain.TestRequest) as unknown as Promise<TestResponse>,

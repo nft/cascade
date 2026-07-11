@@ -5,6 +5,7 @@
   import { app } from '../state.svelte'
   import CanvasToolbar from './CanvasToolbar.svelte'
   import ContextMenu from './ContextMenu.svelte'
+  import FlowBridge from './FlowBridge.svelte'
   import { nodeTypes, registeredNodeTypes } from './nodeTypes'
 
   // Unknown node types must fail loudly, not render as xyflow's default node.
@@ -139,6 +140,7 @@
     />
     <CanvasToolbar />
     <ContextMenu />
+    <FlowBridge container={containerEl} />
   </SvelteFlow>
 
   {#if slicePoints.length > 1}

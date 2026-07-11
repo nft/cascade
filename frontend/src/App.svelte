@@ -6,6 +6,7 @@
   import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
   import CredentialDialog from './lib/components/sidebar/CredentialDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
+  import NoticeDialog from './lib/components/NoticeDialog.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
   import { dialogs } from './lib/dialogs.svelte'
@@ -39,4 +40,7 @@
 {/if}
 {#if dialogs.credential}
   <CredentialDialog context={dialogs.credential} />
+{/if}
+{#if dialogs.notice}
+  <NoticeDialog title={dialogs.notice.title} message={dialogs.notice.message} />
 {/if}
