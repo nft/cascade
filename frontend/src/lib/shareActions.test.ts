@@ -148,6 +148,7 @@ describe('paste/import flows (plan 07 E3)', () => {
 
   afterEach(() => {
     dialogs.notice = null
+    dialogs.importMapping = null
     vi.restoreAllMocks()
   })
 
@@ -160,6 +161,23 @@ describe('paste/import flows (plan 07 E3)', () => {
     expect(app.nodes.slice(1).every((n) => n.selected)).toBe(true)
     expect(app.edges).toHaveLength(1)
     expect(app.selectedNodeId).toBeNull() // group paste keeps the inspector closed
+  })
+
+  it('opens the mapping wizard over the pasted nodes when requires do not match (E4)', async () => {
+    const withRequires = {
+      ...payload(),
+      requires: { environments: ['prod'], credentials: [], sources: [] },
+    }
+    vi.spyOn(api, 'readClipboardEnvelope').mockResolvedValue({ found: true, payload: withRequires })
+    expect(await pasteFromClipboard(app, { x: 0, y: 0 })).toBe(true)
+    expect(dialogs.importMapping?.rows).toEqual([{ type: 'environment', name: 'prod' }])
+    expect(dialogs.importMapping?.nodeIds).toEqual(app.nodes.slice(1).map((n) => n.id))
+  })
+
+  it('stays zero-dialog when the envelope requires nothing new', async () => {
+    vi.spyOn(api, 'readClipboardEnvelope').mockResolvedValue({ found: true, payload: payload() })
+    expect(await pasteFromClipboard(app, { x: 0, y: 0 })).toBe(true)
+    expect(dialogs.importMapping).toBeNull()
   })
 
   it('silently ignores a clipboard without an envelope', async () => {
@@ -184,6 +202,19 @@ describe('paste/import flows (plan 07 E3)', () => {
     expect(app.boardId).toBe('nb1')
     expect(app.boardName).toBe('Signup chain')
     expect(app.nodes).toHaveLength(2)
+  })
+
+  it('runs the mapping step over an imported file (E4)', async () => {
+    const board: BoardJSON = { ...envelopeBoard(), id: 'nb1', name: 'Signup chain' }
+    vi.spyOn(api, 'importBoardFromFile').mockResolvedValue({
+      cancelled: false,
+      board,
+      requires: { environments: [], credentials: [{ name: 'prod-admin', kind: 'bearer' }], sources: [] },
+    })
+    expect(await importBoardFromFile(app)).toBe(true)
+    expect(dialogs.importMapping?.rows).toEqual([{ type: 'credential', name: 'prod-admin', kind: 'bearer' }])
+    // The wizard covers every node of the freshly imported board.
+    expect(dialogs.importMapping?.nodeIds).toEqual(['x1', 'x2'])
   })
 
   it('does nothing when the import dialog is cancelled', async () => {

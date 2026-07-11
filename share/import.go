@@ -14,27 +14,28 @@ const fallbackBoardName = "Imported board"
 // of the project — an import never merges into an existing board. The board
 // gets a fresh ID and a name deduplicated against the project's boards; node
 // IDs stay as exported (they are board-scoped), which keeps a re-export
-// diffable against the original file. Returns the saved board.
-func ImportBoard(p *store.Project, data []byte) (store.Board, error) {
+// diffable against the original file. Returns the saved board plus the parsed
+// payload, whose requires/collections drive the frontend mapping step (E4).
+func ImportBoard(p *store.Project, data []byte) (store.Board, Payload, error) {
 	env, err := Parse(data)
 	if err != nil {
-		return store.Board{}, err
+		return store.Board{}, Payload{}, err
 	}
 	boards, err := p.Boards()
 	if err != nil {
-		return store.Board{}, err
+		return store.Board{}, Payload{}, err
 	}
 	id, err := store.NewID()
 	if err != nil {
-		return store.Board{}, err
+		return store.Board{}, Payload{}, err
 	}
 	board := env.Cascade.Board
 	board.ID = id
 	board.Name = importedBoardName(board.Name, boards)
 	if err := p.SaveBoard(board); err != nil {
-		return store.Board{}, fmt.Errorf("save imported board: %w", err)
+		return store.Board{}, Payload{}, fmt.Errorf("save imported board: %w", err)
 	}
-	return board, nil
+	return board, env.Cascade, nil
 }
 
 // importedBoardName deduplicates the imported name against the project's

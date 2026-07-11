@@ -110,6 +110,10 @@ export function createInMemoryApi(): CascadeApi {
       const stored = get(projectId)
       stored.bundle.collections = stored.bundle.collections.filter((c) => c.id !== id)
     },
+    async saveEnvironments(projectId, environments) {
+      const stored = get(projectId)
+      stored.bundle.environments = structuredClone(environments)
+    },
     async saveCredentials(projectId, credentials) {
       const stored = get(projectId)
       stored.bundle.credentials = structuredClone(credentials)
@@ -156,7 +160,7 @@ export function createInMemoryApi(): CascadeApi {
         name: dedupBoardName(payload.board.name || 'Imported board', stored.bundle.boards),
       }
       stored.bundle.boards.push(structuredClone(board))
-      return { cancelled: false, board }
+      return { cancelled: false, board, requires: payload.requires, collections: payload.collections }
     },
     async runTransformScript(req) {
       return runScriptInBrowser(req)

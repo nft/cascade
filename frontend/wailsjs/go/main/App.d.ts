@@ -35,6 +35,8 @@ export function SaveCollection(arg1:string,arg2:store.Collection):Promise<void>;
 
 export function SaveCredentials(arg1:string,arg2:Array<store.Credential>):Promise<void>;
 
+export function SaveEnvironments(arg1:string,arg2:Array<store.Environment>):Promise<void>;
+
 export function SendTestRequest(arg1:string,arg2:main.TestRequest):Promise<main.TestResponse>;
 
 export function SetCredentialSecret(arg1:string,arg2:string,arg3:string):Promise<void>;

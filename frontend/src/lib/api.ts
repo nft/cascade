@@ -9,6 +9,7 @@ import type {
   ClipboardEnvelope,
   CollectionDef,
   CredentialDef,
+  EnvironmentDef,
   ImportBoardResult,
   ProjectBundle,
   ProjectInfo,
@@ -26,6 +27,8 @@ export interface CascadeApi {
   saveBoard(projectId: string, board: BoardJSON): Promise<void>
   saveCollection(projectId: string, collection: CollectionDef): Promise<void>
   deleteCollection(projectId: string, id: string): Promise<void>
+  /** Replaces the environment list; first used by import placeholder creation (plan 07 E4). */
+  saveEnvironments(projectId: string, environments: EnvironmentDef[]): Promise<void>
   /** Replaces the credential metadata list (plan 04 K2) — never carries values. */
   saveCredentials(projectId: string, credentials: CredentialDef[]): Promise<void>
   /** Removes one credential's metadata and its stored secret. */
@@ -60,6 +63,8 @@ const wailsApi: CascadeApi = {
   saveCollection: (projectId, collection) =>
     GoApp.SaveCollection(projectId, collection as unknown as goStore.Collection),
   deleteCollection: (projectId, id) => GoApp.DeleteCollection(projectId, id),
+  saveEnvironments: (projectId, environments) =>
+    GoApp.SaveEnvironments(projectId, environments as unknown as goStore.Environment[]),
   saveCredentials: (projectId, credentials) =>
     GoApp.SaveCredentials(projectId, credentials as unknown as goStore.Credential[]),
   deleteCredential: (projectId, name) => GoApp.DeleteCredential(projectId, name),

@@ -66,6 +66,10 @@ export function SaveCredentials(arg1, arg2) {
   return window['go']['main']['App']['SaveCredentials'](arg1, arg2);
 }
 
+export function SaveEnvironments(arg1, arg2) {
+  return window['go']['main']['App']['SaveEnvironments'](arg1, arg2);
+}
+
 export function SendTestRequest(arg1, arg2) {
   return window['go']['main']['App']['SendTestRequest'](arg1, arg2);
 }

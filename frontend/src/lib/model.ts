@@ -376,6 +376,10 @@ export interface ClipboardEnvelope {
 export interface ImportBoardResult {
   cancelled: boolean
   board: BoardJSON
+  /** Envelope requires, driving the mapping step (plan 07 E4); absent when cancelled. */
+  requires?: EnvelopeRequires
+  /** Embedded request definitions to merge into the project's library (E5). */
+  collections?: CollectionDef[]
 }
 
 interface LogEntryBase {

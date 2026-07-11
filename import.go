@@ -43,10 +43,14 @@ func (a *App) ReadClipboardEnvelope() (ClipboardEnvelope, error) {
 }
 
 // ImportBoardResult carries the imported board; Cancelled means the user
-// dismissed the open-file dialog and nothing happened.
+// dismissed the open-file dialog and nothing happened. Requires and
+// Collections come from the envelope so the frontend can run the mapping
+// step and merge embedded request definitions (plan 07 E4/E5).
 type ImportBoardResult struct {
-	Cancelled bool        `json:"cancelled"`
-	Board     store.Board `json:"board"`
+	Cancelled   bool               `json:"cancelled"`
+	Board       store.Board        `json:"board"`
+	Requires    share.Requires     `json:"requires"`
+	Collections []store.Collection `json:"collections,omitempty"`
 }
 
 // ImportBoardFromFile imports an exported envelope file as a new board of
@@ -72,9 +76,13 @@ func (a *App) ImportBoardFromFile(projectID string) (ImportBoardResult, error) {
 	if err != nil {
 		return ImportBoardResult{}, fmt.Errorf("read import: %w", err)
 	}
-	board, err := share.ImportBoard(p, data)
+	board, payload, err := share.ImportBoard(p, data)
 	if err != nil {
 		return ImportBoardResult{}, err
 	}
-	return ImportBoardResult{Board: board}, nil
+	return ImportBoardResult{
+		Board:       board,
+		Requires:    payload.Requires,
+		Collections: payload.Collections,
+	}, nil
 }

@@ -5,6 +5,7 @@
 import { api } from './api'
 import { serializeBoard } from './board'
 import { dialogs } from './dialogs.svelte'
+import { finishEnvelopeImport } from './importActions.svelte'
 import type { AppNode, ClipboardEnvelope } from './model'
 import { buildPaste } from './paste'
 import type { AppState } from './state.svelte'
@@ -101,6 +102,12 @@ export async function pasteFromClipboard(
   // The inspector is single-node; a group paste keeps it closed.
   app.selectedNodeId = pasted.nodes.length === 1 ? pasted.nodes[0].id : null
   app.scheduleBoardSave()
+  await finishEnvelopeImport(
+    app,
+    probe.payload.requires,
+    probe.payload.collections,
+    pasted.nodes.map((n) => n.id),
+  )
   return true
 }
 
@@ -114,6 +121,13 @@ export async function importBoardFromFile(app: AppState): Promise<boolean> {
     await app.flushBoardSave() // the current board's pending edits, before switching away
     app.project.boards = [...app.project.boards, result.board]
     app.openBoard(result.board)
+    // Every node on the canvas now belongs to the import.
+    await finishEnvelopeImport(
+      app,
+      result.requires,
+      result.collections,
+      app.nodes.map((n) => n.id),
+    )
     return true
   } catch (err) {
     dialogs.notice = { title: IMPORT_FAILED_TITLE, message: errorMessage(err) }

@@ -5,6 +5,7 @@
   import RequestEditorDialog from './lib/components/library/RequestEditorDialog.svelte'
   import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
   import CredentialDialog from './lib/components/sidebar/CredentialDialog.svelte'
+  import ImportMappingDialog from './lib/components/ImportMappingDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import NoticeDialog from './lib/components/NoticeDialog.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
@@ -43,4 +44,7 @@
 {/if}
 {#if dialogs.notice}
   <NoticeDialog title={dialogs.notice.title} message={dialogs.notice.message} />
+{/if}
+{#if dialogs.importMapping}
+  <ImportMappingDialog context={dialogs.importMapping} />
 {/if}

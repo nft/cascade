@@ -21,7 +21,7 @@ func TestImportBoard(t *testing.T) {
 		t.Fatalf("Boards: %v", err)
 	}
 
-	imported, err := ImportBoard(p, exported)
+	imported, payload, err := ImportBoard(p, exported)
 	if err != nil {
 		t.Fatalf("ImportBoard: %v", err)
 	}
@@ -30,6 +30,10 @@ func TestImportBoard(t *testing.T) {
 	}
 	if imported.Name != "Signup chain 2" {
 		t.Errorf("imported board name = %q, want deduplicated %q", imported.Name, "Signup chain 2")
+	}
+	// The payload travels back so the caller can run the mapping step.
+	if !reflect.DeepEqual(payload.Requires.Environments, []string{"local", "staging"}) {
+		t.Errorf("payload environments = %v, want [local staging]", payload.Requires.Environments)
 	}
 
 	// The import must be persisted as a new board, never merged.
@@ -71,7 +75,7 @@ func TestImportBoardNameFallsBackForSelections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExportSelection: %v", err)
 	}
-	imported, err := ImportBoard(p, exported)
+	imported, _, err := ImportBoard(p, exported)
 	if err != nil {
 		t.Fatalf("ImportBoard: %v", err)
 	}
@@ -85,11 +89,11 @@ func TestImportBoardNameFallsBackForSelections(t *testing.T) {
 
 func TestImportBoardRejectsBadInput(t *testing.T) {
 	p := newTestProject(t)
-	if _, err := ImportBoard(p, []byte("just some clipboard text")); err == nil {
+	if _, _, err := ImportBoard(p, []byte("just some clipboard text")); err == nil {
 		t.Error("importing non-envelope text should error")
 	}
 	newer := []byte(`{"cascade": {"kind": "board", "formatVersion": 99, "app": "cascade/9", "board": {}, "requires": {"environments": [], "credentials": [], "sources": []}}}`)
-	if _, err := ImportBoard(p, newer); err == nil || !strings.Contains(err.Error(), "newer") {
+	if _, _, err := ImportBoard(p, newer); err == nil || !strings.Contains(err.Error(), "newer") {
 		t.Errorf("importing a newer format should surface the version error, got %v", err)
 	}
 }
