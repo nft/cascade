@@ -17,13 +17,13 @@ export function DeleteProject(arg1:string):Promise<void>;
 
 export function ExportBoardToFile(arg1:string,arg2:string):Promise<string>;
 
-export function ImportBoardFromFile(arg1:string):Promise<any>;
+export function ImportBoardFromFile(arg1:string):Promise<main.ImportBoardResult>;
 
 export function ListProjects():Promise<Array<store.ProjectInfo>>;
 
 export function OpenProject(arg1:string):Promise<main.ProjectBundle>;
 
-export function ReadClipboardEnvelope():Promise<any>;
+export function ReadClipboardEnvelope():Promise<main.ClipboardEnvelope>;
 
 export function RenameProject(arg1:string,arg2:string):Promise<store.ProjectInfo>;
 

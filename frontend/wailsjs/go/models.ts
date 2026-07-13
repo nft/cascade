@@ -19,6 +19,74 @@ export namespace httpcall {
 
 export namespace main {
 	
+	export class ClipboardEnvelope {
+	    found: boolean;
+	    payload?: share.Payload;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClipboardEnvelope(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.found = source["found"];
+	        this.payload = this.convertValues(source["payload"], share.Payload);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ImportBoardResult {
+	    cancelled: boolean;
+	    board: store.Board;
+	    requires: share.Requires;
+	    collections?: store.Collection[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportBoardResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cancelled = source["cancelled"];
+	        this.board = this.convertValues(source["board"], store.Board);
+	        this.requires = this.convertValues(source["requires"], share.Requires);
+	        this.collections = this.convertValues(source["collections"], store.Collection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ProjectBundle {
 	    project: store.ProjectMeta;
 	    sources: store.Source[];
@@ -188,6 +256,136 @@ export namespace main {
 	        this.sentHeaders = source["sentHeaders"];
 	    }
 	}
+
+}
+
+export namespace share {
+	
+	export class CredentialRequirement {
+	    name: string;
+	    kind?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CredentialRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	    }
+	}
+	export class SourceRequirement {
+	    id: string;
+	    title: string;
+	    embedded: boolean;
+	    source?: store.Source;
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.embedded = source["embedded"];
+	        this.source = this.convertValues(source["source"], store.Source);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Requires {
+	    environments: string[];
+	    credentials: CredentialRequirement[];
+	    sources: SourceRequirement[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Requires(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.environments = source["environments"];
+	        this.credentials = this.convertValues(source["credentials"], CredentialRequirement);
+	        this.sources = this.convertValues(source["sources"], SourceRequirement);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Payload {
+	    kind: string;
+	    formatVersion: number;
+	    app: string;
+	    board: store.Board;
+	    requires: Requires;
+	    collections?: store.Collection[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Payload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.formatVersion = source["formatVersion"];
+	        this.app = source["app"];
+	        this.board = this.convertValues(source["board"], store.Board);
+	        this.requires = this.convertValues(source["requires"], Requires);
+	        this.collections = this.convertValues(source["collections"], store.Collection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 
 }
 
