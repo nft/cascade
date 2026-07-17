@@ -17,7 +17,6 @@ const mkNode = (data: Partial<HttpNode['data']> = {}): HttpNode => ({
     environment: 'staging',
     credential: '',
     status: 'idle',
-    repeat: 1,
     fields: [
       { key: 'body.email', source: 'literal', value: 'ada@example.com' },
       { key: 'header.X-Api-Key', source: 'literal', value: 'k' },

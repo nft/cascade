@@ -18,7 +18,6 @@ const httpNode = (id: string, environment: string, credential: string): AppNode 
     environment,
     credential,
     status: 'idle',
-    repeat: 1,
     fields: [],
   },
 })

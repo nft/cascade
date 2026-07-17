@@ -198,7 +198,6 @@ export type OperationNodeData = RunnableNodeData & {
   credential: string
   fields: NodeField[]
   rawBody?: RawBody
-  repeat: number
   requestRef?: RequestRef
   /** Response schema pinned via "use last response as schema"; survives later runs. */
   responseSchema?: SchemaJSON

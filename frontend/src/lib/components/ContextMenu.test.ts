@@ -131,7 +131,6 @@ describe('ContextMenu component (plan 03 §2)', () => {
           environment: 'staging',
           credential: 'staging-admin',
           status: 'idle',
-          repeat: 1,
           fields: [],
         },
       },

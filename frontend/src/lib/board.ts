@@ -130,7 +130,6 @@ export function deserializeBoard(board: BoardJSON): {
             environment: String(partial.environment ?? ''),
             credential: String(partial.credential ?? ''),
             status: 'idle',
-            repeat: Number(partial.repeat ?? 1),
             fields: Array.isArray(partial.fields) ? (partial.fields as NodeField[]) : [],
             ...(isRawBody(partial.rawBody) ? { rawBody: partial.rawBody } : {}),
             ...(isRequestRef(partial.requestRef) ? { requestRef: partial.requestRef } : {}),

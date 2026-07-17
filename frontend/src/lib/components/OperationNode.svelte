@@ -28,9 +28,6 @@
     <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[data.method]}">{data.method}</span>
     <span class="truncate text-xs font-medium text-zinc-100">{data.name}</span>
     <span class="ml-auto flex shrink-0 items-center gap-1">
-      {#if data.repeat > 1}
-        <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">×{data.repeat}</span>
-      {/if}
       <button
         class="nodrag flex items-center rounded p-0.5 text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400 disabled:cursor-not-allowed disabled:text-zinc-600 {selected
           ? ''

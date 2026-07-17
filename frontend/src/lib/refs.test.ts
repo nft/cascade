@@ -27,7 +27,6 @@ const httpNode = (id: string, name: string, key: string): AppNode => ({
     environment: '',
     credential: '',
     status: 'idle',
-    repeat: 1,
     fields: [],
   },
 })

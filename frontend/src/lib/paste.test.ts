@@ -64,7 +64,6 @@ const existingNode = (id: string, key: string): AppNode => ({
     environment: '',
     credential: '',
     status: 'idle',
-    repeat: 1,
     fields: [],
   },
 })

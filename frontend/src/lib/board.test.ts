@@ -15,7 +15,6 @@ const httpNode = (id: string, x = 10, y = 20): AppNode => ({
     credential: 'staging-admin',
     status: 'failed',
     note: '422 Unprocessable Entity',
-    repeat: 3,
     fields: [{ key: 'body.name', source: 'literal', value: 'Apollo' }],
   },
 })
@@ -39,7 +38,6 @@ describe('serializeBoard (plan 01 P5)', () => {
         path: '/v1/a',
         environment: 'staging',
         credential: 'staging-admin',
-        repeat: 3,
         fields: [{ key: 'body.name', source: 'literal', value: 'Apollo' }],
       },
     })
@@ -70,7 +68,6 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(a.position).toEqual({ x: 10, y: 20 })
     expect(a.data.name).toBe('Node a')
     expect(a.data.method).toBe('POST')
-    expect(a.data.repeat).toBe(3)
     expect(a.data.fields).toEqual([{ key: 'body.name', source: 'literal', value: 'Apollo' }])
     expect(a.data.status).toBe('idle')
     expect(a.data.note).toBeUndefined()
@@ -134,10 +131,24 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(bare.type).toBe('http')
     expect(bare.position).toEqual({ x: 0, y: 0 })
     expect(bare.data.name).toBe('bare')
-    expect(bare.data.repeat).toBe(1)
     expect(bare.data.fields).toEqual([])
     // Edges without an id get a deterministic one.
     expect(edges[0].id).toBeTruthy()
+  })
+
+  it('ignores the retired repeat key on old boards and never writes it back (plan 10 §3a)', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [{ id: 'n1', name: 'Legacy', data: { method: 'POST', repeat: 5 } }],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    expect(nodes[0].data).not.toHaveProperty('repeat')
+    const rewritten = serializeBoard('b1', 'Main', nodes, [])
+    expect(JSON.stringify(rewritten)).not.toContain('"repeat"')
   })
 
   it('backfills missing node keys from names, board-uniquely (plan 05 §9a)', () => {

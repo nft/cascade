@@ -73,7 +73,6 @@ describe('executeTransform script mode (dev sandbox stand-in)', () => {
         environment: '',
         credential: '',
         status: 'idle',
-        repeat: 1,
         fields: [],
       },
     },

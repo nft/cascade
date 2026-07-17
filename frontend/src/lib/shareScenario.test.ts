@@ -36,7 +36,6 @@ const chainEnvelope = (): EnvelopePayload => ({
           environment: 'staging',
           credential: 'staging-admin',
           status: 'idle',
-          repeat: 1,
           fields: [{ key: 'body.email', source: 'literal', value: 'a@b.c' }],
         },
       },
@@ -52,7 +51,6 @@ const chainEnvelope = (): EnvelopePayload => ({
           environment: 'staging',
           credential: 'staging-admin',
           status: 'idle',
-          repeat: 1,
           fields: [
             { key: 'body.ownerId', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
           ],
@@ -70,7 +68,6 @@ const chainEnvelope = (): EnvelopePayload => ({
           environment: 'staging',
           credential: 'staging-admin',
           status: 'idle',
-          repeat: 1,
           fields: [
             { key: 'body.orgId', source: 'binding', value: 'res.body.id', ref: { nodeId: '', path: 'body.id' } },
             { key: 'body.name', source: 'template', value: 'proj-{{n1.body.id}}-{{i}}' },

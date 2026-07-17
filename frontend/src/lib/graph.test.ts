@@ -22,7 +22,6 @@ const mkNode = (id: string, status: NodeStatus): AppNode => ({
     environment: 'staging',
     credential: 'staging-admin',
     status,
-    repeat: 1,
     fields: [],
   },
 })

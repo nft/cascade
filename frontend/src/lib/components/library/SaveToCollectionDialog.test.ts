@@ -18,7 +18,6 @@ const node: HttpNode = {
     environment: 'staging',
     credential: 'staging-admin',
     status: 'idle',
-    repeat: 1,
     fields: [
       { key: 'body.amount', source: 'literal', value: '50' },
       { key: 'body.invoiceId', source: 'binding', value: 'x.body.id', ref: { nodeId: 'x', path: 'body.id' } },

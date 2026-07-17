@@ -27,7 +27,7 @@ export function canonicalRequestUrl(url: string): string {
  * Strips a node's data down to a library RequestDef (plan 08 B3): literal
  * fields become defaults, binding/template rows become empty defaults (board
  * wiring never enters the library), and board-only bits — key, exports,
- * status, environment, credential, repeat — are dropped. Identity fields
+ * status, environment, credential — are dropped. Identity fields
  * (id, name, description, requestSchema) come from `base` so updates keep them.
  */
 export function requestDefFromNode(

@@ -15,7 +15,6 @@
   import Button from './ui/Button.svelte'
   import Field from './ui/Field.svelte'
   import IconButton from './ui/IconButton.svelte'
-  import Input from './ui/Input.svelte'
   import Select from './ui/Select.svelte'
 
   // http and transform nodes get an inspector; notes edit inline on the card.
@@ -92,17 +91,6 @@
             </span>
           </p>
         {/if}
-
-        <Field label="Repeat">
-          <Input
-            type="number"
-            min="1"
-            surface="raised"
-            class="mt-1 w-24"
-            value={node.data.repeat}
-            oninput={(e) => app.updateNodeData(node.id, { repeat: Math.max(1, Number(e.currentTarget.value) || 1) })}
-          />
-        </Field>
 
         <RequestSection target={nodeTarget(node)} />
 

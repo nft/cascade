@@ -17,7 +17,6 @@ const data = (patch: Partial<OperationNodeData> = {}): OperationNodeData => ({
   environment: 'staging',
   credential: 'staging-admin',
   status: 'idle',
-  repeat: 3,
   fields: [
     { key: 'body.amount', source: 'literal', value: '100' },
     { key: 'body.userId', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
@@ -41,7 +40,7 @@ describe('requestDefFromNode (plan 08 B3)', () => {
       ],
     })
     // Nothing board-only (or secret) leaks into the library.
-    expect(JSON.stringify(def)).not.toMatch(/staging-admin|invoiceId|repeat|status/)
+    expect(JSON.stringify(def)).not.toMatch(/staging-admin|invoiceId|status/)
   })
 
   it('composes an absolute url from an origin override and copies the response schema', () => {

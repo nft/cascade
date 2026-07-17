@@ -85,7 +85,6 @@ export const initialNodes: AppNode[] = [
       environment: 'staging',
       credential: 'staging-admin',
       status: 'success',
-      repeat: 1,
       fields: [
         { key: 'body.email', source: 'literal', value: 'ada@example.com' },
         { key: 'body.name', source: 'literal', value: 'Ada Lovelace' },
@@ -104,7 +103,6 @@ export const initialNodes: AppNode[] = [
       environment: 'staging',
       credential: 'staging-admin',
       status: 'success',
-      repeat: 1,
       fields: [
         { key: 'body.name', source: 'literal', value: 'Acme Inc' },
         {
@@ -128,7 +126,6 @@ export const initialNodes: AppNode[] = [
       environment: 'staging',
       credential: 'staging-admin',
       status: 'success',
-      repeat: 5,
       fields: [
         {
           key: 'path.id',
@@ -152,7 +149,6 @@ export const initialNodes: AppNode[] = [
       environment: 'staging',
       credential: 'staging-admin',
       status: 'failed',
-      repeat: 1,
       note: '422 Unprocessable Entity',
       fields: [
         { key: 'body.name', source: 'literal', value: 'Apollo' },
@@ -177,7 +173,6 @@ export const initialNodes: AppNode[] = [
       environment: 'staging',
       credential: 'staging-admin',
       status: 'skipped',
-      repeat: 1,
       fields: [
         {
           key: 'path.id',

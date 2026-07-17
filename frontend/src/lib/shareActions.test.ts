@@ -25,7 +25,6 @@ const mkNode = (id: string, selected = false): AppNode => ({
     environment: '',
     credential: '',
     status: 'idle',
-    repeat: 1,
     fields: [],
   },
 })

@@ -16,7 +16,6 @@ const httpNode = (id: string, name: string, key: string): AppNode => ({
     environment: 'staging',
     credential: 'staging-admin',
     status: 'idle',
-    repeat: 1,
     fields: [{ key: 'body.owner_id', source: 'literal', value: '' }],
   },
 })

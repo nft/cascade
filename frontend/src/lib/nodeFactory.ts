@@ -24,7 +24,6 @@ export function makeHttpNode(
       environment: defaults?.environment ?? '',
       credential: defaults?.credential ?? '',
       status: 'idle',
-      repeat: 1,
       fields: [],
     },
   }
@@ -54,7 +53,6 @@ export function makeCustomHttpNode(
       environment: defaults?.environment ?? '',
       credential: '',
       status: 'idle',
-      repeat: 1,
       fields: [],
     },
   }
@@ -89,7 +87,6 @@ export function makeHttpNodeFromRequest(
       environment: defaults?.environment ?? '',
       credential: split ? '' : (defaults?.credential ?? ''),
       status: 'idle',
-      repeat: 1,
       fields: structuredClone(request.defaults ?? []),
       ...(request.responseSchema ? { responseSchema: structuredClone(request.responseSchema) } : {}),
       requestRef: { collectionId, requestId: request.id },

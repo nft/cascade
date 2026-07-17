@@ -17,7 +17,6 @@ const mkNode = (id: string): AppNode => ({
     environment: 'staging',
     credential: 'staging-admin',
     status: 'idle',
-    repeat: 1,
     fields: [],
   },
 })
