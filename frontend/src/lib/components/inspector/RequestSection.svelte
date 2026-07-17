@@ -1,5 +1,17 @@
+<script module lang="ts">
+  import type { RawBody } from '../../model'
+
+  // Session-local stash of raw payloads while the fields view is showing
+  // (plan 10 §3c): toggling raw→fields must not delete the typed text.
+  // Deliberately NOT persisted into node data — deserializeBoard whitelists
+  // keys, so a draft key would hit the board file yet be dropped on the next
+  // load. Reload commits whichever mode is visible; that's the contract.
+  const rawBodyStash = new Map<string, RawBody>()
+</script>
+
 <script lang="ts">
   import {
+    emptyJsonRawBody,
     methodAllowsBody,
     paramRows,
     sectionFields,
@@ -52,7 +64,13 @@
   )
 
   function setRawMode(on: boolean) {
-    target.setRawBody?.(on ? (target.rawBody ?? { contentType: 'application/json', text: '' }) : undefined)
+    if (!target.setRawBody) return
+    if (on) {
+      target.setRawBody(target.rawBody ?? rawBodyStash.get(target.id) ?? emptyJsonRawBody())
+    } else {
+      if (target.rawBody) rawBodyStash.set(target.id, target.rawBody)
+      target.setRawBody(undefined)
+    }
   }
 </script>
 
@@ -99,15 +117,8 @@
       {/each}
     {:else}
       {#if supportsRaw}
+        <!-- raw leads (plan 10 §3c): the JSON editor is the primary body experience. -->
         <div class="flex items-center gap-1">
-          <button
-            class="rounded px-1.5 py-0.5 text-[10px] {rawMode
-              ? 'text-zinc-500 hover:text-zinc-300'
-              : 'bg-zinc-800 text-zinc-100'}"
-            onclick={() => setRawMode(false)}
-          >
-            fields
-          </button>
           <button
             class="rounded px-1.5 py-0.5 text-[10px] {rawMode
               ? 'bg-zinc-800 text-zinc-100'
@@ -115,6 +126,14 @@
             onclick={() => setRawMode(true)}
           >
             raw
+          </button>
+          <button
+            class="rounded px-1.5 py-0.5 text-[10px] {rawMode
+              ? 'text-zinc-500 hover:text-zinc-300'
+              : 'bg-zinc-800 text-zinc-100'}"
+            onclick={() => setRawMode(false)}
+          >
+            fields
           </button>
         </div>
       {/if}

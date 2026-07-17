@@ -162,6 +162,8 @@ export interface RequestDef {
    * are board concepts and don't belong in a library.
    */
   defaults?: NodeField[]
+  /** Raw-body request definition (plan 10 §3c); copied onto instantiated nodes. */
+  rawBody?: RawBody
   requestSchema?: RequestSchema
   /** Hand-written or inferred from a test request (plan 08 B4). */
   responseSchema?: SchemaJSON

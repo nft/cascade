@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeHttpNodeFromRequest } from './nodeFactory'
+import { makeCustomHttpNode, makeHttpNode, makeHttpNodeFromRequest } from './nodeFactory'
 import type { RequestDef } from './model'
 
 const defaults = { environment: 'staging', credential: 'staging-admin' }
@@ -45,5 +45,40 @@ describe('makeHttpNodeFromRequest (plan 08 B3)', () => {
     // inherits the project credential.
     expect(node.data.credential).toBe('')
     expect(node.data.environment).toBe('staging')
+  })
+})
+
+describe('raw-JSON-first bodies (plan 10 §3c)', () => {
+  it('makeCustomHttpNode seeds an empty raw JSON body', () => {
+    const node = makeCustomHttpNode('n1', [], defaults, at)
+    if (node.type !== 'http') throw new Error('expected an http node')
+    expect(node.data.rawBody).toEqual({ contentType: 'application/json', text: '' })
+  })
+
+  it('makeHttpNode from an operation stays in fields mode', () => {
+    const node = makeHttpNode(
+      { ref: 'op1', method: 'POST', path: '/v1/users', summary: 'Create user', group: 'users' },
+      'n1',
+      [],
+      defaults,
+      at,
+    )
+    if (node.type !== 'http') throw new Error('expected an http node')
+    expect(node.data.rawBody).toBeUndefined()
+  })
+
+  it('makeHttpNodeFromRequest copies the request rawBody, unshared', () => {
+    const request: RequestDef = {
+      id: 'raw-req',
+      name: 'Raw request',
+      protocol: 'http',
+      method: 'POST',
+      url: '/v1/things',
+      rawBody: { contentType: 'application/json', text: '{"a":1}' },
+    }
+    const node = makeHttpNodeFromRequest('col1', request, 'n1', [], defaults, at)
+    if (node.type !== 'http') throw new Error('expected an http node')
+    expect(node.data.rawBody).toEqual(request.rawBody)
+    expect(node.data.rawBody).not.toBe(request.rawBody)
   })
 })

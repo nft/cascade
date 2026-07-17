@@ -402,3 +402,55 @@ describe('renameField (plan 10 §3b)', () => {
     expect((app.nodes[0] as HttpNode).data.fields.map((f) => f.key)).toEqual(['query.a', 'query.b', 'query.c'])
   })
 })
+
+describe('raw-body sim capture (plan 10 §3c)', () => {
+  const rawNode = (id: string, text: string, contentType = 'application/json'): HttpNode => {
+    const node = mkNode(id) as HttpNode
+    node.data.fields = []
+    node.data.rawBody = { contentType, text }
+    return node
+  }
+
+  it('merges a templated JSON object over the id/created_at stub, user keys winning', async () => {
+    vi.useFakeTimers()
+    const upstream = mkNode('u') as HttpNode
+    upstream.data.key = 'u'
+    upstream.data.fields = [{ key: 'body.name', source: 'literal', value: 'Apollo' }]
+    const raw = rawNode('r', '{"org": "{{u.body.name}}", "id": "my-own-id"}')
+    app.nodes = [upstream, raw]
+    app.edges = [mkEdge('u', 'r')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    const body = app.responses['r']?.body as Record<string, unknown>
+    expect(body.org).toBe('Apollo') // template resolved against the upstream capture
+    expect(body.id).toBe('my-own-id') // user key wins over the stub
+    expect(body.created_at).toBeDefined() // stub fills what the payload lacks
+  })
+
+  it('echoes non-JSON raw text as the body string instead of a misleading stub', async () => {
+    vi.useFakeTimers()
+    app.nodes = [rawNode('r', 'a,b\n1,2', 'text/csv')]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(app.responses['r']?.body).toBe('a,b\n1,2')
+  })
+
+  it('uses non-object JSON (array) as the body as-is', async () => {
+    vi.useFakeTimers()
+    app.nodes = [rawNode('r', '[1, 2, 3]')]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(app.responses['r']?.body).toEqual([1, 2, 3])
+  })
+})

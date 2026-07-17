@@ -1,7 +1,7 @@
 // Request-shape helpers (plan 08 A1/A2): URL assembly for custom origins,
 // method/body rules, and the sectioned-editor grouping of prefixed field
 // keys. Pure and unit-tested, like graph.ts/refs.ts.
-import type { HttpMethod, NodeField } from './model'
+import type { HttpMethod, NodeField, RawBody } from './model'
 
 /**
  * Methods that never carry a request body. DELETE/OPTIONS deliberately allow
@@ -88,6 +88,47 @@ export function pathPlaceholders(path: string): string[] {
     if (name && !names.includes(name)) names.push(name)
   }
   return names
+}
+
+// --- raw body (plan 08 A1 / plan 10 §3c) -------------------------------------
+
+export const JSON_CONTENT_TYPE = 'application/json'
+
+/** The raw-JSON body every new custom node starts with (plan 10 §3c). */
+export function emptyJsonRawBody(): RawBody {
+  return { contentType: JSON_CONTENT_TYPE, text: '' }
+}
+
+export function isJsonContentType(contentType: string): boolean {
+  return contentType.toLowerCase().includes('json')
+}
+
+/**
+ * Syntax-checks a template-bearing JSON body pre-resolution: every {{…}}
+ * token is replaced with a JSON-neutral 0 (valid both bare and inside string
+ * literals), then parsed. Advisory only — resolution may still change shape.
+ */
+export function jsonBodyParses(text: string): boolean {
+  try {
+    JSON.parse(text.replace(/\{\{[^{}]*\}\}/g, '0'))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Pretty-prints a JSON body, or returns null when it doesn't parse *as
+ * typed*. Deliberately stricter than jsonBodyParses: reformatting is only
+ * safe when the literal text round-trips — templates outside string literals
+ * would be destroyed by parse-and-stringify.
+ */
+export function formatJsonBody(text: string): string | null {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+    return null
+  }
 }
 
 // --- sectioned editor (plan 08 A2) ------------------------------------------

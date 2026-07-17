@@ -539,6 +539,7 @@ export namespace store {
 	    method?: string;
 	    url: string;
 	    defaults?: any[];
+	    rawBody?: Record<string, any>;
 	    requestSchema?: Record<string, any>;
 	    responseSchema?: Record<string, any>;
 	    description?: string;
@@ -555,6 +556,7 @@ export namespace store {
 	        this.method = source["method"];
 	        this.url = source["url"];
 	        this.defaults = source["defaults"];
+	        this.rawBody = source["rawBody"];
 	        this.requestSchema = source["requestSchema"];
 	        this.responseSchema = source["responseSchema"];
 	        this.description = source["description"];

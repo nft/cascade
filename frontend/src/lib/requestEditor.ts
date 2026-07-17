@@ -22,7 +22,7 @@ export interface RequestEditorTarget {
   removeField(key: string): void
   /** Rewrite a field's key in place (row position preserved); collisions are the caller's job. */
   renameField(oldKey: string, newKey: string): void
-  /** Absent when the target has no raw-body escape hatch (library drafts). */
+  /** Absent when the target has no raw-body escape hatch. */
   setRawBody?(rawBody: RawBody | undefined): void
 }
 
@@ -68,6 +68,12 @@ export function draftTarget(draft: RequestDef): RequestEditorTarget {
     },
     get fields() {
       return draft.defaults ?? []
+    },
+    get rawBody() {
+      return draft.rawBody
+    },
+    setRawBody: (rawBody) => {
+      draft.rawBody = rawBody
     },
     setField: (field) => {
       const defaults = draft.defaults ?? (draft.defaults = [])

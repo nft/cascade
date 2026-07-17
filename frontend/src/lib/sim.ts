@@ -9,6 +9,7 @@ import {
   isTransformNode,
   type CapturedResponse,
   type HttpNode,
+  type NodeField,
   type TransformNode,
 } from './model'
 import { directUpstreams, keyByNodeId, resolveField, type ResolveContext } from './refs'
@@ -152,8 +153,9 @@ async function runTransformNode(app: AppState, node: TransformNode, runId: strin
 
 /**
  * Fabricate and store the node's response for the demo sim: body.* fields
- * resolve against upstream captures (so bindings, res sugar, templates and
- * {{i}} behave like the real engine), plus a server-shaped id/created_at.
+ * (or the raw body in raw mode, plan 10 §3c) resolve against upstream
+ * captures (so bindings, res sugar, templates and {{i}} behave like the real
+ * engine), plus a server-shaped id/created_at.
  */
 function captureSimulatedResponse(app: AppState, node: HttpNode): CapturedResponse {
   const ctx: ResolveContext = {
@@ -162,20 +164,9 @@ function captureSimulatedResponse(app: AppState, node: HttpNode): CapturedRespon
     upstreams: directUpstreams(app.edges, node.id),
     index: 0,
   }
-  const body: Record<string, unknown> = {
-    id: pseudoUuid(),
-    created_at: new Date().toISOString(),
-  }
-  for (const field of node.data.fields) {
-    if (!field.key.startsWith('body.')) continue
-    let value: unknown
-    try {
-      value = resolveField(field, ctx)
-    } catch (err) {
-      value = `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
-    }
-    setKeyPath(body, field.key.slice('body.'.length), value)
-  }
+  const body = node.data.rawBody
+    ? fabricateRawBody(node.data.rawBody.text, ctx)
+    : fabricateFieldsBody(node.data.fields, ctx)
   const captured: CapturedResponse = {
     status: 201,
     headers: { 'Content-Type': 'application/json' },
@@ -188,6 +179,54 @@ function captureSimulatedResponse(app: AppState, node: HttpNode): CapturedRespon
   }
   app.responses = { ...app.responses, [node.id]: captured }
   return captured
+}
+
+/** Fields mode: body.* rows over a server-shaped id/created_at stub. */
+function fabricateFieldsBody(fields: readonly NodeField[], ctx: ResolveContext): unknown {
+  const body: Record<string, unknown> = {
+    id: pseudoUuid(),
+    created_at: new Date().toISOString(),
+  }
+  for (const field of fields) {
+    if (!field.key.startsWith('body.')) continue
+    let value: unknown
+    try {
+      value = resolveField(field, ctx)
+    } catch (err) {
+      value = `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
+    }
+    setKeyPath(body, field.key.slice('body.'.length), value)
+  }
+  return body
+}
+
+/**
+ * Raw mode (plan 10 §3c): resolve {{…}} templates in the text, then echo a
+ * JSON object merged over the id/created_at stub (user keys win, so a payload
+ * without an id still supports the standard body.id binding demos), other
+ * JSON values as-is, and non-JSON text as the string itself — truer than
+ * substituting a JSON stub downstream bindings would misleadingly resolve
+ * against.
+ */
+function fabricateRawBody(text: string, ctx: ResolveContext): unknown {
+  let resolved: unknown
+  try {
+    resolved = resolveField({ key: 'rawBody', source: 'template', value: text }, ctx)
+  } catch (err) {
+    return `«unresolved: ${err instanceof Error ? err.message : String(err)}»`
+  }
+  let parsed: unknown = resolved
+  if (typeof resolved === 'string') {
+    try {
+      parsed = JSON.parse(resolved)
+    } catch {
+      return resolved
+    }
+  }
+  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    return { id: pseudoUuid(), created_at: new Date().toISOString(), ...parsed }
+  }
+  return parsed
 }
 
 /** Topological order over the current canvas; nodes in cycles are dropped (canvas rejects cycles anyway). */

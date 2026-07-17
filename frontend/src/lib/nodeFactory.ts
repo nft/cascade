@@ -1,7 +1,7 @@
 // Fresh-node payloads for canvas insertion, kept out of the store so
 // AppState only orchestrates (id allocation, selection, persistence).
 import type { AppNode, Operation, ProjectDefaults, RequestDef } from './model'
-import { splitUrl } from './request'
+import { emptyJsonRawBody, splitUrl } from './request'
 import { slugifyKey, takenKeys, uniqueKey } from './refs'
 import { DEFAULT_TRANSFORM_SCRIPT } from './transform'
 
@@ -54,6 +54,9 @@ export function makeCustomHttpNode(
       credential: '',
       status: 'idle',
       fields: [],
+      // Raw-JSON-first (plan 10 §3c): a hand-configured node greets with the
+      // JSON editor; schema-seeded operation nodes keep fields mode.
+      rawBody: emptyJsonRawBody(),
     },
   }
 }
@@ -88,6 +91,7 @@ export function makeHttpNodeFromRequest(
       credential: split ? '' : (defaults?.credential ?? ''),
       status: 'idle',
       fields: structuredClone(request.defaults ?? []),
+      ...(request.rawBody ? { rawBody: structuredClone(request.rawBody) } : {}),
       ...(request.responseSchema ? { responseSchema: structuredClone(request.responseSchema) } : {}),
       requestRef: { collectionId, requestId: request.id },
     },

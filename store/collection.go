@@ -30,6 +30,8 @@ type RequestDef struct {
 	URL string `json:"url"`
 	// Defaults are literal field rows copied onto new nodes; opaque here.
 	Defaults []map[string]any `json:"defaults,omitempty"`
+	// RawBody is a raw-body request definition (plan 10 §3c); opaque here.
+	RawBody map[string]any `json:"rawBody,omitempty"`
 	// RequestSchema / ResponseSchema are JSON-schema shapes (plan 08 B4);
 	// opaque here.
 	RequestSchema  map[string]any `json:"requestSchema,omitempty"`

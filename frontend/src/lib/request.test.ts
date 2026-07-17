@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   effectiveBaseUrl,
   fieldKeyName,
+  formatJsonBody,
+  isJsonContentType,
+  jsonBodyParses,
   isAbsoluteUrl,
   joinUrl,
   methodAllowsBody,
@@ -181,5 +184,29 @@ describe('fieldKeyName (plan 10 §3b)', () => {
       const section = sectionOfKey(key)!
       expect(sectionKey(section, fieldKeyName(key), path)).toBe(key)
     }
+  })
+})
+
+describe('raw JSON body helpers (plan 10 §3c)', () => {
+  it('jsonBodyParses tolerates {{…}} templates in any position', () => {
+    expect(jsonBodyParses('{"a": 1}')).toBe(true)
+    expect(jsonBodyParses('{"user": "{{createUser.body.id}}", "count": {{i}}}')).toBe(true)
+    expect(jsonBodyParses('{"a": }')).toBe(false)
+    expect(jsonBodyParses('not json')).toBe(false)
+  })
+
+  it('formatJsonBody pretty-prints literal JSON and refuses template-bearing text', () => {
+    expect(formatJsonBody('{"a":1}')).toBe('{\n  "a": 1\n}')
+    // A bare template outside a string literal would be destroyed by
+    // parse-and-stringify, so no format action is offered.
+    expect(formatJsonBody('{"count": {{i}}}')).toBeNull()
+    // Templates inside string literals survive a round-trip and format fine.
+    expect(formatJsonBody('{"user":"{{u.body.id}}"}')).toBe('{\n  "user": "{{u.body.id}}"\n}')
+  })
+
+  it('isJsonContentType matches vendored JSON types too', () => {
+    expect(isJsonContentType('application/json')).toBe(true)
+    expect(isJsonContentType('application/vnd.api+json')).toBe(true)
+    expect(isJsonContentType('text/csv')).toBe(false)
   })
 })

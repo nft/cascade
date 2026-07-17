@@ -181,6 +181,29 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(updated.data.fields).toEqual([{ key: 'path.id', source: 'literal', value: 'u_1' }])
   })
 
+  it('raw → fields → raw round-trips the payload through the session stash (plan 10 §3c)', () => {
+    const node = mkNode({
+      fields: [],
+      rawBody: { contentType: 'application/json', text: '{"answer": 42}' },
+    })
+    mountWith(node)
+    tabButton('Body')!.click()
+    flushSync()
+    const toggle = (label: string) =>
+      [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+        (b) => b.textContent?.trim() === label,
+      )!
+    toggle('fields').click()
+    flushSync()
+    expect((app.nodes[0] as HttpNode).data.rawBody).toBeUndefined()
+    toggle('raw').click()
+    flushSync()
+    expect((app.nodes[0] as HttpNode).data.rawBody).toEqual({
+      contentType: 'application/json',
+      text: '{"answer": 42}',
+    })
+  })
+
   it('hides the Body tab for GET and falls back to Params', () => {
     mountWith(mkNode({ method: 'GET' }))
     expect(tabButton('Body')).toBeUndefined()
@@ -211,11 +234,20 @@ describe('RequestSection over a library draft (plan 08 B3)', () => {
     ...draft,
   })
 
-  it('is literal-only: no binding pickers, no raw-body toggle', () => {
-    mountDraft(mkDraft())
+  it('is literal-only: no binding pickers, but raw bodies are allowed (plan 10 §3c)', () => {
+    const draft = mkDraft()
+    mountDraft(draft)
     expect(document.querySelector('[aria-label^="Insert reference"]')).toBeNull()
+    tabButton('Body')!.click()
+    flushSync()
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('button')]
-    expect(buttons.some((b) => b.textContent?.trim() === 'raw')).toBe(false)
+    const rawToggle = buttons.find((b) => b.textContent?.trim() === 'raw')
+    expect(rawToggle).toBeDefined()
+    rawToggle!.click()
+    flushSync()
+    expect(draft.rawBody).toEqual({ contentType: 'application/json', text: '' })
+    // still no reference picker, even in the raw editor
+    expect(document.querySelector('[aria-label^="Insert reference"]')).toBeNull()
   })
 
   it('seeds Params rows from {placeholders} in the full URL', () => {

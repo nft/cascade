@@ -1,16 +1,41 @@
 <script lang="ts">
   import { javascript } from '@codemirror/lang-javascript'
+  import { json } from '@codemirror/lang-json'
   import { syntaxHighlighting } from '@codemirror/language'
   import { classHighlighter } from '@lezer/highlight'
   import { basicSetup, EditorView } from 'codemirror'
   import { untrack } from 'svelte'
 
-  let { value, onChange }: { value: string; onChange: (value: string) => void } = $props()
+  let {
+    value,
+    onChange,
+    language = 'javascript',
+  }: {
+    value: string
+    onChange: (value: string) => void
+    /** Transform scripts are JS; raw JSON bodies get JSON highlighting (plan 10 §3c). */
+    language?: 'javascript' | 'json'
+  } = $props()
 
   let host = $state<HTMLDivElement | null>(null)
   let view: EditorView | undefined
   /** Last doc text seen by/pushed to the editor — breaks the update loop. */
   let current = ''
+
+  /**
+   * Insert at the current selection via a transaction — CodeMirror state is
+   * immutable, so native-input selection APIs don't apply here (plan 10 §3c).
+   */
+  export function insertText(text: string) {
+    if (!view) return
+    const { from, to } = view.state.selection.main
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
+      scrollIntoView: true,
+    })
+    view.focus()
+  }
 
   $effect(() => {
     if (!host) return
@@ -21,7 +46,7 @@
       parent: host,
       extensions: [
         basicSetup,
-        javascript(),
+        language === 'json' ? json() : javascript(),
         syntaxHighlighting(classHighlighter),
         EditorView.theme({}, { dark: true }),
         EditorView.updateListener.of((update) => {
