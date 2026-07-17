@@ -367,6 +367,20 @@ export class AppState {
     this.updateNodeData(nodeId, { fields })
   }
 
+  /**
+   * Rename a field in place, keeping its row position — composing
+   * removeField+setField would append the renamed key at the bottom of its
+   * section (setField appends unknown keys), which reads as a bug (plan 10 §3b).
+   */
+  renameField(nodeId: string, oldKey: string, newKey: string) {
+    const node = this.nodes.find((n) => n.id === nodeId)
+    if (!node || !isHttpNode(node)) return
+    if (node.data.fields.some((f) => f.key === newKey)) return
+    this.updateNodeData(nodeId, {
+      fields: node.data.fields.map((f) => (f.key === oldKey ? { ...f, key: newKey } : f)),
+    })
+  }
+
   removeField(nodeId: string, fieldKey: string) {
     const node = this.nodes.find((n) => n.id === nodeId)
     if (!node || !isHttpNode(node)) return

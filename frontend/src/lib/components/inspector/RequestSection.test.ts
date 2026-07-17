@@ -49,8 +49,34 @@ const tabButton = (label: string) =>
     b.textContent?.includes(label),
   )
 
-const rowKeys = () =>
-  [...document.querySelectorAll<HTMLElement>('p.font-mono')].map((p) => p.textContent?.trim())
+// Displayed field names on the visible tab: read-only path keys render as
+// text, everything else as a key input (plan 10 §3b).
+const rowKeys = () => [
+  ...[...document.querySelectorAll<HTMLElement>('p[title^="name comes from"]')].map((p) =>
+    p.textContent?.trim(),
+  ),
+  ...[...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Field name"]')].map(
+    (i) => i.value,
+  ),
+]
+
+const keyInput = (name: string) =>
+  document.querySelector<HTMLInputElement>(`input[aria-label="Field name ${name}"]`)
+
+const ghostKeyInput = () => document.querySelector<HTMLInputElement>('input[aria-label="New field name"]')!
+const ghostValueInput = () => document.querySelector<HTMLInputElement>('input[aria-label="New field value"]')!
+
+function setInput(input: HTMLInputElement, value: string) {
+  input.value = value
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  flushSync()
+}
+
+function commitKeyInput(input: HTMLInputElement, value: string) {
+  input.value = value
+  input.dispatchEvent(new Event('change', { bubbles: true }))
+  flushSync()
+}
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -69,31 +95,90 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(tabButton('Body')?.textContent).toContain('1')
 
     // Params is the default tab: placeholder row seeded even though unstored.
-    expect(rowKeys()).toContain('path.id')
-    expect(rowKeys()).toContain('query.limit')
+    expect(rowKeys()).toContain('id')
+    expect(rowKeys()).toContain('limit')
 
     tabButton('Headers')!.click()
     flushSync()
-    expect(rowKeys()).toEqual(['header.X-Api-Key'])
+    expect(rowKeys()).toEqual(['X-Api-Key'])
 
     tabButton('Body')!.click()
     flushSync()
-    expect(rowKeys()).toEqual(['body.email'])
+    expect(rowKeys()).toEqual(['email'])
   })
 
-  it('adding in a section auto-prefixes the typed name', () => {
+  it('the ghost row auto-prefixes the typed name for its section', () => {
     const node = mkNode()
     mountWith(node)
     tabButton('Body')!.click()
     flushSync()
-    const input = document.querySelector<HTMLInputElement>('input[placeholder*="nests"]')!
-    input.value = 'user.name'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    flushSync()
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    setInput(ghostKeyInput(), 'user.name')
+    ghostKeyInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     flushSync()
     const updated = app.nodes[0] as HttpNode
     expect(updated.data.fields.map((f) => f.key)).toContain('body.user.name')
+    // committed: the ghost resets for the next field
+    expect(ghostKeyInput().value).toBe('')
+  })
+
+  it('the ghost row routes a params name matching a placeholder to path.* (plan 10 §3b)', () => {
+    const node = mkNode({ fields: [] })
+    mountWith(node)
+    setInput(ghostKeyInput(), 'id')
+    setInput(ghostValueInput(), 'u_42')
+    ghostValueInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    flushSync()
+    const updated = app.nodes[0] as HttpNode
+    expect(updated.data.fields).toEqual([{ key: 'path.id', source: 'literal', value: 'u_42' }])
+  })
+
+  it('placeholder-derived path rows have read-only keys (plan 10 §3b)', () => {
+    mountWith(mkNode())
+    expect(keyInput('id')).toBeNull()
+    expect(document.querySelector('p[title^="name comes from"]')?.textContent?.trim()).toBe('id')
+    // query rows stay editable
+    expect(keyInput('limit')).not.toBeNull()
+  })
+
+  it('renaming a field keeps its value and row position (plan 10 §3b)', () => {
+    const node = mkNode({
+      fields: [
+        { key: 'header.A', source: 'literal', value: '1' },
+        { key: 'header.B', source: 'literal', value: '2' },
+        { key: 'header.C', source: 'literal', value: '3' },
+      ],
+    })
+    mountWith(node)
+    tabButton('Headers')!.click()
+    flushSync()
+    commitKeyInput(keyInput('B')!, 'X-Renamed')
+    const updated = app.nodes[0] as HttpNode
+    expect(updated.data.fields.map((f) => f.key)).toEqual(['header.A', 'header.X-Renamed', 'header.C'])
+    expect(updated.data.fields[1].value).toBe('2')
+  })
+
+  it('rejects a rename that collides with an existing key and reverts the input', () => {
+    const node = mkNode({
+      fields: [
+        { key: 'header.A', source: 'literal', value: '1' },
+        { key: 'header.B', source: 'literal', value: '2' },
+      ],
+    })
+    mountWith(node)
+    tabButton('Headers')!.click()
+    flushSync()
+    commitKeyInput(keyInput('B')!, 'A')
+    const updated = app.nodes[0] as HttpNode
+    expect(updated.data.fields.map((f) => f.key)).toEqual(['header.A', 'header.B'])
+    expect(keyInput('B')!.value).toBe('B')
+  })
+
+  it('renaming a query param to a current placeholder re-routes it to path.*', () => {
+    const node = mkNode({ fields: [{ key: 'query.userId', source: 'literal', value: 'u_1' }] })
+    mountWith(node)
+    commitKeyInput(keyInput('userId')!, 'id')
+    const updated = app.nodes[0] as HttpNode
+    expect(updated.data.fields).toEqual([{ key: 'path.id', source: 'literal', value: 'u_1' }])
   })
 
   it('hides the Body tab for GET and falls back to Params', () => {
@@ -110,6 +195,8 @@ describe('RequestSection (plan 08 A2)', () => {
       }),
     )
     expect(document.body.textContent).toContain('unused')
+    // orphans lost their path owner, so their key becomes editable again
+    expect(keyInput('id')).not.toBeNull()
   })
 })
 
@@ -129,29 +216,37 @@ describe('RequestSection over a library draft (plan 08 B3)', () => {
     expect(document.querySelector('[aria-label^="Insert reference"]')).toBeNull()
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.some((b) => b.textContent?.trim() === 'raw')).toBe(false)
-    expect(document.body.textContent).toContain('literal defaults')
   })
 
   it('seeds Params rows from {placeholders} in the full URL', () => {
     mountDraft(mkDraft({ url: 'https://api.example.com/v1/invoices/{id}' }))
-    expect(document.body.textContent).toContain('path.id')
+    expect(rowKeys()).toContain('id')
   })
 
-  it('adding in a section writes an auto-prefixed default onto the draft', () => {
+  it('the ghost row writes an auto-prefixed default onto the draft', () => {
     const draft = mkDraft()
     mountDraft(draft)
-    const tab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) =>
-      b.textContent?.includes('Body'),
-    )!
-    tab.click()
+    tabButton('Body')!.click()
     flushSync()
-    const input = document.querySelector<HTMLInputElement>('input[placeholder*="nests"]')!
-    input.value = 'user.name'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    flushSync()
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    setInput(ghostKeyInput(), 'user.name')
+    ghostKeyInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     flushSync()
     expect(draft.defaults?.map((d) => d.key)).toContain('body.user.name')
     expect(app.nodes).toHaveLength(0) // nothing touched the board
+  })
+
+  it('renames rewrite draft defaults in place', () => {
+    const draft = mkDraft({
+      defaults: [
+        { key: 'body.amount', source: 'literal', value: '100' },
+        { key: 'body.currency', source: 'literal', value: 'EUR' },
+      ],
+    })
+    mountDraft(draft)
+    tabButton('Body')!.click()
+    flushSync()
+    commitKeyInput(keyInput('amount')!, 'total')
+    expect(draft.defaults?.map((d) => d.key)).toEqual(['body.total', 'body.currency'])
+    expect(draft.defaults?.[0].value).toBe('100')
   })
 })

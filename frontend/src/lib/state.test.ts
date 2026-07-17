@@ -376,3 +376,29 @@ describe('clearLogs (plan 10 §1)', () => {
     expect(app.responses).toEqual(responsesBefore)
   })
 })
+
+describe('renameField (plan 10 §3b)', () => {
+  const fields = (): HttpNode['data']['fields'] => [
+    { key: 'query.a', source: 'literal', value: '1' },
+    { key: 'query.b', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
+    { key: 'query.c', source: 'literal', value: '3' },
+  ]
+
+  it('rewrites the key in place, preserving value/source/ref and row order', () => {
+    const node = mkNode('a') as HttpNode
+    node.data.fields = fields()
+    app.nodes = [node]
+    app.renameField('a', 'query.b', 'query.renamed')
+    const updated = (app.nodes[0] as HttpNode).data.fields
+    expect(updated.map((f) => f.key)).toEqual(['query.a', 'query.renamed', 'query.c'])
+    expect(updated[1]).toMatchObject({ source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } })
+  })
+
+  it('is a no-op when the new key already exists', () => {
+    const node = mkNode('a') as HttpNode
+    node.data.fields = fields()
+    app.nodes = [node]
+    app.renameField('a', 'query.b', 'query.a')
+    expect((app.nodes[0] as HttpNode).data.fields.map((f) => f.key)).toEqual(['query.a', 'query.b', 'query.c'])
+  })
+})

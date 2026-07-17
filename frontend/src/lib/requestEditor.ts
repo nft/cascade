@@ -20,6 +20,8 @@ export interface RequestEditorTarget {
   readonly rawBody?: RawBody
   setField(field: NodeField): void
   removeField(key: string): void
+  /** Rewrite a field's key in place (row position preserved); collisions are the caller's job. */
+  renameField(oldKey: string, newKey: string): void
   /** Absent when the target has no raw-body escape hatch (library drafts). */
   setRawBody?(rawBody: RawBody | undefined): void
 }
@@ -43,6 +45,7 @@ export function nodeTarget(node: HttpNode): RequestEditorTarget {
     },
     setField: (field) => app.setField(node.id, field),
     removeField: (key) => app.removeField(node.id, key),
+    renameField: (oldKey, newKey) => app.renameField(node.id, oldKey, newKey),
     setRawBody: (rawBody) => app.updateNodeData(node.id, { rawBody }),
   }
 }
@@ -74,6 +77,9 @@ export function draftTarget(draft: RequestDef): RequestEditorTarget {
     },
     removeField: (key) => {
       draft.defaults = (draft.defaults ?? []).filter((d) => d.key !== key)
+    },
+    renameField: (oldKey, newKey) => {
+      draft.defaults = (draft.defaults ?? []).map((d) => (d.key === oldKey ? { ...d, key: newKey } : d))
     },
   }
 }

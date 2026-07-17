@@ -3,14 +3,11 @@
     methodAllowsBody,
     paramRows,
     sectionFields,
-    sectionKey,
     type RequestSectionId,
   } from '../../request'
   import type { RequestEditorTarget } from '../../requestEditor'
-  import Icon from '../Icon.svelte'
-  import Button from '../ui/Button.svelte'
-  import Input from '../ui/Input.svelte'
   import FieldRow from './FieldRow.svelte'
+  import NewFieldRow from './NewFieldRow.svelte'
   import RawBodyEditor from './RawBodyEditor.svelte'
 
   // Renders over the adapter, not an HttpNode (plan 08 B3), so the request
@@ -21,7 +18,6 @@
   // valid (same target, tab still shown); otherwise the first section with
   // rows — a POST with only body fields must not greet with empty Params.
   let picked = $state<{ targetId: string; tab: RequestSectionId } | null>(null)
-  let newName = $state('')
 
   const params = $derived(paramRows(target.fields, target.path))
   const headers = $derived(sectionFields(target.fields, 'headers'))
@@ -55,42 +51,26 @@
     tab === 'params' ? 'query param name' : tab === 'headers' ? 'header name, e.g. X-Api-Key' : 'field name, user.name nests',
   )
 
-  function addField() {
-    const name = newName.trim()
-    if (name === '') return
-    const key = sectionKey(tab, name, target.path)
-    if (target.fields.some((f) => f.key === key)) return
-    target.setField({ key, source: 'literal', value: '' })
-    newName = ''
-  }
-
   function setRawMode(on: boolean) {
     target.setRawBody?.(on ? (target.rawBody ?? { contentType: 'application/json', text: '' }) : undefined)
   }
 </script>
 
 <div>
-  <div class="flex items-center justify-between">
-    <div class="flex items-center gap-0.5" role="tablist" aria-label="Request sections">
-      {#each tabs as t (t.id)}
-        <button
-          role="tab"
-          aria-selected={tab === t.id}
-          class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase {tab === t.id
-            ? 'bg-zinc-800 text-zinc-100'
-            : 'text-zinc-500 hover:text-zinc-300'}"
-          onclick={() => (picked = { targetId: target.id, tab: t.id })}
-        >
-          {t.label}
-          <span class="font-mono text-[9px] {tab === t.id ? 'text-zinc-400' : 'text-zinc-600'}">{t.count}</span>
-        </button>
-      {/each}
-    </div>
-    {#if target.nodeId}
-      <span class="text-[10px] text-zinc-600">literal · res.path · {'{{'}…{'}}'}</span>
-    {:else}
-      <span class="text-[10px] text-zinc-600">literal defaults</span>
-    {/if}
+  <div class="flex items-center gap-0.5" role="tablist" aria-label="Request sections">
+    {#each tabs as t (t.id)}
+      <button
+        role="tab"
+        aria-selected={tab === t.id}
+        class="rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase {tab === t.id
+          ? 'bg-zinc-800 text-zinc-100'
+          : 'text-zinc-500 hover:text-zinc-300'}"
+        onclick={() => (picked = { targetId: target.id, tab: t.id })}
+      >
+        {t.label}
+        <span class="font-mono text-[9px] {tab === t.id ? 'text-zinc-400' : 'text-zinc-600'}">{t.count}</span>
+      </button>
+    {/each}
   </div>
 
   <div class="mt-1.5 space-y-1.5">
@@ -152,29 +132,7 @@
     {/if}
 
     {#if tab !== 'body' || !rawMode}
-      <div class="flex items-center gap-1">
-        <Input
-          size="sm"
-          surface="raised"
-          mono
-          class="min-w-0 flex-1"
-          placeholder={addPlaceholder}
-          bind:value={newName}
-          onkeydown={(e) => {
-            if (e.key === 'Enter') addField()
-          }}
-        />
-        <Button
-          variant="secondary"
-          size="xs"
-          disabled={newName.trim() === ''}
-          onclick={addField}
-          title="Add {tab === 'params' ? 'query param' : tab === 'headers' ? 'header' : 'body field'}"
-        >
-          <Icon name="add" size={13} />
-          Add
-        </Button>
-      </div>
+      <NewFieldRow {target} section={tab} keyPlaceholder={addPlaceholder} />
     {/if}
   </div>
 </div>

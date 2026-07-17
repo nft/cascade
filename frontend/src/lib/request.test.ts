@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   effectiveBaseUrl,
+  fieldKeyName,
   isAbsoluteUrl,
   joinUrl,
   methodAllowsBody,
@@ -159,5 +160,26 @@ describe('paramRows (plan 08 A2)', () => {
   it('lists query rows after path rows', () => {
     const rows = paramRows([field('query.limit'), field('path.id')], '/v1/users/{id}')
     expect(rows.map((r) => `${r.kind}:${r.field.key}`)).toEqual(['path:path.id', 'query:query.limit'])
+  })
+})
+
+describe('fieldKeyName (plan 10 §3b)', () => {
+  it('strips the storage prefix, keeping body nesting intact', () => {
+    expect(fieldKeyName('query.limit')).toBe('limit')
+    expect(fieldKeyName('path.id')).toBe('id')
+    expect(fieldKeyName('header.X-Api-Key')).toBe('X-Api-Key')
+    expect(fieldKeyName('body.user.name')).toBe('user.name')
+  })
+
+  it('returns unprefixed keys unchanged', () => {
+    expect(fieldKeyName('mystery')).toBe('mystery')
+  })
+
+  it('round-trips through sectionKey', () => {
+    const path = '/v1/users/{id}'
+    for (const key of ['query.limit', 'path.id', 'header.X-Api-Key', 'body.user.name']) {
+      const section = sectionOfKey(key)!
+      expect(sectionKey(section, fieldKeyName(key), path)).toBe(key)
+    }
   })
 })

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import type { NodeField } from '../../model'
+  import { fieldKeyName, sectionKey, sectionOfKey } from '../../request'
   import type { RequestEditorTarget } from '../../requestEditor'
   import { fieldDisplayValue, keyByNodeId, nodeIdByKey, parseFieldInput, validateFieldRefs } from '../../refs'
   import { app } from '../../state.svelte'
-  import Icon from '../Icon.svelte'
   import IconButton from '../ui/IconButton.svelte'
   import Input from '../ui/Input.svelte'
   import BindingPicker from './BindingPicker.svelte'
@@ -37,6 +37,11 @@
   const error = $derived(boundNodeId ? validateFieldRefs(field, boundNodeId, app.nodes, app.edges) : null)
   const isBound = $derived(field.source !== 'literal')
   const missing = $derived(required && display.trim() === '')
+  const keyName = $derived(fieldKeyName(field.key))
+  // Placeholder-derived rows' names are owned by the path text; orphans lost
+  // that owner, so renaming them (back to a placeholder, or into a query
+  // param) is their rescue path (plan 10 §3b).
+  const keyReadonly = $derived(kindBadge === 'path' && !orphan)
 
   let inputEl = $state<HTMLInputElement | null>(null)
   let pickerOpen = $state(false)
@@ -49,7 +54,23 @@
     )
   }
 
-  /** Insert picker text at the cursor of this field's input (plan 05 V4). */
+  /**
+   * Rename on blur/Enter, preserving source/value/ref and row position. The
+   * new name re-routes through sectionKey (a query param renamed to a current
+   * placeholder becomes the path row). Empty and colliding names revert.
+   */
+  function commitKey(el: HTMLInputElement) {
+    const name = el.value.trim()
+    const section = sectionOfKey(field.key)
+    const next = section && name !== '' ? sectionKey(section, name, target.path) : null
+    if (next === null || next === field.key || target.fields.some((f) => f.key === next)) {
+      el.value = keyName
+      return
+    }
+    target.renameField(field.key, next)
+  }
+
+  /** Insert picker text at the cursor of this field's value input (plan 05 V4). */
   function insert(text: string) {
     pickerOpen = false
     const el = inputEl
@@ -68,13 +89,7 @@
   }
 </script>
 
-<div
-  class="rounded-md border bg-zinc-900/60 px-2 py-1.5 {error
-    ? 'border-rose-500/40'
-    : missing || orphan
-      ? 'border-amber-500/40'
-      : 'border-zinc-800'}"
->
+<div>
   <div class="flex items-center gap-1">
     {#if kindBadge}
       <span
@@ -85,21 +100,48 @@
         {kindBadge}
       </span>
     {/if}
-    <p class="min-w-0 flex-1 truncate font-mono text-[11px] text-zinc-400">{field.key}</p>
+    {#if keyReadonly}
+      <p
+        class="w-2/5 shrink-0 truncate px-1.5 py-1 font-mono text-[11px] text-zinc-400"
+        title={`name comes from the {${keyName}} path placeholder`}
+      >
+        {keyName}
+      </p>
+    {:else}
+      <Input
+        size="xs"
+        mono
+        surface="raised"
+        class="w-2/5 shrink-0"
+        value={keyName}
+        aria-label="Field name {keyName}"
+        onchange={(e) => commitKey(e.currentTarget)}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+        }}
+      />
+    {/if}
     {#if orphan}
       <span
         class="shrink-0 rounded bg-amber-500/15 px-1 py-px font-mono text-[9px] text-amber-300"
-        title="No matching placeholder in the path — remove the row or restore the placeholder"
+        title="No matching placeholder in the path — remove the row, rename it, or restore the placeholder"
       >
         unused
       </span>
     {/if}
-    {#if isBound}
-      <span class="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-500/15 px-1 py-px font-mono text-[9px] text-violet-300">
-        <Icon name="link" size={10} />
-        {field.source}
-      </span>
-    {/if}
+    <Input
+      bind:el={inputEl}
+      size="xs"
+      mono
+      surface="raised"
+      tone={error ? 'error' : isBound ? 'accent' : 'default'}
+      class="min-w-0 flex-1"
+      value={display}
+      aria-label="Value of {keyName}"
+      oninput={(e) => commit(e.currentTarget.value)}
+      placeholder={boundNodeId ? `literal, res.path or {{nodeKey.path}}` : 'literal default'}
+      title={boundNodeId ? `literal, res.path or {{nodeKey.path}}` : undefined}
+    />
     {#if boundNodeId}
       <IconButton
         icon="add_link"
@@ -120,20 +162,10 @@
       />
     {/if}
   </div>
-  <Input
-    bind:el={inputEl}
-    size="xs"
-    mono
-    tone={isBound ? 'accent' : 'default'}
-    class="mt-1 w-full"
-    value={display}
-    oninput={(e) => commit(e.currentTarget.value)}
-    placeholder={boundNodeId ? `literal, res.path or {{nodeKey.path}}` : 'literal default'}
-  />
   {#if error}
-    <p class="mt-1 text-[10px] text-rose-400">{error}</p>
+    <p class="mt-0.5 text-[10px] text-rose-400">{error}</p>
   {:else if missing}
-    <p class="mt-1 text-[10px] text-amber-400">required path parameter</p>
+    <p class="mt-0.5 text-[10px] text-amber-400">required path parameter</p>
   {/if}
   {#if pickerOpen && boundNodeId}
     <BindingPicker nodeId={boundNodeId} onInsert={insert} />

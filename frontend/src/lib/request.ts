@@ -127,6 +127,20 @@ export function sectionKey(section: RequestSectionId, name: string, path: string
   return pathPlaceholders(path).includes(name) ? `path.${name}` : `query.${name}`
 }
 
+/**
+ * The name a field key displays as in the editor: its storage prefix stripped
+ * (`query.limit` → `limit`, `body.user.name` → `user.name`). Round-trips with
+ * sectionKey for rename commits (plan 10 §3b).
+ */
+export function fieldKeyName(key: string): string {
+  for (const prefixes of Object.values(SECTION_PREFIXES)) {
+    for (const prefix of prefixes) {
+      if (key.startsWith(prefix)) return key.slice(prefix.length)
+    }
+  }
+  return key
+}
+
 /** One Params-tab row: a stored field or a placeholder-derived empty row. */
 export interface ParamRow {
   field: NodeField
