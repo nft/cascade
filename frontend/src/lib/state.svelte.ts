@@ -415,6 +415,11 @@ export class AppState {
     if (!typing) this.selectedNodeId = null
   }
 
+  /** Logs are ephemeral (never persisted): no save scheduling, responses/statuses untouched. */
+  clearLogs() {
+    this.logs = []
+  }
+
   /** Demo-only run simulation (sim.ts); replaced by engine events once M1 is wired in. */
   async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
     await simulateRun(this, targetId, scope)

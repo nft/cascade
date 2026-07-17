@@ -4,11 +4,17 @@
   import { app } from '../state.svelte'
   import { httpStatusClass, methodBadge } from '../ui'
   import Icon from './Icon.svelte'
+  import IconButton from './ui/IconButton.svelte'
   import Select from './ui/Select.svelte'
 
   let statusFilter = $state<'all' | 'success' | 'failed'>('all')
   let query = $state('')
   let expandedId = $state<string | null>(null)
+
+  function clearLogs() {
+    app.clearLogs()
+    expandedId = null
+  }
 
   function entryFailed(entry: LogEntry): boolean {
     return entry.kind === 'transform' ? entry.error !== undefined : entry.status >= 400
@@ -54,6 +60,14 @@
           bind:value={query}
         />
       </div>
+      <IconButton
+        icon="delete_sweep"
+        label="Clear logs"
+        title="Clear logs"
+        tone="danger"
+        disabled={app.logs.length === 0}
+        onclick={clearLogs}
+      />
     {/if}
   </header>
 

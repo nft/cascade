@@ -354,3 +354,26 @@ describe('transform nodes in the sim (plan 06 T2)', () => {
     expect(app.responses['sticky']).toBeUndefined()
   })
 })
+
+describe('clearLogs (plan 10 §1)', () => {
+  it('empties logs and touches nothing else', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkNode('a')]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(app.logs.length).toBeGreaterThan(0)
+    const nodesBefore = app.nodes
+    const responsesBefore = { ...app.responses }
+
+    app.clearLogs()
+
+    expect(app.logs).toEqual([])
+    expect(app.nodes).toBe(nodesBefore)
+    expect(statusOf('a')).toBe('success')
+    expect(app.responses).toEqual(responsesBefore)
+  })
+})
