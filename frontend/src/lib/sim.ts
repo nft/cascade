@@ -85,6 +85,7 @@ export async function simulateRun(app: AppState, targetId?: string, scope: RunSc
         runId,
         time: new Date().toISOString().slice(11, 23),
         node: node.data.name,
+        nodeId: id,
         method: node.data.method,
         url: `https://staging.api.example.com${node.data.path.replace('{id}', 'org_01HZX9')}`,
         status: fails ? 422 : 201,
@@ -121,6 +122,7 @@ async function runTransformNode(app: AppState, node: TransformNode, runId: strin
     runId,
     time: new Date().toISOString().slice(11, 23),
     node: node.data.name,
+    nodeId: node.id,
     inputNodes: directUpstreams(app.edges, node.id).map((id) => keys.get(id) ?? id),
   }
   try {

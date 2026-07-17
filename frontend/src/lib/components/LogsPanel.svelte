@@ -33,6 +33,16 @@
       return q === '' || searchText(entry).includes(q)
     }),
   )
+
+  // Stale-highlight guard (plan 10 §2): pointerleave never fires when the
+  // hovered row disappears out from under the pointer (filter typed, status
+  // filter changed, panel collapsed) — reset whenever no rendered row carries
+  // the highlighted node id.
+  $effect(() => {
+    if (app.logHoverNodeId === null) return
+    if (app.logsOpen && filtered.some((entry) => entry.nodeId === app.logHoverNodeId)) return
+    app.logHoverNodeId = null
+  })
 </script>
 
 <section class="shrink-0 border-t border-zinc-800 bg-surface">
@@ -90,6 +100,8 @@
                 ? 'bg-rose-500/5'
                 : ''}"
               onclick={() => (expandedId = expandedId === entry.id ? null : entry.id)}
+              onpointerenter={() => (app.logHoverNodeId = entry.nodeId)}
+              onpointerleave={() => (app.logHoverNodeId = null)}
             >
               <td class="px-3 py-1.5 font-mono text-zinc-500">{entry.time}</td>
               <td class="px-2 py-1.5 text-zinc-300">{entry.node}</td>

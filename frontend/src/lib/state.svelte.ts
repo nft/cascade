@@ -96,6 +96,8 @@ export class AppState {
   isRunning = $state(false)
   /** Node ids in the currently running subgraph; null when idle. Drives edge animation. */
   activeRunIds = $state<ReadonlySet<string> | null>(null)
+  /** Node id of the hovered log row; rings the node and tints its edges on the canvas (plan 10 §2). */
+  logHoverNodeId = $state<string | null>(null)
   contextMenu = $state<ContextMenuState | null>(null)
   canvasTool = $state<CanvasTool>('select')
   /** Bumped by requestRename; the inspector focuses its name field when it changes. */
@@ -418,6 +420,8 @@ export class AppState {
   /** Logs are ephemeral (never persisted): no save scheduling, responses/statuses untouched. */
   clearLogs() {
     this.logs = []
+    // The hovered row unmounts without a pointerleave; drop its highlight explicitly.
+    this.logHoverNodeId = null
   }
 
   /** Demo-only run simulation (sim.ts); replaced by engine events once M1 is wired in. */

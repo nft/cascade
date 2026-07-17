@@ -8,11 +8,17 @@ import type { AppEdge, AppNode } from './model'
  * must not animate edges from ancestors that are not running, even though
  * they may still carry a status from an earlier run. Failed targets get a
  * distinct class. Styling for both classes lives in src/style.css.
+ *
+ * `highlightNodeId` (hovered log row, plan 10 §2) marks every incident edge —
+ * incoming fed the call, outgoing consumed it; together they pin the node.
+ * Precedence: a live run wins over the hover highlight, the hover highlight
+ * wins over failed (the panel already shows the red; the canvas shows where).
  */
 export function decorateEdges(
   nodes: AppNode[],
   edges: AppEdge[],
   activeRunIds: ReadonlySet<string> | null = null,
+  highlightNodeId: string | null = null,
 ): AppEdge[] {
   // Note nodes carry no status; their edges (which validation rejects anyway)
   // simply get no decoration.
@@ -21,10 +27,18 @@ export function decorateEdges(
     const targetStatus = statusById.get(edge.target)
     const animated =
       targetStatus === 'running' && (activeRunIds === null || activeRunIds.has(edge.source))
+    const highlighted =
+      highlightNodeId !== null && (edge.source === highlightNodeId || edge.target === highlightNodeId)
     return {
       ...edge,
       animated,
-      class: animated ? 'edge-active' : targetStatus === 'failed' ? 'edge-failed' : undefined,
+      class: animated
+        ? 'edge-active'
+        : highlighted
+          ? 'edge-log-highlight'
+          : targetStatus === 'failed'
+            ? 'edge-failed'
+            : undefined,
     }
   })
 }

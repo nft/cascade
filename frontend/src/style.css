@@ -39,6 +39,11 @@
   .svelte-flow__edge.edge-failed {
     --xy-edge-stroke: var(--color-rose-500);
   }
+  /* Hovered log row → incident edges of the originating node (plan 10 §2). */
+  .svelte-flow__edge.edge-log-highlight {
+    --xy-edge-stroke: var(--color-sky-400);
+    --xy-edge-stroke-width: 2.5;
+  }
   /* Scissors mode disables elementsSelectable; keep edges clickable for click-to-cut. */
   .cursor-scissors .svelte-flow__edge {
     pointer-events: visibleStroke;

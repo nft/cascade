@@ -387,6 +387,8 @@ interface LogEntryBase {
   runId: string
   time: string
   node: string
+  /** Originating node id — advisory: the node may have been deleted since the run (plan 10 §2). */
+  nodeId: string
   durationMs: number
   error?: string
 }

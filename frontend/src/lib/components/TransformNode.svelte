@@ -13,7 +13,9 @@
 <div
   class="group w-56 rounded-lg border bg-zinc-900 shadow-lg {selected
     ? 'border-violet-500'
-    : 'border-zinc-700 hover:border-zinc-500'}"
+    : 'border-zinc-700 hover:border-zinc-500'} {app.logHoverNodeId === id
+    ? 'ring-2 ring-sky-400/70'
+    : ''}"
 >
   <Handle type="target" position={Position.Left} class="!h-2.5 !w-2.5 !border-zinc-500 !bg-zinc-800" />
 
