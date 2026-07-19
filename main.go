@@ -18,6 +18,8 @@ var assets embed.FS
 
 // appDataDirName is the directory under os.UserConfigDir() holding all
 // project data (e.g. ~/Library/Application Support/cascade on macOS).
+// Stays lowercase even though the app is branded "Cascade" — renaming it
+// would orphan existing users' data.
 const appDataDirName = "cascade"
 
 // windowBackground matches the frontend shell (Tailwind zinc-950, #09090b) so
@@ -44,7 +46,7 @@ func main() {
 	app := NewApp(manager)
 
 	err = wails.Run(&options.App{
-		Title:  "cascade",
+		Title:  "Cascade",
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{

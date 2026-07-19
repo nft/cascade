@@ -2,6 +2,7 @@
   import { app } from '../state.svelte'
   import BoardMenu from './BoardMenu.svelte'
   import Icon from './Icon.svelte'
+  import Logo from './Logo.svelte'
   import ProjectSwitcher from './ProjectSwitcher.svelte'
   import Button from './ui/Button.svelte'
   import IconButton from './ui/IconButton.svelte'
@@ -15,7 +16,6 @@
     title={app.sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
     onclick={() => (app.sidebarOpen = !app.sidebarOpen)}
   />
-  <span class="text-sm font-semibold tracking-tight">Cascade</span>
   <ProjectSwitcher />
 
   <div class="ml-auto flex items-center gap-2">
