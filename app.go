@@ -127,6 +127,10 @@ type ScriptRunRequest struct {
 	Nodes  map[string]ScriptUpstream `json:"nodes"`
 	Res    *ScriptUpstream           `json:"res,omitempty"`
 	Index  int                       `json:"index"`
+	// Item is the each-mode loop element (plan 09); HasItem gates it so a
+	// stray `item` read outside a loop stays undefined.
+	Item    any  `json:"item,omitempty"`
+	HasItem bool `json:"hasItem,omitempty"`
 }
 
 // RunTransformScript executes one transform script in the goja sandbox and
@@ -134,8 +138,10 @@ type ScriptRunRequest struct {
 // non-serializable return) surface as the rejected promise's message.
 func (a *App) RunTransformScript(req ScriptRunRequest) (any, error) {
 	in := transform.Input{
-		Nodes: make(map[string]*binding.Output, len(req.Nodes)),
-		Index: req.Index,
+		Nodes:   make(map[string]*binding.Output, len(req.Nodes)),
+		Index:   req.Index,
+		Item:    req.Item,
+		HasItem: req.HasItem,
 	}
 	for key, up := range req.Nodes {
 		in.Nodes[key] = up.output()

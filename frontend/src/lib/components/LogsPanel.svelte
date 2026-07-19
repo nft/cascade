@@ -22,7 +22,7 @@
 
   function searchText(entry: LogEntry): string {
     const target =
-      entry.kind === 'http' ? entry.url : entry.kind === 'transform' ? entry.inputNodes.join(' ') : 'loop'
+      entry.kind === 'http' ? entry.url : entry.kind === 'transform' ? entry.inputNodes.join(' ') : entry.kind
     return `${entry.node} ${target} ${entry.runId}`.toLowerCase()
   }
 
@@ -125,6 +125,27 @@
                 <td class="px-2 py-1.5 text-right font-mono {entry.error ? 'text-rose-400' : 'text-emerald-400'}">
                   {entry.error ? 'failed' : 'ok'}
                 </td>
+              {:else if entry.kind === 'mock'}
+                <td class="px-2 py-1.5">
+                  <span class="mr-1.5 inline-flex items-center gap-1 rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold text-amber-300">
+                    <Icon name="data_object" size={11} />
+                    mock
+                  </span>
+                </td>
+                <td class="px-2 py-1.5 text-right font-mono {entry.error ? 'text-rose-400' : httpStatusClass(entry.status)}">
+                  {entry.error ? 'failed' : entry.status}
+                </td>
+              {:else if entry.kind === 'delay'}
+                <td class="px-2 py-1.5">
+                  <span class="mr-1.5 inline-flex items-center gap-1 rounded bg-sky-500/15 px-1 py-0.5 text-[10px] font-semibold text-sky-300">
+                    <Icon name="timer" size={11} />
+                    delay
+                  </span>
+                  <span class="font-mono text-zinc-400">waited {formatDuration(entry.durationMs)}</span>
+                </td>
+                <td class="px-2 py-1.5 text-right font-mono {entry.error ? 'text-rose-400' : 'text-emerald-400'}">
+                  {entry.error ? 'failed' : 'ok'}
+                </td>
               {:else if entry.kind === 'for'}
                 <!-- Loop summary rows show the iteration total; per-iteration
                      detail lives in the child rows carrying #k chips. -->
@@ -155,11 +176,15 @@
                   {#if entry.error}
                     <p class="pb-2 text-[11px] text-rose-400">{entry.error}</p>
                   {/if}
-                  {#if entry.kind === 'transform'}
+                  {#if entry.kind === 'transform' || entry.kind === 'mock'}
                     <div>
                       <p class="pb-1 text-[10px] tracking-wide text-zinc-600 uppercase">Output</p>
                       <pre class="overflow-x-auto rounded-md bg-zinc-950 p-2 font-mono text-[10px] text-zinc-400">{entry.output ?? '—'}</pre>
                     </div>
+                  {:else if entry.kind === 'delay'}
+                    <p class="text-[11px] text-zinc-500">
+                      waited {formatDuration(entry.durationMs)}, then passed its upstream output through
+                    </p>
                   {:else if entry.kind === 'for'}
                     <p class="text-[11px] text-zinc-500">
                       {entry.iterations} iteration{entry.iterations === 1 ? '' : 's'} —

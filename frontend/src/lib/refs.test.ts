@@ -242,6 +242,39 @@ describe('resolveField (mirrors core/binding resolution)', () => {
   })
 })
 
+describe('{{item}} loop scope (plan 09 N7, mirrors core/binding)', () => {
+  const ctx: ResolveContext = {
+    outputs: {},
+    exports: {},
+    upstreams: [],
+    index: 1,
+    item: { name: 'ada', tags: ['x', 'y'] },
+    hasItem: true,
+  }
+  const template = (value: string): NodeField => ({ key: 'k', source: 'template', value })
+
+  it('resolves the whole item, item paths and mixed text', () => {
+    expect(resolveField(template('{{item}}'), ctx)).toEqual({ name: 'ada', tags: ['x', 'y'] })
+    expect(resolveField(template('{{item.name}}'), ctx)).toBe('ada')
+    expect(resolveField(template('{{item.tags[1]}}'), ctx)).toBe('y')
+    expect(resolveField(template('u{{i}}-{{item.name}}'), ctx)).toBe('u1-ada')
+  })
+
+  it('resolves a bare primitive item', () => {
+    expect(resolveField(template('{{item}}'), { ...ctx, item: 'foo' })).toBe('foo')
+  })
+
+  it('fails with a named error outside an each-mode loop', () => {
+    expect(() =>
+      resolveField(template('{{item.name}}'), { ...ctx, hasItem: false, item: undefined }),
+    ).toThrow(/each-mode for loop/)
+  })
+
+  it('is a scope ref like i, never a node reference', () => {
+    expect(fieldRefs(template('{{item.name}}-{{i}}'))).toEqual([])
+  })
+})
+
 describe('[*] array map (plan 06 T3, mirrors core/binding goldens)', () => {
   const outputs: Record<string, CapturedResponse> = {
     'create-org-1': {

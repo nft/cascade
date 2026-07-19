@@ -15,10 +15,17 @@ import type {
 import { directUpstreams, keyByNodeId, resolveField, type ResolveContext } from './refs'
 
 /** Seed script for new transform nodes — documents the sandbox's inputs. */
-export const DEFAULT_TRANSFORM_SCRIPT = `// Inputs: res (single upstream), nodes.<key> (all ancestors), i (iteration).
-// _ has pick/omit/groupBy/uniq/chunk/sum… — return a JSON-serializable value.
+export const DEFAULT_TRANSFORM_SCRIPT = `// Inputs: res (single upstream), nodes.<key> (all ancestors), i (iteration),
+// item (each-mode loops). _ has pick/omit/groupBy/uniq/chunk/sum… — return a JSON-serializable value.
 return res.body
 `
+
+/** Loop-scope inputs a transform executes under (top level: index 0, no item). */
+export interface TransformScope {
+  index: number
+  item?: unknown
+  hasItem?: boolean
+}
 
 /** Runs the declarative Pick rows against resolved upstream outputs. */
 export function runPick(rows: NodeField[], ctx: ResolveContext): unknown {
@@ -67,11 +74,18 @@ export async function executeTransform(
   edges: readonly AppEdge[],
   responses: Readonly<Record<string, CapturedResponse | undefined>>,
   exports: ResolveContext['exports'],
-  index = 0,
+  scope: TransformScope = { index: 0 },
 ): Promise<unknown> {
   const upstreams = directUpstreams(edges, node.id)
   if (node.data.mode === 'pick') {
-    return runPick(node.data.pick, { outputs: responses, exports, upstreams, index })
+    return runPick(node.data.pick, {
+      outputs: responses,
+      exports,
+      upstreams,
+      index: scope.index,
+      item: scope.item,
+      hasItem: scope.hasItem,
+    })
   }
   const keys = keyByNodeId(nodes)
   const ancestors = upstreamIds(edges as AppEdge[], node.id)
@@ -87,7 +101,8 @@ export async function executeTransform(
     script: node.data.script,
     nodes: byKey,
     ...(res ? { res: toUpstream(res) } : {}),
-    index,
+    index: scope.index,
+    ...(scope.hasItem ? { item: scope.item, hasItem: true } : {}),
   })
 }
 

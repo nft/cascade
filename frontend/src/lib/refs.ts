@@ -11,7 +11,9 @@ import type { AppNode, CapturedResponse, FieldRef, NodeExport, NodeField } from 
 
 export const REF_RES = 'res'
 export const REF_INDEX = 'i'
-export const RESERVED_REF_ROOTS: ReadonlySet<string> = new Set([REF_RES, REF_INDEX])
+/** Each-mode loop element ({{item}} / {{item.path}}), plan 09. */
+export const REF_ITEM = 'item'
+export const RESERVED_REF_ROOTS: ReadonlySet<string> = new Set([REF_RES, REF_INDEX, REF_ITEM])
 
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const TEMPLATE_RE = /\{\{\s*([^{}]*?)\s*\}\}/g
@@ -137,11 +139,12 @@ export function refToDisplay(ref: FieldRef, keys: ReadonlyMap<string, string>): 
   return ref.path.startsWith('[') ? `${owner}${ref.path}` : `${owner}.${ref.path}`
 }
 
-/** Parses a stored expression (owner = node ID or res) into a FieldRef; null for `i`. */
+/** Parses a stored expression (owner = node ID or res) into a FieldRef; null for the scope refs `i` and `item`. */
 function exprToRef(expr: string): FieldRef | null {
   if (expr === REF_INDEX) return null
   if (expr === REF_RES) return { nodeId: '', path: '' }
   const { owner, path } = splitOwner(expr)
+  if (owner === REF_ITEM) return null
   if (owner === REF_RES) return { nodeId: '', path }
   return { nodeId: owner, path }
 }
@@ -283,6 +286,9 @@ export interface ResolveContext {
   upstreams: readonly string[]
   /** Fan-out iteration index ({{i}}). */
   index: number
+  /** Each-mode loop element ({{item}}); hasItem gates it so a stray {{item}} elsewhere fails with a named error. */
+  item?: unknown
+  hasItem?: boolean
 }
 
 export class ResolveError extends Error {}
@@ -333,6 +339,12 @@ function resolveTemplate(stored: string, ctx: ResolveContext): unknown {
 
 function resolveExpr(expr: string, ctx: ResolveContext): unknown {
   if (expr === REF_INDEX) return ctx.index
+  const { owner, path } = splitOwner(expr)
+  if (owner === REF_ITEM) {
+    if (!ctx.hasItem)
+      throw new ResolveError('{{item}} is only available inside an each-mode for loop')
+    return path === '' ? ctx.item : resolveValuePath(REF_ITEM, ctx.item, expr, path)
+  }
   const ref = exprToRef(expr)
   if (!ref) throw new ResolveError(`unknown reference "${expr}"`)
   return resolveRef(ref, ctx)

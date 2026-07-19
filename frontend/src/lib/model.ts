@@ -495,7 +495,20 @@ export type ForLogEntry = LogEntryBase & {
   iterations: number
 }
 
-export type LogEntry = HttpLogEntry | TransformLogEntry | ForLogEntry
+/** Mock rows record the configured status and the emitted body (plan 09 N7). */
+export type MockLogEntry = LogEntryBase & {
+  kind: 'mock'
+  status: number
+  /** JSON of the emitted body (absent on a parse failure). */
+  output?: string
+}
+
+/** Delay rows record only the wait — durationMs on the base is the payload. */
+export type DelayLogEntry = LogEntryBase & {
+  kind: 'delay'
+}
+
+export type LogEntry = HttpLogEntry | TransformLogEntry | ForLogEntry | MockLogEntry | DelayLogEntry
 
 /**
  * One-off request execution outside any board run (plan 08 B4, mirrors
@@ -550,4 +563,7 @@ export interface ScriptRunRequest {
   /** The single direct upstream, when there is exactly one (`res`). */
   res?: ScriptUpstream
   index: number
+  /** Each-mode loop element (`item` inside the script); hasItem gates it (plan 09). */
+  item?: unknown
+  hasItem?: boolean
 }

@@ -148,6 +148,8 @@ export namespace main {
 	    nodes: Record<string, ScriptUpstream>;
 	    res?: ScriptUpstream;
 	    index: number;
+	    item?: any;
+	    hasItem?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ScriptRunRequest(source);
@@ -159,6 +161,8 @@ export namespace main {
 	        this.nodes = this.convertValues(source["nodes"], ScriptUpstream, true);
 	        this.res = this.convertValues(source["res"], ScriptUpstream);
 	        this.index = source["index"];
+	        this.item = source["item"];
+	        this.hasItem = source["hasItem"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
