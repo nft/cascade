@@ -60,6 +60,8 @@ type Options struct {
 	Mocks map[core.NodeID]MockSpec
 	// Delays holds each delay node's wait duration.
 	Delays map[core.NodeID]time.Duration
+	// Loops holds each for node's spec.
+	Loops map[core.NodeID]LoopSpec
 	// Exports holds declared output aliases by node ID.
 	Exports map[core.NodeID][]binding.Export
 	// Keys maps node IDs to board-unique keys; scripts read ancestors as
@@ -74,7 +76,9 @@ type Options struct {
 // the response status; transform records carry the upstream keys consumed
 // and the produced body; mock records carry the produced body only (no
 // URL/status — LogsPanel renders a variant row); delay records carry the
-// duration only (their output is a pass-through duplicate, or null).
+// duration only (their output is a pass-through duplicate, or null); for
+// records are whole-loop summaries (iteration count and duration — the
+// aggregate body lives in Outputs, per-iteration detail in child records).
 type Record struct {
 	Node     core.NodeID
 	Type     core.NodeType
@@ -84,8 +88,15 @@ type Record struct {
 	Status int
 	// InputNodes are the direct upstream keys consumed (transform records only).
 	InputNodes []string
-	// Output is the produced body (transform records only; M8 decides retention).
+	// Output is the produced body (transform and mock records only; M8
+	// decides retention).
 	Output any
+	// Iteration is the loop iteration index for records emitted inside a
+	// for node's body; -1 outside any loop.
+	Iteration int
+	// Iterations is the number of iterations that ran to completion (for
+	// summary records only).
+	Iterations int
 }
 
 // Result is one run's outcome. Note nodes appear in none of the maps.
@@ -93,6 +104,38 @@ type Result struct {
 	Statuses map[core.NodeID]Status
 	Outputs  map[core.NodeID]*binding.Output
 	Records  []Record
+}
+
+// topLevelIteration marks records emitted outside any loop.
+const topLevelIteration = -1
+
+// runner carries one run's shared state; scope carries where a node runs
+// (top level or one loop iteration), so runNode serves both without a
+// second executor.
+type runner struct {
+	g         *core.Graph
+	nodesByID map[core.NodeID]core.Node
+	upstreams map[core.NodeID][]core.NodeID
+	exports   map[string][]binding.Export
+	opts      Options
+	result    *Result
+	// loopRuns records each for node's completed iteration count for its
+	// summary record (runFor's return value is the aggregate output).
+	loopRuns map[core.NodeID]int
+}
+
+// scope is the context a node executes in. Loop iterations get their own
+// statuses map (skips cascade per iteration) and outputs map (iteration
+// k+1 starts clean — cross-iteration state is explicitly not a feature).
+type scope struct {
+	iteration int // topLevelIteration outside a loop
+	item      any
+	hasItem   bool
+	outputs   map[string]*binding.Output
+	statuses  map[core.NodeID]Status
+	// rewrap maps a child's dispatch error to a loop-scope error (the
+	// named ancestor-rule failure); nil outside loops.
+	rewrap func(error) error
 }
 
 // Run executes the whole graph. Graph-shape errors (cycle, bad edge, type
@@ -120,94 +163,139 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 		exports[string(id)] = ex
 	}
 
-	result := &Result{
-		Statuses: make(map[core.NodeID]Status),
-		Outputs:  make(map[core.NodeID]*binding.Output),
+	r := &runner{
+		g:         g,
+		nodesByID: nodesByID,
+		upstreams: upstreams,
+		exports:   exports,
+		opts:      opts,
+		result: &Result{
+			Statuses: make(map[core.NodeID]Status),
+			Outputs:  make(map[core.NodeID]*binding.Output),
+		},
+		loopRuns: make(map[core.NodeID]int),
 	}
-	envOutputs := make(map[string]*binding.Output)
-
+	top := &scope{
+		iteration: topLevelIteration,
+		outputs:   make(map[string]*binding.Output),
+		statuses:  r.result.Statuses,
+	}
 	for _, id := range order {
 		node := nodesByID[id]
 		if node.EffectiveType() == core.NodeTypeNote {
 			continue // annotations are never scheduled
 		}
-		ups := upstreams[id]
-		if skipped(result.Statuses, ups) {
-			result.Statuses[id] = StatusSkipped
-			continue
-		}
-
-		env := &binding.Env{
-			Outputs:   envOutputs,
-			Exports:   exports,
-			Upstreams: idStrings(ups),
-		}
-		start := time.Now()
-		out, runErr := dispatch(ctx, node, env, ups, envOutputs, opts)
-		record := Record{Node: id, Type: node.EffectiveType(), Duration: time.Since(start)}
-		if record.Type == core.NodeTypeTransform {
-			record.InputNodes = nodeKeys(ups, opts.Keys)
-		}
-		if runErr != nil {
-			record.Err = runErr.Error()
-			result.Statuses[id] = StatusFailed
-			result.Records = append(result.Records, record)
-			continue
-		}
-		switch record.Type {
-		case core.NodeTypeHTTP:
-			record.Status = out.Status
-		case core.NodeTypeDelay:
-			// duration only — the body is a pass-through duplicate, or null
-		default:
-			record.Output = out.Body
-		}
-		result.Statuses[id] = StatusSuccess
-		result.Outputs[id] = out
-		envOutputs[string(id)] = out
-		result.Records = append(result.Records, record)
+		r.runNode(ctx, node, top)
 	}
-	return result, nil
+	return r.result, nil
 }
 
-func dispatch(
+// runNode executes one node in the given scope: skip cascade, env build,
+// dispatch, record. Loop children run through this exact path.
+func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
+	id := node.ID
+	ups := r.upstreams[id]
+	if skipped(sc.statuses, ups) {
+		r.setStatus(id, sc, StatusSkipped)
+		return
+	}
+
+	env := &binding.Env{
+		Outputs:   sc.outputs,
+		Exports:   r.exports,
+		Upstreams: idStrings(ups),
+		Index:     max(sc.iteration, 0),
+		Item:      sc.item,
+		HasItem:   sc.hasItem,
+	}
+	start := time.Now()
+	out, runErr := r.dispatch(ctx, node, env, ups, sc)
+	record := Record{
+		Node:      id,
+		Type:      node.EffectiveType(),
+		Duration:  time.Since(start),
+		Iteration: sc.iteration,
+	}
+	if record.Type == core.NodeTypeTransform {
+		record.InputNodes = nodeKeys(ups, r.opts.Keys)
+	}
+	if runErr != nil {
+		if sc.rewrap != nil {
+			runErr = sc.rewrap(runErr)
+		}
+		record.Err = runErr.Error()
+		if record.Type == core.NodeTypeFor {
+			record.Iterations = r.loopRuns[id]
+		}
+		r.setStatus(id, sc, StatusFailed)
+		r.result.Records = append(r.result.Records, record)
+		return
+	}
+	switch record.Type {
+	case core.NodeTypeHTTP:
+		record.Status = out.Status
+	case core.NodeTypeDelay:
+		// duration only — the body is a pass-through duplicate, or null
+	case core.NodeTypeFor:
+		record.Iterations = r.loopRuns[id]
+	default:
+		record.Output = out.Body
+	}
+	r.setStatus(id, sc, StatusSuccess)
+	r.result.Outputs[id] = out
+	sc.outputs[string(id)] = out
+	r.result.Records = append(r.result.Records, record)
+}
+
+// setStatus writes a status into the scope (skip cascade) and the result
+// (loop children keep their last iteration's state there).
+func (r *runner) setStatus(id core.NodeID, sc *scope, s Status) {
+	sc.statuses[id] = s
+	r.result.Statuses[id] = s
+}
+
+func (r *runner) dispatch(
 	ctx context.Context,
 	node core.Node,
 	env *binding.Env,
 	ups []core.NodeID,
-	outputs map[string]*binding.Output,
-	opts Options,
+	sc *scope,
 ) (*binding.Output, error) {
 	switch node.EffectiveType() {
 	case core.NodeTypeHTTP:
-		if opts.HTTP == nil {
+		if r.opts.HTTP == nil {
 			return nil, fmt.Errorf("exec: no HTTP runner configured for node %q", node.ID)
 		}
-		return opts.HTTP(ctx, node, env)
+		return r.opts.HTTP(ctx, node, env)
 	case core.NodeTypeMock:
-		spec, ok := opts.Mocks[node.ID]
+		spec, ok := r.opts.Mocks[node.ID]
 		if !ok {
 			return nil, fmt.Errorf("exec: mock node %q has no spec", node.ID)
 		}
 		return mockOutput(node.ID, spec)
 	case core.NodeTypeDelay:
-		d, ok := opts.Delays[node.ID]
+		d, ok := r.opts.Delays[node.ID]
 		if !ok {
 			return nil, fmt.Errorf("exec: delay node %q has no duration", node.ID)
 		}
-		return delayOutput(ctx, node.ID, d, ups, outputs)
+		return delayOutput(ctx, node.ID, d, ups, sc.outputs)
+	case core.NodeTypeFor:
+		return r.runFor(ctx, node, sc)
 	case core.NodeTypeTransform:
-		spec, ok := opts.Transforms[node.ID]
+		spec, ok := r.opts.Transforms[node.ID]
 		if !ok {
 			return nil, fmt.Errorf("exec: transform node %q has no spec", node.ID)
 		}
 		in := transform.Input{
 			Env:     env,
-			Nodes:   keyedOutputs(outputs, opts.Keys),
-			Timeout: opts.TransformTimeout,
+			Nodes:   keyedOutputs(sc.outputs, r.opts.Keys),
+			Index:   env.Index,
+			Item:    env.Item,
+			HasItem: env.HasItem,
+			Timeout: r.opts.TransformTimeout,
 		}
 		if len(ups) == 1 {
-			in.Res = outputs[string(ups[0])]
+			in.Res = sc.outputs[string(ups[0])]
 		}
 		return transform.Execute(spec, in)
 	}

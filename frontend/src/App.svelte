@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import ConfirmDeleteForDialog from './lib/components/ConfirmDeleteForDialog.svelte'
   import GraphCanvas from './lib/components/GraphCanvas.svelte'
   import Inspector from './lib/components/Inspector.svelte'
+  import Toast from './lib/components/Toast.svelte'
   import RequestEditorDialog from './lib/components/library/RequestEditorDialog.svelte'
   import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
   import CredentialDialog from './lib/components/sidebar/CredentialDialog.svelte'
@@ -48,3 +50,10 @@
 {#if dialogs.importMapping}
   <ImportMappingDialog context={dialogs.importMapping} />
 {/if}
+{#if dialogs.confirmDeleteFor}
+  <ConfirmDeleteForDialog
+    nodeId={dialogs.confirmDeleteFor.nodeId}
+    childCount={dialogs.confirmDeleteFor.childCount}
+  />
+{/if}
+<Toast />

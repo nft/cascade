@@ -22,11 +22,13 @@ var helpersJS string
 const scriptFilename = "transform.js"
 
 // Script globals: `res` (single-upstream output), `nodes` (ancestor outputs
-// by key), `i` (iteration index), `_` (helpers).
+// by key), `i` (iteration index), `item` (each-mode loop element), `_`
+// (helpers).
 const (
 	globalRes   = "res"
 	globalNodes = "nodes"
 	globalIndex = "i"
+	globalItem  = "item"
 )
 
 var helpersProgram = goja.MustCompile("helpers.js", helpersJS, true)
@@ -64,6 +66,11 @@ func executeScript(script string, in Input) (any, error) {
 	}
 	if err := vm.Set(globalIndex, in.Index); err != nil {
 		return nil, fmt.Errorf("transform: %v", err)
+	}
+	if in.HasItem {
+		if err := vm.Set(globalItem, in.Item); err != nil {
+			return nil, fmt.Errorf("transform: %v", err)
+		}
 	}
 
 	timeout := in.Timeout

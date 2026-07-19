@@ -120,7 +120,7 @@
     </div>
 
     <div class="mt-auto border-t border-zinc-800 p-3">
-      <Button variant="danger" class="w-full" onclick={() => app.removeNode(node.id)} title="Delete node">
+      <Button variant="danger" class="w-full" onclick={() => app.removeNodeRequest(node.id)} title="Delete node">
         <Icon name="delete" size={14} />
         Delete node
       </Button>

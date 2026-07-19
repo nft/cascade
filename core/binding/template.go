@@ -14,6 +14,8 @@ const (
 	refIndex = "i"
 	// refRes is the single-direct-upstream sugar: {{res.name}}.
 	refRes = "res"
+	// refItem is the each-mode loop element (plan 09): {{item}} / {{item.name}}.
+	refItem = "item"
 )
 
 // templatePart is one literal or reference chunk of a parsed template.
@@ -51,8 +53,8 @@ func parseTemplate(tpl string) ([]templatePart, error) {
 	}
 }
 
-// parseRefExpr maps a {{…}} expression to a Ref. {{i}} is not a node
-// reference and returns ok=false.
+// parseRefExpr maps a {{…}} expression to a Ref. {{i}} and {{item…}} are
+// loop-scope references, not node references, and return ok=false.
 func parseRefExpr(expr string) (ref Ref, ok bool) {
 	if expr == refIndex {
 		return Ref{}, false
@@ -64,6 +66,9 @@ func parseRefExpr(expr string) (ref Ref, ok bool) {
 		return Ref{Path: rest}, true
 	}
 	owner, path := splitFirst(expr)
+	if owner == refItem {
+		return Ref{}, false
+	}
 	return Ref{Node: owner, Path: path}, true
 }
 
@@ -119,11 +124,26 @@ func (e *Env) resolveExpr(expr string) (any, error) {
 	if expr == refIndex {
 		return e.Index, nil
 	}
+	if owner, rest := splitFirst(expr); owner == refItem {
+		return e.resolveItem(expr, rest)
+	}
 	ref, ok := parseRefExpr(expr)
 	if !ok {
 		return nil, fmt.Errorf("binding: unknown reference %q", expr)
 	}
 	return e.resolveRef(ref)
+}
+
+// resolveItem resolves {{item}} (the whole element — bare works for
+// primitive arrays) or {{item.path}} against the current loop element.
+func (e *Env) resolveItem(fullExpr, rest string) (any, error) {
+	if !e.HasItem {
+		return nil, fmt.Errorf("binding: {{%s}} is only available inside an each-mode for loop", refItem)
+	}
+	if rest == "" {
+		return e.Item, nil
+	}
+	return resolveValuePath(refItem, e.Item, fullExpr, rest)
 }
 
 // stringify renders a resolved value for interpolation into surrounding

@@ -39,10 +39,13 @@ import {
   type ProjectInfo,
   type RequestDef,
 } from './model'
+import { absoluteCenter, containerAt, parentsFirst, positionForParent } from './containment'
+import { dialogs } from './dialogs.svelte'
 import {
   duplicateAppNode,
   makeCustomHttpNode,
   makeDelayNode,
+  makeForNode,
   makeHttpNode,
   makeHttpNodeFromRequest,
   makeMockNode,
@@ -75,7 +78,7 @@ const BOARD_SAVE_DEBOUNCE_MS = 400
 const DEFAULT_PROJECT_NAME = 'Default'
 
 /** Node data keys that are run products, not user edits — changing only these never triggers a board save. */
-const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note'])
+const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note', 'progress'])
 
 /** Most recently opened first; never-opened projects sort last in index order. */
 const byLastOpened = (a: ProjectInfo, b: ProjectInfo) =>
@@ -299,6 +302,11 @@ export class AppState {
     this.insertNode(makeDelayNode(`delay-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
   }
 
+  addForNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    this.insertNode(makeForNode(`for-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+  }
+
   addNoteNode(position?: { x: number; y: number }) {
     this.addCounter += 1
     this.insertNode(makeNoteNode(`note-${this.addCounter}`, position ?? this.autoPosition()))
@@ -316,13 +324,74 @@ export class AppState {
   }
 
   removeNode(id: string) {
-    this.nodes = this.nodes.filter((n) => n.id !== id)
-    this.edges = this.edges.filter((e) => e.source !== id && e.target !== id)
-    if (id in this.responses) {
-      const { [id]: _dropped, ...rest } = this.responses
-      this.responses = rest
+    // A For container takes its children with it (plan 09 N5) — a dangling
+    // parentId would break xyflow; drag-out first is the rescue path.
+    const doomed = new Set([id, ...this.nodes.filter((n) => n.parentId === id).map((n) => n.id)])
+    this.nodes = this.nodes.filter((n) => !doomed.has(n.id))
+    this.edges = this.edges.filter((e) => !doomed.has(e.source) && !doomed.has(e.target))
+    if ([...doomed].some((d) => d in this.responses)) {
+      this.responses = Object.fromEntries(
+        Object.entries(this.responses).filter(([nodeId]) => !doomed.has(nodeId)),
+      )
     }
-    if (this.selectedNodeId === id) this.selectedNodeId = null
+    if (this.selectedNodeId && doomed.has(this.selectedNodeId)) this.selectedNodeId = null
+    this.scheduleBoardSave()
+  }
+
+  /**
+   * Delete with the For safeguard: a container that still holds children
+   * asks for confirmation (the dialog calls removeNode on confirm); anything
+   * else deletes immediately.
+   */
+  removeNodeRequest(id: string) {
+    const node = this.nodes.find((n) => n.id === id)
+    if (!node) return
+    const childCount = this.nodes.filter((n) => n.parentId === id).length
+    if (node.type === 'for' && childCount > 0) {
+      dialogs.confirmDeleteFor = { nodeId: id, childCount }
+      return
+    }
+    this.removeNode(id)
+  }
+
+  /**
+   * Loop membership on drop (plan 09 N5): re-parent the dropped node into
+   * the For container under its center, or back to top level, translating
+   * the position so it stays visually put. Refusals (nested For, edges that
+   * would cross the loop boundary) toast and change nothing.
+   */
+  dropNode(id: string) {
+    const node = this.nodes.find((n) => n.id === id)
+    if (!node || node.type === 'note') return // annotations stay top-level
+    const target = containerAt(this.nodes, absoluteCenter(node, this.nodes), id)
+    const targetId = target?.id ?? null
+    if ((node.parentId ?? null) === targetId) return
+    if (target && node.type === 'for') {
+      dialogs.showToast('Nested for loops are not supported')
+      return
+    }
+    const crossing = this.edges.some((e) => {
+      if (e.source !== id && e.target !== id) return false
+      const otherId = e.source === id ? e.target : e.source
+      const other = this.nodes.find((n) => n.id === otherId)
+      return (other?.parentId ?? null) !== targetId
+    })
+    if (crossing) {
+      dialogs.showToast(
+        target
+          ? `An edge would cross the loop boundary — cut it before moving "${node.data.name}" in`
+          : `An edge to a loop sibling would cross the boundary — cut it before moving "${node.data.name}" out`,
+      )
+      return
+    }
+    const position = positionForParent(node, this.nodes, target)
+    this.nodes = parentsFirst(
+      this.nodes.map((n) => {
+        if (n.id !== id) return n
+        const { parentId: _dropped, ...rest } = n
+        return (target ? { ...rest, parentId: target.id, position } : { ...rest, position }) as AppNode
+      }),
+    )
     this.scheduleBoardSave()
   }
 

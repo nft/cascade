@@ -9,7 +9,8 @@ import "fmt"
 //   - note nodes take no edges in either direction — they are annotations,
 //     not steps, and have no output to bind;
 //   - transform nodes require at least one upstream, since they only reshape
-//     upstream data;
+//     upstream data — except inside a for node, where the loop scope
+//     ({{item}}, {{i}}, loop ancestors) feeds them without an edge;
 //   - containment (plan 09): a parent must be a for node; only http,
 //     transform, mock, and delay nodes may be children; no edge may cross a
 //     For boundary — the For node is the loop's single interface.
@@ -69,7 +70,7 @@ func (g *Graph) Validate() error {
 	}
 
 	for _, n := range g.Nodes {
-		if types[n.ID] == NodeTypeTransform && indegree[n.ID] == 0 {
+		if types[n.ID] == NodeTypeTransform && indegree[n.ID] == 0 && n.Parent == "" {
 			return fmt.Errorf("transform node %q requires at least one upstream node", n.ID)
 		}
 	}

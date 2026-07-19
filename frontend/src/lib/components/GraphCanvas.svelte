@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Background, Controls, MiniMap, SvelteFlow } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
+  import { sameScope } from '../containment'
   import { assertKnownNodeTypes, decorateEdges, polylinesIntersect, type Point } from '../graph'
   import { app } from '../state.svelte'
   import CanvasToolbar from './CanvasToolbar.svelte'
@@ -108,6 +109,21 @@
     elementsSelectable={!scissors}
     nodesDraggable={!scissors}
     nodesConnectable={!scissors}
+    isValidConnection={(conn) => sameScope(app.nodes, conn.source, conn.target)}
+    onnodedragstop={({ nodes: dragged }) => {
+      // Loop membership is decided on drop, not during the drag (plan 09 N5).
+      for (const node of dragged) app.dropNode(node.id)
+    }}
+    onbeforedelete={async ({ nodes: doomed }) => {
+      // Canvas deletion (Backspace) of a For that still has children routes
+      // through the confirm dialog instead of orphaning them.
+      const container = doomed.find(
+        (n) => n.type === 'for' && app.nodes.some((c) => c.parentId === n.id),
+      )
+      if (!container) return true
+      app.removeNodeRequest(container.id)
+      return false
+    }}
     onnodeclick={({ node }) => (app.selectedNodeId = node.id)}
     onpaneclick={() => {
       app.closeContextMenu()

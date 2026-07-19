@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { makeCustomHttpNode, makeDelayNode, makeHttpNode, makeHttpNodeFromRequest, makeMockNode } from './nodeFactory'
+import {
+  makeCustomHttpNode,
+  makeDelayNode,
+  makeForNode,
+  makeHttpNode,
+  makeHttpNodeFromRequest,
+  makeMockNode,
+} from './nodeFactory'
 import type { RequestDef } from './model'
 
 const defaults = { environment: 'staging', credential: 'staging-admin' }
@@ -90,6 +97,19 @@ describe('makeMockNode (plan 09 N2)', () => {
     const node = makeMockNode('mock-2', existing, { x: 10, y: 20 })
     expect(node.type).toBe('mock')
     expect(node.data).toMatchObject({ body: '{}', statusCode: 200, status: 'idle' })
+    expect(keyOf(node)).not.toBe(keyOf(existing[0]))
+  })
+})
+
+describe('makeForNode (plan 09 N5)', () => {
+  it('seeds a sized count-mode container with a board-unique key', () => {
+    const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
+    const existing = [makeForNode('for-1', [], { x: 0, y: 0 })]
+    const node = makeForNode('for-2', existing, { x: 10, y: 20 })
+    expect(node.type).toBe('for')
+    expect(node.data).toMatchObject({ mode: 'count', count: 3, status: 'idle' })
+    expect(node.width).toBeGreaterThan(0)
+    expect(node.height).toBeGreaterThan(0)
     expect(keyOf(node)).not.toBe(keyOf(existing[0]))
   })
 })

@@ -1,0 +1,437 @@
+package exec
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"cascade/core"
+	"cascade/core/binding"
+	"cascade/core/transform"
+)
+
+// The plan's done-when chain, engine-side: a mock array feeds an each-mode
+// loop; inside, an http child binds {{i}}, {{item.name}} and a loop
+// ancestor; downstream of the loop a [*] wildcard maps over the aggregate.
+func TestForEachModeAggregatesPerChild(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "seedUsers", Type: core.NodeTypeMock},
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "createUser", Type: core.NodeTypeHTTP, Parent: "loop"},
+			{ID: "audit", Type: core.NodeTypeMock, Parent: "loop"},
+			{ID: "report", Type: core.NodeTypeHTTP},
+		},
+		Edges: []core.Edge{
+			{From: "seedUsers", To: "loop"},
+			{From: "loop", To: "report"},
+		},
+	}
+	var reportGot any
+	httpRunner := func(_ context.Context, node core.Node, env *binding.Env) (*binding.Output, error) {
+		switch node.ID {
+		case "createUser":
+			// Loop scope ({{i}}, {{item.…}}) and a loop ancestor in one template.
+			v, err := binding.Template("u{{i}}-{{item.name}}-{{seedUsers.body.org}}").Resolve(env)
+			if err != nil {
+				return nil, err
+			}
+			return &binding.Output{Status: 201, Body: map[string]any{"id": v}}, nil
+		case "report":
+			v, err := binding.Template("{{loop.createUser[*].id}}").Resolve(env)
+			if err != nil {
+				return nil, err
+			}
+			reportGot = v
+			return &binding.Output{Status: 200, Body: nil}, nil
+		}
+		return nil, fmt.Errorf("unexpected http node %q", node.ID)
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP: httpRunner,
+		Mocks: map[core.NodeID]MockSpec{
+			"seedUsers": {Body: []byte(`{"org":"acme","users":[{"name":"ada"},{"name":"lin"}]}`)},
+			"audit":     {Body: []byte(`{"ok":true}`)},
+		},
+		Loops: map[core.NodeID]LoopSpec{
+			"loop": {Mode: LoopModeEach, Source: binding.Ref{Node: "seedUsers", Path: "body.users"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, id := range []core.NodeID{"seedUsers", "loop", "createUser", "audit", "report"} {
+		if res.Statuses[id] != StatusSuccess {
+			t.Fatalf("node %s: status %s (all: %+v)", id, res.Statuses[id], res.Statuses)
+		}
+	}
+	wantBody := map[string]any{
+		"createUser": []any{
+			map[string]any{"id": "u0-ada-acme"},
+			map[string]any{"id": "u1-lin-acme"},
+		},
+		"audit": []any{
+			map[string]any{"ok": true},
+			map[string]any{"ok": true},
+		},
+	}
+	if !reflect.DeepEqual(res.Outputs["loop"].Body, wantBody) {
+		t.Fatalf("aggregate = %#v, want %#v", res.Outputs["loop"].Body, wantBody)
+	}
+	if want := []any{"u0-ada-acme", "u1-lin-acme"}; !reflect.DeepEqual(reportGot, want) {
+		t.Fatalf("report bound %#v via [*], want %#v", reportGot, want)
+	}
+
+	// Child records carry their iteration; the summary record closes the loop.
+	iters := make(map[core.NodeID][]int)
+	var summary *Record
+	for i, rec := range res.Records {
+		if rec.Node == "loop" {
+			summary = &res.Records[i]
+			continue
+		}
+		iters[rec.Node] = append(iters[rec.Node], rec.Iteration)
+	}
+	if !reflect.DeepEqual(iters["createUser"], []int{0, 1}) {
+		t.Fatalf("createUser record iterations = %v, want [0 1]", iters["createUser"])
+	}
+	if summary == nil || summary.Type != core.NodeTypeFor || summary.Iterations != 2 || summary.Output != nil {
+		t.Fatalf("loop summary record wrong shape: %+v", summary)
+	}
+	if !reflect.DeepEqual(iters["seedUsers"], []int{topLevelIteration}) {
+		t.Fatalf("top-level record iteration = %v, want [%d]", iters["seedUsers"], topLevelIteration)
+	}
+}
+
+func TestForCountModeRunsBodyNTimes(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "ping", Type: core.NodeTypeHTTP, Parent: "loop"},
+		},
+	}
+	var indices []any
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		v, err := binding.Template("{{i}}").Resolve(env)
+		if err != nil {
+			return nil, err
+		}
+		indices = append(indices, v)
+		return &binding.Output{Status: 200, Body: v}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP:  httpRunner,
+		Loops: map[core.NodeID]LoopSpec{"loop": {Mode: LoopModeCount, Count: 3}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !reflect.DeepEqual(indices, []any{0, 1, 2}) {
+		t.Fatalf("iteration indices = %v, want [0 1 2]", indices)
+	}
+	wantBody := map[string]any{"ping": []any{0, 1, 2}}
+	if !reflect.DeepEqual(res.Outputs["loop"].Body, wantBody) {
+		t.Fatalf("aggregate = %#v, want %#v", res.Outputs["loop"].Body, wantBody)
+	}
+}
+
+// A primitive source array resolves via bare {{item}}, and a transform
+// child's script sees `item` and `i` as globals.
+func TestForPrimitiveItemsAndTransformScope(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "tags", Type: core.NodeTypeMock},
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "shape", Type: core.NodeTypeTransform, Parent: "loop"},
+		},
+		Edges: []core.Edge{{From: "tags", To: "loop"}},
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks: map[core.NodeID]MockSpec{"tags": {Body: []byte(`["foo","bar"]`)}},
+		Loops: map[core.NodeID]LoopSpec{
+			"loop": {Mode: LoopModeEach, Source: binding.Ref{Node: "tags"}},
+		},
+		Transforms: map[core.NodeID]transform.Spec{
+			"shape": {Mode: transform.ModeScript, Script: "return { tag: item, idx: i }"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["loop"] != StatusSuccess {
+		t.Fatalf("loop status = %s (records: %+v)", res.Statuses["loop"], res.Records)
+	}
+	wantBody := map[string]any{"shape": []any{
+		map[string]any{"tag": "foo", "idx": float64(0)},
+		map[string]any{"tag": "bar", "idx": float64(0)},
+	}}
+	// Script numbers normalize through JSON, hence float64.
+	wantBody["shape"].([]any)[1].(map[string]any)["idx"] = float64(1)
+	if !reflect.DeepEqual(res.Outputs["loop"].Body, wantBody) {
+		t.Fatalf("aggregate = %#v, want %#v", res.Outputs["loop"].Body, wantBody)
+	}
+}
+
+// A stored child ref that escapes the loop's ancestor set fails the child
+// with the named error — it must never silently resolve against a
+// non-ancestor that happened to run earlier in topological order.
+func TestForChildRefEscapingScopeFailsNamed(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "outsider", Type: core.NodeTypeMock},
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "child", Type: core.NodeTypeHTTP, Parent: "loop"},
+		},
+	}
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		if _, err := binding.Template("{{outsider.body.x}}").Resolve(env); err != nil {
+			return nil, err
+		}
+		return &binding.Output{Status: 200, Body: nil}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP:  httpRunner,
+		Mocks: map[core.NodeID]MockSpec{"outsider": {Body: []byte(`{"x":1}`)}},
+		Loops: map[core.NodeID]LoopSpec{"loop": {Mode: LoopModeCount, Count: 1}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["outsider"] != StatusSuccess || res.Statuses["loop"] != StatusFailed {
+		t.Fatalf("statuses = %+v", res.Statuses)
+	}
+	var childErr string
+	for _, rec := range res.Records {
+		if rec.Node == "child" {
+			childErr = rec.Err
+		}
+	}
+	if !strings.Contains(childErr, `node "outsider" is not an upstream of this loop`) {
+		t.Fatalf("child error = %q, want the named scope error", childErr)
+	}
+}
+
+// An empty loop body is a config-tier failure: the for node fails, its
+// downstream skips, and an unrelated chain still runs.
+func TestForEmptyBodyFailsOnlyItself(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "after", Type: core.NodeTypeMock},
+			{ID: "unrelated", Type: core.NodeTypeMock},
+		},
+		Edges: []core.Edge{{From: "loop", To: "after"}},
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks: map[core.NodeID]MockSpec{
+			"after":     {Body: []byte(`{}`)},
+			"unrelated": {Body: []byte(`{}`)},
+		},
+		Loops: map[core.NodeID]LoopSpec{"loop": {Mode: LoopModeCount, Count: 2}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := map[core.NodeID]Status{
+		"loop":      StatusFailed,
+		"after":     StatusSkipped,
+		"unrelated": StatusSuccess,
+	}
+	for id, s := range want {
+		if res.Statuses[id] != s {
+			t.Fatalf("node %s: status %s, want %s (all: %+v)", id, res.Statuses[id], s, res.Statuses)
+		}
+	}
+	if rec := res.Records[0]; rec.Node != "loop" || !strings.Contains(rec.Err, "has no children") {
+		t.Fatalf("loop record = %+v, want the no-children error", rec)
+	}
+}
+
+// Fail-fast: a child failure marks the iteration failed and aborts the
+// remaining iterations.
+func TestForFailFastAbortsRemainingIterations(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "items", Type: core.NodeTypeMock},
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "create", Type: core.NodeTypeHTTP, Parent: "loop"},
+			{ID: "after", Type: core.NodeTypeMock},
+		},
+		Edges: []core.Edge{
+			{From: "items", To: "loop"},
+			{From: "loop", To: "after"},
+		},
+	}
+	calls := 0
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		calls++
+		v, err := binding.Template("{{item}}").Resolve(env)
+		if err != nil {
+			return nil, err
+		}
+		if v == "boom" {
+			return nil, fmt.Errorf("server exploded")
+		}
+		return &binding.Output{Status: 200, Body: v}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP:  httpRunner,
+		Mocks: map[core.NodeID]MockSpec{"items": {Body: []byte(`["ok","boom","never"]`)}, "after": {Body: []byte(`{}`)}},
+		Loops: map[core.NodeID]LoopSpec{
+			"loop": {Mode: LoopModeEach, Source: binding.Ref{Node: "items"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("http ran %d times, want 2 (third iteration aborted)", calls)
+	}
+	if res.Statuses["loop"] != StatusFailed || res.Statuses["after"] != StatusSkipped {
+		t.Fatalf("statuses = %+v", res.Statuses)
+	}
+	var summary *Record
+	for i, rec := range res.Records {
+		if rec.Node == "loop" {
+			summary = &res.Records[i]
+		}
+	}
+	if summary == nil || summary.Iterations != 1 || !strings.Contains(summary.Err, "iteration 1 failed") {
+		t.Fatalf("loop summary = %+v, want 1 completed iteration and the fail-fast error", summary)
+	}
+}
+
+// Delay children run per iteration but are excluded from the aggregate —
+// their output is a pass-through duplicate.
+func TestForDelayChildExcludedFromAggregate(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "make", Type: core.NodeTypeMock, Parent: "loop"},
+			{ID: "wait", Type: core.NodeTypeDelay, Parent: "loop"},
+		},
+		Edges: []core.Edge{{From: "make", To: "wait"}},
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks:  map[core.NodeID]MockSpec{"make": {Body: []byte(`{"n":1}`)}},
+		Delays: map[core.NodeID]time.Duration{"wait": time.Millisecond},
+		Loops:  map[core.NodeID]LoopSpec{"loop": {Mode: LoopModeCount, Count: 2}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["loop"] != StatusSuccess {
+		t.Fatalf("loop status = %s (records: %+v)", res.Statuses["loop"], res.Records)
+	}
+	body, ok := res.Outputs["loop"].Body.(map[string]any)
+	if !ok {
+		t.Fatalf("aggregate body = %#v", res.Outputs["loop"].Body)
+	}
+	if _, present := body["wait"]; present {
+		t.Fatalf("delay child leaked into the aggregate: %#v", body)
+	}
+	if got := body["make"]; !reflect.DeepEqual(got, []any{map[string]any{"n": float64(1)}, map[string]any{"n": float64(1)}}) {
+		t.Fatalf("make aggregate = %#v", got)
+	}
+	delayRecords := 0
+	for _, rec := range res.Records {
+		if rec.Node == "wait" {
+			delayRecords++
+		}
+	}
+	if delayRecords != 2 {
+		t.Fatalf("delay ran %d times, want once per iteration", delayRecords)
+	}
+}
+
+// Config-tier spec failures: a count outside bounds and a non-array each
+// source fail the node, not the run.
+func TestForSpecConfigFailures(t *testing.T) {
+	cases := []struct {
+		name    string
+		spec    LoopSpec
+		wantErr string
+	}{
+		{"count too low", LoopSpec{Mode: LoopModeCount, Count: 0}, "outside"},
+		{"count above cap", LoopSpec{Mode: LoopModeCount, Count: MaxLoopIterations + 1}, "outside"},
+		{"non-array source", LoopSpec{Mode: LoopModeEach, Source: binding.Ref{Node: "src", Path: "body.obj"}}, "must resolve to an array"},
+		{"unknown mode", LoopSpec{Mode: "while"}, "unknown mode"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := &core.Graph{
+				Nodes: []core.Node{
+					{ID: "src", Type: core.NodeTypeMock},
+					{ID: "loop", Type: core.NodeTypeFor},
+					{ID: "child", Type: core.NodeTypeMock, Parent: "loop"},
+				},
+				Edges: []core.Edge{{From: "src", To: "loop"}},
+			}
+			res, err := Run(context.Background(), g, Options{
+				Mocks: map[core.NodeID]MockSpec{
+					"src":   {Body: []byte(`{"obj":{"a":1}}`)},
+					"child": {Body: []byte(`{}`)},
+				},
+				Loops: map[core.NodeID]LoopSpec{"loop": tc.spec},
+			})
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if res.Statuses["loop"] != StatusFailed {
+				t.Fatalf("loop status = %s, want failed", res.Statuses["loop"])
+			}
+			var loopErr string
+			for _, rec := range res.Records {
+				if rec.Node == "loop" {
+					loopErr = rec.Err
+				}
+			}
+			if !strings.Contains(loopErr, tc.wantErr) {
+				t.Fatalf("loop error = %q, want it to contain %q", loopErr, tc.wantErr)
+			}
+		})
+	}
+}
+
+// {{item}} outside an each-mode loop is a named error, not a nil resolve.
+func TestItemOutsideEachModeFails(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "child", Type: core.NodeTypeHTTP, Parent: "loop"},
+		},
+	}
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		if _, err := binding.Template("{{item}}").Resolve(env); err != nil {
+			return nil, err
+		}
+		return &binding.Output{Status: 200, Body: nil}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP:  httpRunner,
+		Loops: map[core.NodeID]LoopSpec{"loop": {Mode: LoopModeCount, Count: 1}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	var childErr string
+	for _, rec := range res.Records {
+		if rec.Node == "child" {
+			childErr = rec.Err
+		}
+	}
+	if !strings.Contains(childErr, "only available inside an each-mode for loop") {
+		t.Fatalf("child error = %q, want the item-scope error", childErr)
+	}
+}

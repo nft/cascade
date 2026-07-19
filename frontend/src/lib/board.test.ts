@@ -367,6 +367,18 @@ describe('mock/delay/for nodes round-trip (plan 09 N1)', () => {
     expect(nodes.map((n) => n.id)).toEqual(['f1', 'c1'])
   })
 
+  it('round-trips the resized container dimensions through layout.sizes (N5)', () => {
+    const sized: AppNode = { ...forNode, width: 520, height: 300 }
+    const board = serializeBoard('b1', 'Main', [mockNode, sized], [])
+    expect(board.layout.sizes).toEqual({ f1: { width: 520, height: 300 } })
+    // Non-container nodes never write a size entry.
+    const { nodes } = deserializeBoard(board)
+    const loaded = nodes.find((n) => n.id === 'f1')!
+    expect(loaded.width).toBe(520)
+    expect(loaded.height).toBe(300)
+    expect(nodes.find((n) => n.id === 'm1')?.width).toBeUndefined()
+  })
+
   it('defaults absent config and drops parents on non-child-capable types', () => {
     const board: BoardJSON = {
       formatVersion: BOARD_FORMAT_VERSION,

@@ -78,6 +78,12 @@ type Env struct {
 	Upstreams []string
 	// Index is the fan-out iteration index, exposed as {{i}} (M6).
 	Index int
+	// Item is the current each-mode loop element (plan 09), exposed as
+	// {{item}} / {{item.path}} to nodes inside a for body. HasItem gates it
+	// so a stray {{item}} elsewhere fails with a named error instead of
+	// silently resolving to nil.
+	Item    any
+	HasItem bool
 }
 
 // Resolve produces the source's value against the environment. Template

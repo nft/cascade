@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { dialogs } from './dialogs.svelte'
 import { handleGlobalKeydown } from './keyboard'
 import { operations } from './mock'
 import type { AppEdge, AppNode, HttpNode, NodeStatus } from './model'
@@ -560,5 +561,86 @@ describe('delay nodes in the sim (plan 09 N3)', () => {
     expect(statusOf('a1')).toBe('skipped')
     expect(statusOf('b1')).toBe('success')
     expect(app.responses.d1).toBeUndefined()
+  })
+})
+
+describe('For containment on the canvas (plan 09 N5)', () => {
+  const mkFor = (id: string, x = 0, y = 0): AppNode => ({
+    id,
+    type: 'for',
+    position: { x, y },
+    width: 400,
+    height: 240,
+    data: { name: id, key: `key_${id}`, status: 'idle', mode: 'count', count: 3 },
+  })
+
+  const mkMockAt = (id: string, x: number, y: number, parentId?: string): AppNode => ({
+    id,
+    type: 'mock',
+    position: { x, y },
+    ...(parentId ? { parentId } : {}),
+    measured: { width: 200, height: 80 },
+    data: { name: id, key: `key_${id}`, status: 'idle', body: '{}', statusCode: 200 },
+  })
+
+  beforeEach(() => {
+    dialogs.toast = null
+    dialogs.confirmDeleteFor = null
+  })
+
+  it('dropNode re-parents into the container under the node center, keeping it visually put', () => {
+    app.nodes = [mkFor('loop', 100, 100), mkMockAt('m1', 150, 150)]
+    app.dropNode('m1')
+    const child = app.nodes.find((n) => n.id === 'm1')!
+    expect(child.parentId).toBe('loop')
+    // absolute (150,150) − container (100,100) = relative (50,50)
+    expect(child.position).toEqual({ x: 50, y: 50 })
+    // containers stay ahead of children in the array
+    expect(app.nodes.map((n) => n.id)).toEqual(['loop', 'm1'])
+  })
+
+  it('dropNode re-parents out when the center leaves the container', () => {
+    app.nodes = [mkFor('loop', 100, 100), mkMockAt('m1', 600, 50, 'loop')]
+    app.dropNode('m1')
+    const freed = app.nodes.find((n) => n.id === 'm1')!
+    expect(freed.parentId).toBeUndefined()
+    expect(freed.position).toEqual({ x: 700, y: 150 })
+  })
+
+  it('refuses a drop-in that would leave an edge crossing the boundary, with a toast', () => {
+    app.nodes = [mkFor('loop', 100, 100), mkMockAt('m1', 150, 150), mkMockAt('out', 900, 900)]
+    app.edges = [mkEdge('m1', 'out')]
+    app.dropNode('m1')
+    expect(app.nodes.find((n) => n.id === 'm1')!.parentId).toBeUndefined()
+    expect(dialogs.toast).toContain('cross the loop boundary')
+  })
+
+  it('refuses nesting a For into a For, with a toast', () => {
+    const inner = { ...mkFor('inner', 150, 150), measured: { width: 200, height: 100 } }
+    app.nodes = [mkFor('outer', 100, 100), inner]
+    app.dropNode('inner')
+    expect(app.nodes.find((n) => n.id === 'inner')!.parentId).toBeUndefined()
+    expect(dialogs.toast).toContain('Nested for loops')
+  })
+
+  it('removeNode on a For cascades to its children, edges and responses', () => {
+    app.nodes = [mkFor('loop'), mkMockAt('m1', 0, 0, 'loop'), mkMockAt('m2', 500, 500)]
+    app.edges = [mkEdge('m1', 'm1x'), mkEdge('m2', 'loop')]
+    app.responses = { m1: { status: 200, body: {}, at: 't' }, m2: { status: 200, body: {}, at: 't' } }
+    app.removeNode('loop')
+    expect(app.nodes.map((n) => n.id)).toEqual(['m2'])
+    expect(app.edges).toEqual([])
+    expect(app.responses.m1).toBeUndefined()
+    expect(app.responses.m2).toBeDefined()
+  })
+
+  it('removeNodeRequest asks first for a For with children, deletes an empty one directly', () => {
+    app.nodes = [mkFor('loop'), mkMockAt('m1', 0, 0, 'loop'), mkFor('empty', 900, 900)]
+    app.removeNodeRequest('loop')
+    expect(dialogs.confirmDeleteFor).toEqual({ nodeId: 'loop', childCount: 1 })
+    expect(app.nodes.some((n) => n.id === 'loop')).toBe(true)
+
+    app.removeNodeRequest('empty')
+    expect(app.nodes.some((n) => n.id === 'empty')).toBe(false)
   })
 })

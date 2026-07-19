@@ -10,6 +10,7 @@ export type MenuAction =
   | 'add-transform'
   | 'add-mock'
   | 'add-delay'
+  | 'add-for'
   | 'add-note'
   | 'paste'
   | 'fit-view'
@@ -54,6 +55,7 @@ export function menuItems(
         { action: 'add-transform', icon: 'function', label: 'Add transform' },
         { action: 'add-mock', icon: 'data_object', label: 'Add mock' },
         { action: 'add-delay', icon: 'timer', label: 'Add delay' },
+        { action: 'add-for', icon: 'laps', label: 'Add for loop' },
         { action: 'add-note', icon: 'sticky_note_2', label: 'Add note' },
         { action: 'paste', icon: 'content_paste', label: 'Paste' },
         { action: 'fit-view', icon: 'fit_screen', label: 'Fit view' },

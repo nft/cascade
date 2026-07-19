@@ -2,6 +2,7 @@
 // AppState only orchestrates (id allocation, selection, persistence).
 import {
   DELAY_DEFAULT_MS,
+  FOR_DEFAULT_COUNT,
   MOCK_DEFAULT_STATUS,
   type AppNode,
   type Operation,
@@ -161,6 +162,32 @@ export function makeDelayNode(
       key: uniqueKey('delay', takenKeys(existing)),
       status: 'idle',
       durationMs: DELAY_DEFAULT_MS,
+    },
+  }
+}
+
+/** Starting size of a fresh For container — room for two or three cards. */
+const FOR_DEFAULT_WIDTH = 400
+const FOR_DEFAULT_HEIGHT = 240
+
+/** A For container (plan 09): an empty sized group the user drags nodes into. */
+export function makeForNode(
+  id: string,
+  existing: readonly AppNode[],
+  position: { x: number; y: number },
+): AppNode {
+  return {
+    id,
+    type: 'for',
+    position,
+    width: FOR_DEFAULT_WIDTH,
+    height: FOR_DEFAULT_HEIGHT,
+    data: {
+      name: 'For loop',
+      key: uniqueKey('loop', takenKeys(existing)),
+      status: 'idle',
+      mode: 'count',
+      count: FOR_DEFAULT_COUNT,
     },
   }
 }

@@ -36,6 +36,9 @@ export interface ImportMappingContext {
   nodeIds: string[]
 }
 
+/** How long a toast stays up before auto-dismissing. */
+const TOAST_MS = 4000
+
 class DialogsState {
   requestEditor = $state<RequestEditorContext | null>(null)
   saveToCollection = $state<SaveToCollectionContext | null>(null)
@@ -43,6 +46,18 @@ class DialogsState {
   /** App-level notice modal — paste/import errors (plan 07 E3) get a clean dialog. */
   notice = $state<{ title: string; message: string } | null>(null)
   importMapping = $state<ImportMappingContext | null>(null)
+  /** Deleting a For container takes its children with it — confirmed first (plan 09 N5). */
+  confirmDeleteFor = $state<{ nodeId: string; childCount: number } | null>(null)
+  /** Transient bottom-center toast — refused edits (plan 09 N5), not errors that need reading. */
+  toast = $state<string | null>(null)
+
+  #toastTimer: ReturnType<typeof setTimeout> | undefined
+
+  showToast(message: string) {
+    this.toast = message
+    clearTimeout(this.#toastTimer)
+    this.#toastTimer = setTimeout(() => (this.toast = null), TOAST_MS)
+  }
 }
 
 export const dialogs = new DialogsState()

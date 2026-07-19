@@ -260,6 +260,8 @@ export type ForMode = (typeof FOR_MODES)[number]
 
 export const FOR_MIN_COUNT = 1
 export const FOR_MAX_ITERATIONS = 10_000
+/** Fresh count-mode containers start at a value that reads as "a loop". */
+export const FOR_DEFAULT_COUNT = 3
 
 /**
  * The For container (plan 09): runs the child nodes placed inside it N times
@@ -272,6 +274,8 @@ export type ForNodeData = RunnableNodeData & {
   count: number
   /** each-mode: binding ref that must resolve to an array. */
   source?: FieldRef
+  /** Live run progress shown in the header ("3/20"); transient, never saved. */
+  progress?: { done: number; total: number }
 }
 
 export type HttpNode = Node<OperationNodeData, 'http'>
@@ -400,6 +404,8 @@ export interface BoardViewport {
 
 export interface BoardLayoutJSON {
   positions: Record<string, { x: number; y: number }>
+  /** Explicit node sizes (resizable For containers only, plan 09 N5). */
+  sizes?: Record<string, { width: number; height: number }>
   viewport?: BoardViewport
   /** Last successful response per node id (canvas-only; the engine ignores layout). */
   responses?: Record<string, CapturedResponse>

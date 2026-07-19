@@ -193,6 +193,58 @@ func TestTemplates(t *testing.T) {
 	})
 }
 
+func TestItemTemplates(t *testing.T) {
+	env := &Env{
+		Item:    map[string]any{"name": "ada", "ids": []any{"a", "b"}},
+		HasItem: true,
+	}
+	cases := []struct {
+		name string
+		tpl  string
+		want any
+	}{
+		{"whole item", "{{item}}", map[string]any{"name": "ada", "ids": []any{"a", "b"}}},
+		{"item path", "{{item.name}}", "ada"},
+		{"item index path", "{{item.ids[1]}}", "b"},
+		{"mixed text", "hi {{item.name}}", "hi ada"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Template(tc.tpl).Resolve(env)
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("got %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("bare item over a primitive element", func(t *testing.T) {
+		got, err := Template("{{item}}").Resolve(&Env{Item: "foo", HasItem: true})
+		if err != nil || got != "foo" {
+			t.Fatalf("got %v, %v", got, err)
+		}
+	})
+
+	t.Run("item outside an each-mode loop is a named error", func(t *testing.T) {
+		_, err := Template("{{item}}").Resolve(&Env{})
+		if err == nil || !strings.Contains(err.Error(), "each-mode") {
+			t.Fatalf("want the item-scope error, got %v", err)
+		}
+	})
+
+	t.Run("item is not a node reference", func(t *testing.T) {
+		refs, err := TemplateRefs("{{item.name}}-{{i}}")
+		if err != nil {
+			t.Fatalf("TemplateRefs: %v", err)
+		}
+		if len(refs) != 0 {
+			t.Fatalf("item/i must not be node refs, got %#v", refs)
+		}
+	})
+}
+
 func TestTemplateRefs(t *testing.T) {
 	refs, err := TemplateRefs("{{a.body.id}}-{{i}}-{{res.name}}-{{res}}")
 	if err != nil {

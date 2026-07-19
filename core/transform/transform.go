@@ -61,6 +61,11 @@ type Input struct {
 	Res *binding.Output
 	// Index is the fan-out iteration index ({{i}} in rows, `i` in scripts).
 	Index int
+	// Item is the current each-mode loop element (plan 09), exposed as
+	// `item` in scripts when HasItem is set; pick rows read it through
+	// Env ({{item}}).
+	Item    any
+	HasItem bool
 	// Timeout bounds script wall time; zero means DefaultTimeout.
 	Timeout time.Duration
 }

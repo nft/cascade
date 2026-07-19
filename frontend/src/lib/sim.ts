@@ -7,6 +7,7 @@ import {
   DELAY_MAX_MS,
   DELAY_MIN_MS,
   isDelayNode,
+  isForNode,
   isHttpNode,
   isMockNode,
   isRunnableNode,
@@ -54,9 +55,13 @@ export async function simulateRun(app: AppState, targetId?: string, scope: RunSc
         : componentIds(app.edges, targetId)
     : null
   // Note nodes are annotations — they never run, so they keep no status.
-  const noteIds = new Set(app.nodes.filter((n) => n.type === 'note').map((n) => n.id))
+  // Loop children never run at top level either: the For executes them
+  // (sim support lands with plan 09 N7; until then they sit out entirely).
+  const excluded = new Set(
+    app.nodes.filter((n) => n.type === 'note' || n.parentId).map((n) => n.id),
+  )
   const order = executionOrder(app).filter(
-    (id) => (!include || include.has(id)) && !noteIds.has(id),
+    (id) => (!include || include.has(id)) && !excluded.has(id),
   )
   app.activeRunIds = new Set(order)
 
@@ -84,6 +89,13 @@ export async function simulateRun(app: AppState, targetId?: string, scope: RunSc
     }
     if (isDelayNode(node)) {
       if (!(await runDelayNode(app, node))) failed.add(id)
+      continue
+    }
+    if (isForNode(node)) {
+      // Honest placeholder until N7: the sim cannot iterate loops yet, so
+      // the For fails (skipping its downstream) instead of hanging.
+      app.updateNodeData(id, { status: 'failed', note: 'loop runs are not simulated yet' })
+      failed.add(id)
       continue
     }
     if (!isHttpNode(node)) continue

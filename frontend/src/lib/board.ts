@@ -55,10 +55,15 @@ export function serializeBoard(
   responses?: Record<string, CapturedResponse>,
 ): BoardJSON {
   const positions: Record<string, { x: number; y: number }> = {}
+  const sizes: Record<string, { width: number; height: number }> = {}
   const wireNodes: BoardNodeJSON[] = nodes.map((node) => {
     // Children of a For store container-relative positions — the same
     // coordinates xyflow works in, so serialize/deserialize never converts.
     positions[node.id] = { x: node.position.x, y: node.position.y }
+    // For containers are user-resizable; their explicit size is layout.
+    if (node.type === 'for' && node.width != null && node.height != null) {
+      sizes[node.id] = { width: node.width, height: node.height }
+    }
     if (node.type === 'note') {
       return { id: node.id, type: node.type, data: { ...node.data } }
     }
@@ -84,6 +89,7 @@ export function serializeBoard(
     edges: edges.map((e) => ({ id: e.id, from: e.source, to: e.target })),
     layout: {
       positions,
+      ...(Object.keys(sizes).length > 0 ? { sizes } : {}),
       ...(viewport ? { viewport } : {}),
       ...(Object.keys(keptResponses).length > 0 ? { responses: keptResponses } : {}),
     },
@@ -154,10 +160,12 @@ export function deserializeBoard(board: BoardJSON): {
       }
       case 'for': {
         const partial = data as Partial<ForNodeData>
+        const size = board.layout?.sizes?.[wire.id]
         return {
           id: wire.id,
           type,
           position,
+          ...(size ? { width: size.width, height: size.height } : {}),
           data: {
             name: wire.name ?? wire.id,
             key,

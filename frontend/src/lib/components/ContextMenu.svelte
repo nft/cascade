@@ -64,6 +64,9 @@
       case 'add-delay':
         app.addDelayNode(menu.flow ?? screenToFlowPosition(menu.screen))
         break
+      case 'add-for':
+        app.addForNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
       case 'add-note':
         app.addNoteNode(menu.flow ?? screenToFlowPosition(menu.screen))
         break
@@ -98,7 +101,7 @@
         if (menu.id) app.updateCollectionRequestFromNode(menu.id)
         break
       case 'delete-node':
-        if (menu.id) app.removeNode(menu.id)
+        if (menu.id) app.removeNodeRequest(menu.id)
         break
       case 'cut-edge':
         if (menu.id) app.removeEdge(menu.id)
