@@ -1,12 +1,13 @@
 <script lang="ts">
   import { isDanglingCredential } from '../credentials'
-  import { isDelayNode, isHttpNode, isMockNode, isRunnableNode, isTransformNode } from '../model'
+  import { isDelayNode, isForNode, isHttpNode, isMockNode, isRunnableNode, isTransformNode } from '../model'
   import { nodeTarget } from '../requestEditor'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import CredentialOptions from './CredentialOptions.svelte'
   import Icon from './Icon.svelte'
   import DelaySection from './inspector/DelaySection.svelte'
+  import ForSection from './inspector/ForSection.svelte'
   import MockSection from './inspector/MockSection.svelte'
   import NameKeySection from './inspector/NameKeySection.svelte'
   import OutputsSection from './inspector/OutputsSection.svelte'
@@ -41,6 +42,11 @@
           <Icon name="function" size={13} />
         </span>
         <span class="truncate font-mono text-[11px] text-zinc-400">transform step</span>
+      {:else if isForNode(node)}
+        <span class="flex items-center rounded bg-emerald-500/15 px-1 py-0.5 text-emerald-300">
+          <Icon name="laps" size={13} />
+        </span>
+        <span class="truncate font-mono text-[11px] text-zinc-400">for loop</span>
       {:else}
         <span class="truncate font-mono text-[11px] text-zinc-400">{node.type} node</span>
       {/if}
@@ -113,8 +119,9 @@
         <DelaySection {node} />
 
         <OutputsSection {node} />
-      {:else}
-        <!-- the for config section lands with plan 09 N6. -->
+      {:else if isForNode(node)}
+        <ForSection {node} />
+
         <OutputsSection {node} />
       {/if}
     </div>

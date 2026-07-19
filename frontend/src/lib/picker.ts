@@ -10,6 +10,7 @@ import {
   type RunnableNode,
   type SchemaJSON,
 } from './model'
+import { schemaTree, type SchemaTreeNode } from './schema'
 
 /** Where a node's picker tree comes from, in precedence order (plan 05 §8). */
 export type SchemaOrigin = 'pinned' | 'spec' | 'inferred'
@@ -53,6 +54,28 @@ export function nodeSchemaSource(
  * direct upstream flagged (it is also reachable as `res` when it is the
  * only one).
  */
+/** One offerable each-mode For source: an array-typed path in a node's schema (plan 09 N6). */
+export interface ArrayPathOption {
+  path: string
+  /** The row's type label from the schema tree (usually `array`). */
+  type: string
+}
+
+/**
+ * Flattens a schema to the paths that resolve to arrays — the only paths an
+ * each-mode For may iterate over. Paths through `[0]` stay offerable:
+ * `body.groups[0].members` is a legitimate array too.
+ */
+export function arrayPaths(schema: SchemaJSON): ArrayPathOption[] {
+  const out: ArrayPathOption[] = []
+  const walk = (row: SchemaTreeNode) => {
+    if (row.type.split(' | ').includes('array')) out.push({ path: row.path, type: row.type })
+    row.children.forEach(walk)
+  }
+  walk(schemaTree(schema))
+  return out
+}
+
 export function ancestorNodes(
   nodes: readonly AppNode[],
   edges: readonly AppEdge[],

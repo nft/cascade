@@ -1,6 +1,6 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { HttpLogEntry } from '../model'
+import type { ForLogEntry, HttpLogEntry } from '../model'
 import { app } from '../state.svelte'
 import LogsPanel from './LogsPanel.svelte'
 
@@ -89,5 +89,51 @@ describe('LogsPanel clear button (plan 10 §1)', () => {
     app.logs = []
     flushSync()
     expect(clearButton().disabled).toBe(true)
+  })
+})
+
+describe('LogsPanel loop rows (plan 09 N6)', () => {
+  const summary: ForLogEntry = {
+    kind: 'for',
+    id: 'f1',
+    runId: 'run-1',
+    time: '12:00:01.000',
+    node: 'Seed Users',
+    nodeId: 'loop',
+    durationMs: 1200,
+    iterations: 2,
+  }
+
+  it('labels iteration rows with a 1-based #k chip', () => {
+    app.logs = [{ ...mkEntry('l1', 'n1', 'createUser'), iteration: 2 }]
+    flushSync()
+    expect(rowFor('createUser').textContent).toContain('#3')
+  })
+
+  it('renders the for summary row with iteration count and ok/failed state', () => {
+    app.logs = [summary]
+    flushSync()
+    const row = rowFor('Seed Users')
+    expect(row.textContent).toContain('loop')
+    expect(row.textContent).toContain('2 iterations')
+    expect(row.textContent).toContain('ok')
+
+    app.logs = [{ ...summary, iterations: 1, error: 'iteration 1 failed' }]
+    flushSync()
+    const failedRow = rowFor('Seed Users')
+    expect(failedRow.textContent).toContain('1 iteration')
+    expect(failedRow.textContent).toContain('failed')
+  })
+
+  it('the failed-only status filter keeps an errored loop summary', () => {
+    app.logs = [summary, { ...summary, id: 'f2', node: 'Broken Loop', error: 'boom' }]
+    flushSync()
+    const filter = document.querySelector('select') as HTMLSelectElement
+    filter.value = 'failed'
+    filter.dispatchEvent(new Event('change'))
+    flushSync()
+    const rows = [...document.querySelectorAll('tbody tr')].map((r) => r.textContent)
+    expect(rows.some((t) => t?.includes('Broken Loop'))).toBe(true)
+    expect(rows.some((t) => t?.includes('Seed Users'))).toBe(false)
   })
 })

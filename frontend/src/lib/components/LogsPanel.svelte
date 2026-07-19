@@ -17,11 +17,12 @@
   }
 
   function entryFailed(entry: LogEntry): boolean {
-    return entry.kind === 'transform' ? entry.error !== undefined : entry.status >= 400
+    return entry.kind === 'http' ? entry.status >= 400 : entry.error !== undefined
   }
 
   function searchText(entry: LogEntry): string {
-    const target = entry.kind === 'transform' ? entry.inputNodes.join(' ') : entry.url
+    const target =
+      entry.kind === 'http' ? entry.url : entry.kind === 'transform' ? entry.inputNodes.join(' ') : 'loop'
     return `${entry.node} ${target} ${entry.runId}`.toLowerCase()
   }
 
@@ -104,7 +105,12 @@
               onpointerleave={() => (app.logHoverNodeId = null)}
             >
               <td class="px-3 py-1.5 font-mono text-zinc-500">{entry.time}</td>
-              <td class="px-2 py-1.5 text-zinc-300">{entry.node}</td>
+              <td class="px-2 py-1.5 text-zinc-300">
+                {entry.node}{#if entry.iteration !== undefined}<span
+                    class="ml-1.5 rounded bg-emerald-500/10 px-1 py-0.5 font-mono text-[10px] text-emerald-300/80"
+                    >#{entry.iteration + 1}</span
+                  >{/if}
+              </td>
               {#if entry.kind === 'transform'}
                 <!-- Transform rows have no URL: show what the step consumed instead. -->
                 <td class="px-2 py-1.5">
@@ -114,6 +120,21 @@
                   </span>
                   <span class="font-mono text-zinc-400">
                     {entry.inputNodes.length > 0 ? `in: ${entry.inputNodes.join(', ')}` : '—'}
+                  </span>
+                </td>
+                <td class="px-2 py-1.5 text-right font-mono {entry.error ? 'text-rose-400' : 'text-emerald-400'}">
+                  {entry.error ? 'failed' : 'ok'}
+                </td>
+              {:else if entry.kind === 'for'}
+                <!-- Loop summary rows show the iteration total; per-iteration
+                     detail lives in the child rows carrying #k chips. -->
+                <td class="px-2 py-1.5">
+                  <span class="mr-1.5 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[10px] font-semibold text-emerald-300">
+                    <Icon name="laps" size={11} />
+                    loop
+                  </span>
+                  <span class="font-mono text-zinc-400">
+                    {entry.iterations} iteration{entry.iterations === 1 ? '' : 's'}
                   </span>
                 </td>
                 <td class="px-2 py-1.5 text-right font-mono {entry.error ? 'text-rose-400' : 'text-emerald-400'}">
@@ -139,6 +160,11 @@
                       <p class="pb-1 text-[10px] tracking-wide text-zinc-600 uppercase">Output</p>
                       <pre class="overflow-x-auto rounded-md bg-zinc-950 p-2 font-mono text-[10px] text-zinc-400">{entry.output ?? '—'}</pre>
                     </div>
+                  {:else if entry.kind === 'for'}
+                    <p class="text-[11px] text-zinc-500">
+                      {entry.iterations} iteration{entry.iterations === 1 ? '' : 's'} —
+                      per-iteration rows are logged individually above.
+                    </p>
                   {:else}
                     <div class="grid grid-cols-2 gap-3">
                       <div>

@@ -1,6 +1,13 @@
 <script lang="ts">
   import { Handle, NodeResizer, Position } from '@xyflow/svelte'
-  import { FOR_MAX_ITERATIONS, FOR_MIN_COUNT, type ForNodeData, type NodeStatus } from '../model'
+  import {
+    FOR_MAX_ITERATIONS,
+    FOR_MIN_COUNT,
+    isRunnableNode,
+    type ForNodeData,
+    type NodeStatus,
+  } from '../model'
+  import { ancestorNodes } from '../picker'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
 
@@ -9,9 +16,17 @@
   const MIN_WIDTH = 256
   const MIN_HEIGHT = 160
 
-  let modeChip = $derived(
-    data.mode === 'count' ? `×${data.count}` : `each: ${data.source?.path || '—'}`,
-  )
+  // Chip shows the source by key with the near-universal body. prefix
+  // dropped ("each: listUsers.items") — full path lives in the inspector.
+  const sourceLabel = $derived.by(() => {
+    const src = data.source
+    if (!src) return '—'
+    const owner = app.nodes.find((n) => n.id === src.nodeId)
+    const key = owner && isRunnableNode(owner) ? owner.data.key : '?'
+    const path = src.path.replace(/^body\.?/, '')
+    return path === '' ? key : `${key}.${path}`
+  })
+  let modeChip = $derived(data.mode === 'count' ? `×${data.count}` : `each: ${sourceLabel}`)
   let hasChildren = $derived(app.nodes.some((n) => n.parentId === id))
 
   // Config-tier warnings (plan 09): these fail only this node at run time,
@@ -19,6 +34,12 @@
   let configWarning = $derived.by(() => {
     if (!hasChildren) return 'Empty loop — drag nodes inside; it will fail when run'
     if (data.mode === 'each' && !data.source) return 'Each mode needs an upstream array source'
+    if (
+      data.mode === 'each' &&
+      data.source &&
+      !ancestorNodes(app.nodes, app.edges, id).some(({ node }) => node.id === data.source?.nodeId)
+    )
+      return 'Each source is not an upstream of this loop'
     if (data.mode === 'count' && (data.count < FOR_MIN_COUNT || data.count > FOR_MAX_ITERATIONS))
       return `Count must be ${FOR_MIN_COUNT}–${FOR_MAX_ITERATIONS.toLocaleString('en-US')}`
     return null

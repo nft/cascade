@@ -463,6 +463,11 @@ interface LogEntryBase {
   nodeId: string
   durationMs: number
   error?: string
+  /**
+   * Loop iteration this row ran in, 0-based like exec.Record.Iteration;
+   * absent outside loops. LogsPanel labels it 1-based ("createUser · #3").
+   */
+  iteration?: number
 }
 
 export type HttpLogEntry = LogEntryBase & {
@@ -483,7 +488,14 @@ export type TransformLogEntry = LogEntryBase & {
   output?: string
 }
 
-export type LogEntry = HttpLogEntry | TransformLogEntry
+/** Whole-loop summary row closing each For run (plan 09) — the anchor its iteration rows group under. */
+export type ForLogEntry = LogEntryBase & {
+  kind: 'for'
+  /** Iterations that completed — short of the plan when the loop failed fast. */
+  iterations: number
+}
+
+export type LogEntry = HttpLogEntry | TransformLogEntry | ForLogEntry
 
 /**
  * One-off request execution outside any board run (plan 08 B4, mirrors
