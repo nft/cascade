@@ -4,6 +4,11 @@
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Cascade</title>
+    <style>
+        /* Match the app shell (Tailwind zinc-950) before the bundle loads, so
+           startup never flashes the webview's default white background. */
+        html, body { background-color: #09090b; }
+    </style>
 </head>
 <body>
 <div id="app"></div>

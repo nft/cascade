@@ -20,6 +20,10 @@ var assets embed.FS
 // project data (e.g. ~/Library/Application Support/cascade on macOS).
 const appDataDirName = "cascade"
 
+// windowBackground matches the frontend shell (Tailwind zinc-950, #09090b) so
+// the native window never shows a different color behind the webview.
+var windowBackground = &options.RGBA{R: 9, G: 9, B: 11, A: 255}
+
 func main() {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -46,7 +50,7 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		BackgroundColour: windowBackground,
 		OnStartup:        app.startup,
 		Bind: []any{
 			app,
