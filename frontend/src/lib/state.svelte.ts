@@ -97,7 +97,10 @@ export class AppState {
   boardName = $state('')
   selectedNodeId = $state<string | null>(null)
   sidebarTab = $state<SidebarTab>('operations')
+  sidebarOpen = $state(true)
   logsOpen = $state(true)
+  /** Canvas lock (controls toggle): freezes node dragging, connecting and selection; panning stays. */
+  canvasLocked = $state(false)
   isRunning = $state(false)
   /** Node ids in the currently running subgraph; null when idle. Drives edge animation. */
   activeRunIds = $state<ReadonlySet<string> | null>(null)

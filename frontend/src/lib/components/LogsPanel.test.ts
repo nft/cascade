@@ -92,6 +92,19 @@ describe('LogsPanel clear button (plan 10 §1)', () => {
   })
 })
 
+describe('LogsPanel collapse/expand buttons', () => {
+  it('collapses via the header minus button and expands back', () => {
+    document.querySelector<HTMLButtonElement>('[aria-label="Collapse logs"]')!.click()
+    flushSync()
+    expect(app.logsOpen).toBe(false)
+    expect(document.querySelector('tbody')).toBe(null)
+    document.querySelector<HTMLButtonElement>('[aria-label="Expand logs"]')!.click()
+    flushSync()
+    expect(app.logsOpen).toBe(true)
+    expect(document.querySelector('tbody')).not.toBe(null)
+  })
+})
+
 describe('LogsPanel loop rows (plan 09 N6)', () => {
   const summary: ForLogEntry = {
     kind: 'for',

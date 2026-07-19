@@ -7,9 +7,33 @@
   import IconButton from './ui/IconButton.svelte'
   import Select from './ui/Select.svelte'
 
+  // Resizable body height (drag the strip above the header); capped so the
+  // canvas always keeps a workable share of the window.
+  const LOGS_DEFAULT_HEIGHT_PX = 208
+  const LOGS_MIN_HEIGHT_PX = 96
+  const LOGS_MAX_VIEWPORT_FRACTION = 0.7
+
   let statusFilter = $state<'all' | 'success' | 'failed'>('all')
   let query = $state('')
   let expandedId = $state<string | null>(null)
+  let panelHeight = $state(LOGS_DEFAULT_HEIGHT_PX)
+
+  function resizeStart(event: PointerEvent) {
+    const handle = event.currentTarget as HTMLElement
+    const startY = event.clientY
+    const startHeight = panelHeight
+    handle.setPointerCapture(event.pointerId)
+    const move = (e: PointerEvent) => {
+      const max = window.innerHeight * LOGS_MAX_VIEWPORT_FRACTION
+      panelHeight = Math.min(max, Math.max(LOGS_MIN_HEIGHT_PX, startHeight + (startY - e.clientY)))
+    }
+    const stop = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', stop)
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', stop)
+  }
 
   function clearLogs() {
     app.clearLogs()
@@ -46,7 +70,16 @@
   })
 </script>
 
-<section class="shrink-0 border-t border-zinc-800 bg-surface">
+<section class="relative shrink-0 border-t border-zinc-800 bg-surface">
+  {#if app.logsOpen}
+    <div
+      class="absolute inset-x-0 -top-0.5 z-10 h-1 cursor-row-resize hover:bg-emerald-500/40"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize logs panel"
+      onpointerdown={resizeStart}
+    ></div>
+  {/if}
   <header class="flex h-9 items-center gap-3 px-3">
     <button class="flex items-center gap-1.5 text-xs text-zinc-300" onclick={() => (app.logsOpen = !app.logsOpen)}>
       <Icon name="terminal" size={14} />
@@ -79,11 +112,25 @@
         disabled={app.logs.length === 0}
         onclick={clearLogs}
       />
+      <IconButton
+        icon="remove"
+        label="Collapse logs"
+        title="Collapse logs"
+        onclick={() => (app.logsOpen = false)}
+      />
+    {:else}
+      <IconButton
+        class="ml-auto"
+        icon="expand_less"
+        label="Expand logs"
+        title="Expand logs"
+        onclick={() => (app.logsOpen = true)}
+      />
     {/if}
   </header>
 
   {#if app.logsOpen}
-    <div class="h-52 overflow-y-auto border-t border-zinc-800/60">
+    <div class="h-(--logs-h) overflow-y-auto border-t border-zinc-800/60" style="--logs-h:{panelHeight}px">
       <table class="w-full text-left text-[11px]">
         <thead class="sticky top-0 bg-surface">
           <tr class="text-[10px] tracking-wide text-zinc-600 uppercase">

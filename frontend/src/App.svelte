@@ -25,7 +25,9 @@
 <div class="flex h-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
   <TopBar />
   <div class="flex min-h-0 flex-1">
-    <Sidebar />
+    {#if app.sidebarOpen}
+      <Sidebar />
+    {/if}
     <main class="flex min-w-0 flex-1 flex-col">
       <GraphCanvas />
       <LogsPanel />

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Background, Controls, MiniMap, SvelteFlow } from '@xyflow/svelte'
+  import { Background, MiniMap, SvelteFlow } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
   import { sameScope } from '../containment'
   import { assertKnownNodeTypes, decorateEdges, polylinesIntersect, type Point } from '../graph'
   import { app } from '../state.svelte'
+  import CanvasControls from './CanvasControls.svelte'
   import CanvasToolbar from './CanvasToolbar.svelte'
   import ContextMenu from './ContextMenu.svelte'
   import FlowBridge from './FlowBridge.svelte'
@@ -13,6 +14,7 @@
   $effect(() => assertKnownNodeTypes(app.nodes, registeredNodeTypes))
 
   const scissors = $derived(app.canvasTool === 'scissors')
+  const interactive = $derived(!scissors && !app.canvasLocked)
   const displayEdges = $derived(decorateEdges(app.nodes, app.edges, app.activeRunIds, app.logHoverNodeId))
 
   function screenPoint(event: MouseEvent | TouchEvent) {
@@ -106,9 +108,9 @@
     fitView
     deleteKey={['Backspace', 'Delete']}
     panOnDrag={!scissors}
-    elementsSelectable={!scissors}
-    nodesDraggable={!scissors}
-    nodesConnectable={!scissors}
+    elementsSelectable={interactive}
+    nodesDraggable={interactive}
+    nodesConnectable={interactive}
     isValidConnection={(conn) => sameScope(app.nodes, conn.source, conn.target)}
     onnodedragstop={({ nodes: dragged }) => {
       // Loop membership is decided on drop, not during the drag (plan 09 N5).
@@ -147,7 +149,7 @@
     onmovestart={() => app.closeContextMenu()}
   >
     <Background bgColor="#0b0b0e" patternColor="#27272a" />
-    <Controls />
+    <CanvasControls />
     <MiniMap
       class="!h-28 !w-40"
       bgColor="var(--color-surface)"
