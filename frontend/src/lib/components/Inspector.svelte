@@ -1,11 +1,13 @@
 <script lang="ts">
   import { isDanglingCredential } from '../credentials'
-  import { isHttpNode, isRunnableNode } from '../model'
+  import { isDelayNode, isHttpNode, isMockNode, isRunnableNode, isTransformNode } from '../model'
   import { nodeTarget } from '../requestEditor'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import CredentialOptions from './CredentialOptions.svelte'
   import Icon from './Icon.svelte'
+  import DelaySection from './inspector/DelaySection.svelte'
+  import MockSection from './inspector/MockSection.svelte'
   import NameKeySection from './inspector/NameKeySection.svelte'
   import OutputsSection from './inspector/OutputsSection.svelte'
   import RequestSection from './inspector/RequestSection.svelte'
@@ -34,11 +36,13 @@
       {#if isHttpNode(node)}
         <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[node.data.method]}">{node.data.method}</span>
         <span class="truncate font-mono text-[11px] text-zinc-400">{node.data.path}</span>
-      {:else}
+      {:else if isTransformNode(node)}
         <span class="flex items-center rounded bg-violet-500/15 px-1 py-0.5 text-violet-300">
           <Icon name="function" size={13} />
         </span>
         <span class="truncate font-mono text-[11px] text-zinc-400">transform step</span>
+      {:else}
+        <span class="truncate font-mono text-[11px] text-zinc-400">{node.type} node</span>
       {/if}
       <IconButton
         icon="close"
@@ -97,9 +101,20 @@
         <OutputsSection {node} />
 
         <ResponseSchemaSection {node} />
-      {:else}
+      {:else if isTransformNode(node)}
         <TransformSection {node} />
 
+        <OutputsSection {node} />
+      {:else if isMockNode(node)}
+        <MockSection {node} />
+
+        <OutputsSection {node} />
+      {:else if isDelayNode(node)}
+        <DelaySection {node} />
+
+        <OutputsSection {node} />
+      {:else}
+        <!-- the for config section lands with plan 09 N6. -->
         <OutputsSection {node} />
       {/if}
     </div>

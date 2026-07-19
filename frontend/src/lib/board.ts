@@ -4,15 +4,21 @@
 // and canvas-only layout (positions, viewport, last responses) in a sibling
 // `layout` key.
 import {
+  DELAY_DEFAULT_MS,
+  FOR_MIN_COUNT,
   isHttpMethod,
   isNodeType,
+  MOCK_DEFAULT_STATUS,
   type AppEdge,
   type AppNode,
   type BoardJSON,
   type BoardNodeJSON,
   type BoardViewport,
   type CapturedResponse,
+  type DelayNodeData,
   type FieldRef,
+  type ForNodeData,
+  type MockNodeData,
   type NodeExport,
   type NodeField,
   type OperationNodeData,
@@ -50,12 +56,20 @@ export function serializeBoard(
 ): BoardJSON {
   const positions: Record<string, { x: number; y: number }> = {}
   const wireNodes: BoardNodeJSON[] = nodes.map((node) => {
+    // Children of a For store container-relative positions — the same
+    // coordinates xyflow works in, so serialize/deserialize never converts.
     positions[node.id] = { x: node.position.x, y: node.position.y }
     if (node.type === 'note') {
       return { id: node.id, type: node.type, data: { ...node.data } }
     }
     const { name: nodeName, status: _status, note: _note, ...rest } = node.data
-    return { id: node.id, type: node.type, name: nodeName, data: rest }
+    return {
+      id: node.id,
+      type: node.type,
+      name: nodeName,
+      ...(node.parentId ? { parent: node.parentId } : {}),
+      data: rest,
+    }
   })
   // Responses of deleted nodes must not linger in the file.
   const nodeIds = new Set(nodes.map((n) => n.id))
@@ -91,15 +105,77 @@ export function deserializeBoard(board: BoardJSON): {
     const position = board.layout?.positions?.[wire.id] ?? FALLBACK_POSITION
     const data = wire.data ?? {}
     const key = typeof data.key === 'string' ? data.key : ''
+    // Containment (plan 09): only the loop-body allowlist may carry a parent;
+    // anything else (note, nested for, hand-edited junk) loads unparented
+    // rather than failing the board.
+    const parented =
+      typeof wire.parent === 'string' &&
+      wire.parent !== '' &&
+      (type === 'http' || type === 'transform' || type === 'mock' || type === 'delay')
+        ? { parentId: wire.parent }
+        : {}
     switch (type) {
       case 'note':
         return { id: wire.id, type, position, data: { text: String(data.text ?? '') } }
+      case 'mock': {
+        const partial = data as Partial<MockNodeData>
+        return {
+          id: wire.id,
+          type,
+          position,
+          ...parented,
+          data: {
+            name: wire.name ?? wire.id,
+            key,
+            status: 'idle',
+            body: typeof partial.body === 'string' ? partial.body : '{}',
+            statusCode:
+              typeof partial.statusCode === 'number' ? partial.statusCode : MOCK_DEFAULT_STATUS,
+            ...(Array.isArray(partial.exports) ? { exports: partial.exports as NodeExport[] } : {}),
+          },
+        }
+      }
+      case 'delay': {
+        const partial = data as Partial<DelayNodeData>
+        return {
+          id: wire.id,
+          type,
+          position,
+          ...parented,
+          data: {
+            name: wire.name ?? wire.id,
+            key,
+            status: 'idle',
+            durationMs:
+              typeof partial.durationMs === 'number' ? partial.durationMs : DELAY_DEFAULT_MS,
+            ...(Array.isArray(partial.exports) ? { exports: partial.exports as NodeExport[] } : {}),
+          },
+        }
+      }
+      case 'for': {
+        const partial = data as Partial<ForNodeData>
+        return {
+          id: wire.id,
+          type,
+          position,
+          data: {
+            name: wire.name ?? wire.id,
+            key,
+            status: 'idle',
+            mode: partial.mode === 'each' ? 'each' : 'count',
+            count: typeof partial.count === 'number' ? partial.count : FOR_MIN_COUNT,
+            ...(isFieldRef(partial.source) ? { source: partial.source } : {}),
+            ...(Array.isArray(partial.exports) ? { exports: partial.exports as NodeExport[] } : {}),
+          },
+        }
+      }
       case 'transform': {
         const partial = data as Partial<TransformNodeData>
         return {
           id: wire.id,
           type,
           position,
+          ...parented,
           data: {
             name: wire.name ?? wire.id,
             key,
@@ -117,6 +193,7 @@ export function deserializeBoard(board: BoardJSON): {
           id: wire.id,
           type,
           position,
+          ...parented,
           data: {
             name: wire.name ?? wire.id,
             key,
@@ -144,14 +221,29 @@ export function deserializeBoard(board: BoardJSON): {
       }
     }
   })
-  assignKeys(nodes)
-  migrateLegacyFields(nodes)
+  // xyflow requires a container to appear before its children in the nodes
+  // array; a stable partition (top-level nodes first, then children) keeps
+  // that true regardless of how the file interleaves them.
+  const ordered = [...nodes.filter((n) => !n.parentId), ...nodes.filter((n) => n.parentId)]
+  assignKeys(ordered)
+  migrateLegacyFields(ordered)
   const edges: AppEdge[] = board.edges.map((e, i) => ({
     id: e.id ?? `e-${e.from}-${e.to}-${i}`,
     source: e.from,
     target: e.to,
   }))
-  return { nodes, edges, viewport: board.layout?.viewport, responses: board.layout?.responses ?? {} }
+  return {
+    nodes: ordered,
+    edges,
+    viewport: board.layout?.viewport,
+    responses: board.layout?.responses ?? {},
+  }
+}
+
+function isFieldRef(value: unknown): value is FieldRef {
+  if (!value || typeof value !== 'object') return false
+  const ref = value as Partial<FieldRef>
+  return typeof ref.nodeId === 'string' && typeof ref.path === 'string'
 }
 
 function isRawBody(value: unknown): value is RawBody {

@@ -4,11 +4,17 @@
 // Go sandbox); only http calls are simulated.
 import { componentIds, downstreamIds, upstreamIds } from './graph'
 import {
+  DELAY_MAX_MS,
+  DELAY_MIN_MS,
+  isDelayNode,
   isHttpNode,
+  isMockNode,
   isRunnableNode,
   isTransformNode,
   type CapturedResponse,
+  type DelayNode,
   type HttpNode,
+  type MockNode,
   type NodeField,
   type TransformNode,
 } from './model'
@@ -26,6 +32,9 @@ function pseudoUuid(): string {
 
 /** Captured response bodies above this JSON size are dropped (plan 05 §8). */
 const RESPONSE_BODY_CAP_BYTES = 256 * 1024
+
+/** Demo-sim delays sleep for real but capped — a 5-minute delay must not wedge the demo (plan 09 N7). */
+export const SIM_DELAY_CAP_MS = 3000
 
 /**
  * Demo run simulation. With a target, only the target's upstream set,
@@ -67,6 +76,14 @@ export async function simulateRun(app: AppState, targetId?: string, scope: RunSc
     if (isTransformNode(node)) {
       const ok = await runTransformNode(app, node, runId)
       if (!ok) failed.add(id)
+      continue
+    }
+    if (isMockNode(node)) {
+      if (!runMockNode(app, node)) failed.add(id)
+      continue
+    }
+    if (isDelayNode(node)) {
+      if (!(await runDelayNode(app, node))) failed.add(id)
       continue
     }
     if (!isHttpNode(node)) continue
@@ -149,6 +166,62 @@ async function runTransformNode(app: AppState, node: TransformNode, runId: strin
     ]
     return false
   }
+}
+
+/**
+ * Runs a mock node in the sim exactly like the engine will (plan 09): parse
+ * the authored JSON, emit it under the configured status. No log entry yet —
+ * mock log rows ride with the LogsPanel work (N6/N7). Returns success.
+ */
+function runMockNode(app: AppState, node: MockNode): boolean {
+  let body: unknown
+  try {
+    body = JSON.parse(node.data.body)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    app.updateNodeData(node.id, { status: 'failed', note: message })
+    return false
+  }
+  const captured: CapturedResponse = {
+    status: node.data.statusCode,
+    body,
+    at: new Date().toISOString(),
+  }
+  if (JSON.stringify(captured.body).length > RESPONSE_BODY_CAP_BYTES) {
+    captured.body = null
+    captured.truncated = true
+  }
+  app.responses = { ...app.responses, [node.id]: captured }
+  app.updateNodeData(node.id, { status: 'success' })
+  return true
+}
+
+/**
+ * Runs a delay node in the sim like the engine will (plan 09): waits, then
+ * passes its single upstream's captured response through unchanged so
+ * downstream bindings resolve as if the delay were not there; with zero or
+ * 2+ upstreams it outputs a status-0 null body (a gate, not a joiner). An
+ * out-of-range duration is a config-tier failure — it fails only this node.
+ * No log entry yet — delay log rows ride with the LogsPanel work (N6/N7).
+ */
+async function runDelayNode(app: AppState, node: DelayNode): Promise<boolean> {
+  const { durationMs } = node.data
+  if (durationMs < DELAY_MIN_MS || durationMs > DELAY_MAX_MS) {
+    app.updateNodeData(node.id, {
+      status: 'failed',
+      note: `duration must be ${DELAY_MIN_MS}–${DELAY_MAX_MS} ms`,
+    })
+    return false
+  }
+  await sleep(Math.min(durationMs, SIM_DELAY_CAP_MS))
+  const ups = directUpstreams(app.edges, node.id)
+  const passthrough = ups.length === 1 ? app.responses[ups[0]] : undefined
+  app.responses = {
+    ...app.responses,
+    [node.id]: passthrough ?? { status: 0, body: null, at: new Date().toISOString() },
+  }
+  app.updateNodeData(node.id, { status: 'success' })
+  return true
 }
 
 /**

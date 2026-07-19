@@ -8,6 +8,8 @@ export type MenuAction =
   | 'add-node'
   | 'add-custom-request'
   | 'add-transform'
+  | 'add-mock'
+  | 'add-delay'
   | 'add-note'
   | 'paste'
   | 'fit-view'
@@ -50,6 +52,8 @@ export function menuItems(
         { action: 'add-node', icon: 'add_circle', label: 'Add node…' },
         { action: 'add-custom-request', icon: 'http', label: 'Add custom request' },
         { action: 'add-transform', icon: 'function', label: 'Add transform' },
+        { action: 'add-mock', icon: 'data_object', label: 'Add mock' },
+        { action: 'add-delay', icon: 'timer', label: 'Add delay' },
         { action: 'add-note', icon: 'sticky_note_2', label: 'Add note' },
         { action: 'paste', icon: 'content_paste', label: 'Paste' },
         { action: 'fit-view', icon: 'fit_screen', label: 'Fit view' },

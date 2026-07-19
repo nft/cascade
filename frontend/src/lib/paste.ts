@@ -49,7 +49,14 @@ export function buildPaste(
   const taken = takenKeys(existing)
   const nodes = loaded.nodes.map((n): AppNode => {
     const id = idMap.get(n.id)!
-    const position = { x: n.position.x + offset.x, y: n.position.y + offset.y }
+    // A child whose For container is part of the paste keeps its
+    // container-relative position (the container absorbs the offset) and its
+    // parent link, remapped; one pasted without its container unparents and
+    // takes the offset like any top-level node.
+    const parentId = n.parentId ? idMap.get(n.parentId) : undefined
+    const position = parentId
+      ? { ...n.position }
+      : { x: n.position.x + offset.x, y: n.position.y + offset.y }
     if (n.type === 'note') return { ...n, id, position, selected: true }
     const key = uniqueKey(n.data.key, taken)
     taken.add(key)
@@ -58,17 +65,42 @@ export function buildPaste(
         ...n,
         id,
         position,
+        parentId,
         selected: true,
         data: { ...n.data, key, pick: n.data.pick.map((f) => remapField(f, idMap)) },
       }
     }
-    return {
-      ...n,
-      id,
-      position,
-      selected: true,
-      data: { ...n.data, key, fields: n.data.fields.map((f) => remapField(f, idMap)) },
+    if (n.type === 'http') {
+      return {
+        ...n,
+        id,
+        position,
+        parentId,
+        selected: true,
+        data: { ...n.data, key, fields: n.data.fields.map((f) => remapField(f, idMap)) },
+      }
     }
+    if (n.type === 'for') {
+      // The each-mode source is a binding ref: remap it when its node is in
+      // the paste, keep it as-is otherwise (same policy as remapField).
+      const mapped = n.data.source && idMap.get(n.data.source.nodeId)
+      return {
+        ...n,
+        id,
+        position,
+        selected: true,
+        data: {
+          ...n.data,
+          key,
+          ...(n.data.source && mapped ? { source: { ...n.data.source, nodeId: mapped } } : {}),
+        },
+      }
+    }
+    // mock and delay: nothing inside their data references other nodes.
+    if (n.type === 'mock') {
+      return { ...n, id, position, parentId, selected: true, data: { ...n.data, key } }
+    }
+    return { ...n, id, position, parentId, selected: true, data: { ...n.data, key } }
   })
 
   const edges = loaded.edges.map(

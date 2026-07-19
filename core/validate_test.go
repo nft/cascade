@@ -63,9 +63,100 @@ func TestValidate(t *testing.T) {
 		{
 			name: "unknown type is rejected",
 			graph: Graph{
-				Nodes: []Node{{ID: "a", Type: "delay"}},
+				Nodes: []Node{{ID: "a", Type: "webhook"}},
 			},
 			wantErr: "unknown node type",
+		},
+		{
+			name: "mock and delay in a chain are valid",
+			graph: Graph{
+				Nodes: []Node{{ID: "fixture", Type: NodeTypeMock}, {ID: "wait", Type: NodeTypeDelay}, {ID: "b", Type: NodeTypeHTTP}},
+				Edges: []Edge{{From: "fixture", To: "wait"}, {From: "wait", To: "b"}},
+			},
+		},
+		{
+			name: "for with allowed children and outside edge into the for is valid",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "src", Type: NodeTypeHTTP},
+					{ID: "loop", Type: NodeTypeFor},
+					{ID: "c1", Type: NodeTypeHTTP, Parent: "loop"},
+					{ID: "c2", Type: NodeTypeTransform, Parent: "loop"},
+					{ID: "sink", Type: NodeTypeHTTP},
+				},
+				Edges: []Edge{{From: "src", To: "loop"}, {From: "c1", To: "c2"}, {From: "loop", To: "sink"}},
+			},
+		},
+		{
+			// A freshly inserted container the user is still dragging nodes
+			// into: empty-loop failure is config-tier, not a shape error.
+			name:  "empty for is valid at the shape tier",
+			graph: Graph{Nodes: []Node{{ID: "loop", Type: NodeTypeFor}}},
+		},
+		{
+			name: "edge from outside into a child is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "src", Type: NodeTypeHTTP},
+					{ID: "loop", Type: NodeTypeFor},
+					{ID: "c1", Type: NodeTypeHTTP, Parent: "loop"},
+				},
+				Edges: []Edge{{From: "src", To: "c1"}},
+			},
+			wantErr: "cross a for-node boundary",
+		},
+		{
+			name: "edge from a child to outside is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "loop", Type: NodeTypeFor},
+					{ID: "c1", Type: NodeTypeHTTP, Parent: "loop"},
+					{ID: "sink", Type: NodeTypeHTTP},
+				},
+				Edges: []Edge{{From: "c1", To: "sink"}},
+			},
+			wantErr: "cross a for-node boundary",
+		},
+		{
+			name: "edge between a child and its own for node is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "loop", Type: NodeTypeFor},
+					{ID: "c1", Type: NodeTypeHTTP, Parent: "loop"},
+				},
+				Edges: []Edge{{From: "loop", To: "c1"}},
+			},
+			wantErr: "cross a for-node boundary",
+		},
+		{
+			name: "note as a child is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "loop", Type: NodeTypeFor},
+					{ID: "memo", Type: NodeTypeNote, Parent: "loop"},
+				},
+			},
+			wantErr: "cannot be children",
+		},
+		{
+			name: "nested for is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "outer", Type: NodeTypeFor},
+					{ID: "inner", Type: NodeTypeFor, Parent: "outer"},
+				},
+			},
+			wantErr: "nested for",
+		},
+		{
+			name: "parent that is not a for node is rejected",
+			graph: Graph{
+				Nodes: []Node{
+					{ID: "a", Type: NodeTypeHTTP},
+					{ID: "b", Type: NodeTypeHTTP, Parent: "a"},
+				},
+			},
+			wantErr: "not a for node",
 		},
 		{
 			name: "cycle is rejected",

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"cascade/core"
 	"cascade/core/binding"
@@ -189,5 +190,224 @@ func TestFailureSkipsDownstream(t *testing.T) {
 	}
 	if rec := res.Records[1]; rec.Err == "" {
 		t.Fatalf("failed transform record carries no error: %+v", rec)
+	}
+}
+
+// A mock node seeds a chain: its parsed JSON is a first-class output that a
+// downstream http node binds against, same zero-special-case path as
+// transform (plan 09 N2).
+func TestMockNodeFeedsDownstreamBinding(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "fixture", Type: core.NodeTypeMock},
+			{ID: "create", Type: core.NodeTypeHTTP},
+		},
+		Edges: []core.Edge{{From: "fixture", To: "create"}},
+	}
+	var boundName any
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		v, err := binding.Template("{{fixture.body.users[0].name}}").Resolve(env)
+		if err != nil {
+			return nil, err
+		}
+		boundName = v
+		return &binding.Output{Status: 201, Body: map[string]any{"ok": true}}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP: httpRunner,
+		Mocks: map[core.NodeID]MockSpec{
+			"fixture": {Status: 207, Body: []byte(`{"users":[{"name":"ada"}]}`)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["fixture"] != StatusSuccess || res.Statuses["create"] != StatusSuccess {
+		t.Fatalf("statuses = %+v", res.Statuses)
+	}
+	if boundName != "ada" {
+		t.Fatalf("bound %#v through the mock, want ada", boundName)
+	}
+	if res.Outputs["fixture"].Status != 207 {
+		t.Fatalf("mock output status = %d, want the configured 207", res.Outputs["fixture"].Status)
+	}
+	// The mock record carries the produced body, like transform rows.
+	if rec := res.Records[0]; rec.Type != core.NodeTypeMock || rec.Output == nil || rec.Status != 0 {
+		t.Fatalf("mock record wrong shape: %+v", rec)
+	}
+}
+
+func TestMockNodeDefaultsStatus(t *testing.T) {
+	g := &core.Graph{Nodes: []core.Node{{ID: "fixture", Type: core.NodeTypeMock}}}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks: map[core.NodeID]MockSpec{"fixture": {Body: []byte(`{}`)}},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outputs["fixture"].Status != DefaultMockStatus {
+		t.Fatalf("status = %d, want %d", res.Outputs["fixture"].Status, DefaultMockStatus)
+	}
+}
+
+// A delay spliced between two nodes passes its single upstream's output
+// through unchanged — the same pointer — so downstream bindings (and `res`
+// sugar) resolve through the delay as if it were not there.
+func TestDelayNodePassesThroughSingleUpstream(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "fixture", Type: core.NodeTypeMock},
+			{ID: "wait", Type: core.NodeTypeDelay},
+			{ID: "create", Type: core.NodeTypeHTTP},
+		},
+		Edges: []core.Edge{
+			{From: "fixture", To: "wait"},
+			{From: "wait", To: "create"},
+		},
+	}
+	var boundID any
+	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
+		v, err := binding.Template("{{wait.body.id}}").Resolve(env)
+		if err != nil {
+			return nil, err
+		}
+		boundID = v
+		return &binding.Output{Status: 201, Body: nil}, nil
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		HTTP:   httpRunner,
+		Mocks:  map[core.NodeID]MockSpec{"fixture": {Status: 200, Body: []byte(`{"id":"u1"}`)}},
+		Delays: map[core.NodeID]time.Duration{"wait": time.Millisecond},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["wait"] != StatusSuccess || res.Statuses["create"] != StatusSuccess {
+		t.Fatalf("statuses = %+v", res.Statuses)
+	}
+	if boundID != "u1" {
+		t.Fatalf("bound %#v through the delay, want u1", boundID)
+	}
+	if res.Outputs["wait"] != res.Outputs["fixture"] {
+		t.Fatalf("delay output is not the upstream output pointer")
+	}
+	// Delay records carry the duration only, never a payload.
+	if rec := res.Records[1]; rec.Type != core.NodeTypeDelay || rec.Output != nil || rec.Err != "" {
+		t.Fatalf("delay record wrong shape: %+v", rec)
+	}
+}
+
+// With zero upstreams a delay is a pure gate: Status 0, nil body.
+func TestDelayNodeWithoutUpstreamOutputsNull(t *testing.T) {
+	g := &core.Graph{Nodes: []core.Node{{ID: "wait", Type: core.NodeTypeDelay}}}
+
+	res, err := Run(context.Background(), g, Options{
+		Delays: map[core.NodeID]time.Duration{"wait": time.Millisecond},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	out := res.Outputs["wait"]
+	if out == nil || out.Status != 0 || out.Body != nil {
+		t.Fatalf("delay output = %+v, want Status 0 / nil body", out)
+	}
+}
+
+// Cancelling the run interrupts a sleeping delay immediately — an M7 stop
+// must never wait a delay out.
+func TestDelayNodeCancelInterruptsWait(t *testing.T) {
+	g := &core.Graph{Nodes: []core.Node{{ID: "wait", Type: core.NodeTypeDelay}}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	res, err := Run(ctx, g, Options{
+		Delays: map[core.NodeID]time.Duration{"wait": MaxDelay},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("cancel took %v, want immediate", elapsed)
+	}
+	if res.Statuses["wait"] != StatusFailed {
+		t.Fatalf("status = %s, want failed on cancel", res.Statuses["wait"])
+	}
+	if rec := res.Records[0]; rec.Err == "" {
+		t.Fatalf("cancelled delay record must carry the ctx error: %+v", rec)
+	}
+}
+
+// An out-of-range duration is a config-tier failure: it fails only that
+// node's chain, like a mock's JSON typo.
+func TestDelayNodeOutOfRangeDurationFailsOnlyItsChain(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "wait", Type: core.NodeTypeDelay},
+			{ID: "dependent", Type: core.NodeTypeMock},
+			{ID: "unrelated", Type: core.NodeTypeMock},
+		},
+		Edges: []core.Edge{{From: "wait", To: "dependent"}},
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks: map[core.NodeID]MockSpec{
+			"dependent": {Body: []byte(`{}`)},
+			"unrelated": {Body: []byte(`{}`)},
+		},
+		Delays: map[core.NodeID]time.Duration{"wait": MaxDelay + time.Millisecond},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := map[core.NodeID]Status{
+		"wait":      StatusFailed,
+		"dependent": StatusSkipped,
+		"unrelated": StatusSuccess,
+	}
+	for id, s := range want {
+		if res.Statuses[id] != s {
+			t.Fatalf("node %s: status %s, want %s (all: %+v)", id, res.Statuses[id], s, res.Statuses)
+		}
+	}
+}
+
+// An unparseable body is a config-tier failure: the mock fails, its
+// descendants skip, and an unrelated chain still runs.
+func TestMockNodeInvalidJSONFailsOnlyItsChain(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "fixture", Type: core.NodeTypeMock},
+			{ID: "dependent", Type: core.NodeTypeMock},
+			{ID: "unrelated", Type: core.NodeTypeMock},
+		},
+		Edges: []core.Edge{{From: "fixture", To: "dependent"}},
+	}
+
+	res, err := Run(context.Background(), g, Options{
+		Mocks: map[core.NodeID]MockSpec{
+			"fixture":   {Body: []byte(`{"broken`)},
+			"dependent": {Body: []byte(`{}`)},
+			"unrelated": {Body: []byte(`{}`)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := map[core.NodeID]Status{
+		"fixture":   StatusFailed,
+		"dependent": StatusSkipped,
+		"unrelated": StatusSuccess,
+	}
+	for id, s := range want {
+		if res.Statuses[id] != s {
+			t.Fatalf("node %s: status %s, want %s (all: %+v)", id, res.Statuses[id], s, res.Statuses)
+		}
+	}
+	if rec := res.Records[0]; rec.Err == "" {
+		t.Fatalf("failed mock record must carry the parse error: %+v", rec)
 	}
 }

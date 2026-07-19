@@ -7,6 +7,7 @@ package exec
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -27,12 +28,38 @@ const (
 // HTTPFunc performs one http node call and returns its captured output.
 type HTTPFunc func(ctx context.Context, node core.Node, env *binding.Env) (*binding.Output, error)
 
+// DefaultMockStatus is the output status a mock node reports when its spec
+// leaves Status zero, so downstream `status` bindings behave like a real call.
+const DefaultMockStatus = 200
+
+// Delay duration bounds (plan 09). Out-of-range is a config-tier failure at
+// dispatch: the UI clamps, but a hand-edited board must not wedge a run for
+// hours on a typo'd huge delay.
+const (
+	MinDelay = time.Millisecond
+	MaxDelay = 5 * time.Minute
+)
+
+// MockSpec is a mock node's authored output (plan 09): a JSON document
+// emitted verbatim as the body — strictly literal, no template resolution —
+// under the configured status.
+type MockSpec struct {
+	Status int
+	// Body is the authored JSON text; parsing it is deferred to dispatch so
+	// a typo fails only that node at run time (config tier), never the run.
+	Body json.RawMessage
+}
+
 // Options configures one run.
 type Options struct {
 	// HTTP is the http-node runner; a graph with http nodes requires it.
 	HTTP HTTPFunc
 	// Transforms holds each transform node's spec.
 	Transforms map[core.NodeID]transform.Spec
+	// Mocks holds each mock node's spec.
+	Mocks map[core.NodeID]MockSpec
+	// Delays holds each delay node's wait duration.
+	Delays map[core.NodeID]time.Duration
 	// Exports holds declared output aliases by node ID.
 	Exports map[core.NodeID][]binding.Export
 	// Keys maps node IDs to board-unique keys; scripts read ancestors as
@@ -45,7 +72,9 @@ type Options struct {
 
 // Record is one run-log entry. Type selects the variant: http records carry
 // the response status; transform records carry the upstream keys consumed
-// and the produced body (no URL/status — LogsPanel renders a variant row).
+// and the produced body; mock records carry the produced body only (no
+// URL/status — LogsPanel renders a variant row); delay records carry the
+// duration only (their output is a pass-through duplicate, or null).
 type Record struct {
 	Node     core.NodeID
 	Type     core.NodeType
@@ -125,9 +154,12 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 			result.Records = append(result.Records, record)
 			continue
 		}
-		if record.Type == core.NodeTypeHTTP {
+		switch record.Type {
+		case core.NodeTypeHTTP:
 			record.Status = out.Status
-		} else {
+		case core.NodeTypeDelay:
+			// duration only — the body is a pass-through duplicate, or null
+		default:
 			record.Output = out.Body
 		}
 		result.Statuses[id] = StatusSuccess
@@ -152,6 +184,18 @@ func dispatch(
 			return nil, fmt.Errorf("exec: no HTTP runner configured for node %q", node.ID)
 		}
 		return opts.HTTP(ctx, node, env)
+	case core.NodeTypeMock:
+		spec, ok := opts.Mocks[node.ID]
+		if !ok {
+			return nil, fmt.Errorf("exec: mock node %q has no spec", node.ID)
+		}
+		return mockOutput(node.ID, spec)
+	case core.NodeTypeDelay:
+		d, ok := opts.Delays[node.ID]
+		if !ok {
+			return nil, fmt.Errorf("exec: delay node %q has no duration", node.ID)
+		}
+		return delayOutput(ctx, node.ID, d, ups, outputs)
 	case core.NodeTypeTransform:
 		spec, ok := opts.Transforms[node.ID]
 		if !ok {
@@ -168,6 +212,48 @@ func dispatch(
 		return transform.Execute(spec, in)
 	}
 	return nil, fmt.Errorf("exec: node %q has non-executable type %q", node.ID, node.Type)
+}
+
+// mockOutput parses a mock node's authored body and wraps it as the node's
+// output. Unparseable JSON is a config-tier failure: it fails only this node.
+func mockOutput(id core.NodeID, spec MockSpec) (*binding.Output, error) {
+	var body any
+	if err := json.Unmarshal(spec.Body, &body); err != nil {
+		return nil, fmt.Errorf("exec: mock node %q: body is not valid JSON: %v", id, err)
+	}
+	status := spec.Status
+	if status == 0 {
+		status = DefaultMockStatus
+	}
+	return &binding.Output{Status: status, Body: body}, nil
+}
+
+// delayOutput waits the configured duration, then passes its single
+// upstream's output through unchanged (same pointer — a delay spliced into
+// an edge never rewrites downstream bindings). With zero or 2+ upstreams the
+// output is Status 0 / nil body: a delay is a gate, not a joiner. The wait
+// is ctx-aware so stopping a run interrupts a sleeping delay immediately.
+func delayOutput(
+	ctx context.Context,
+	id core.NodeID,
+	d time.Duration,
+	ups []core.NodeID,
+	outputs map[string]*binding.Output,
+) (*binding.Output, error) {
+	if d < MinDelay || d > MaxDelay {
+		return nil, fmt.Errorf("exec: delay node %q: duration %v is outside %v..%v", id, d, MinDelay, MaxDelay)
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+		return nil, fmt.Errorf("exec: delay node %q: %w", id, ctx.Err())
+	}
+	if len(ups) == 1 {
+		return outputs[string(ups[0])], nil
+	}
+	return &binding.Output{Status: 0, Body: nil}, nil
 }
 
 // skipped reports whether any direct upstream did not succeed; skips cascade

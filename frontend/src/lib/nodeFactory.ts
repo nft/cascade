@@ -1,6 +1,13 @@
 // Fresh-node payloads for canvas insertion, kept out of the store so
 // AppState only orchestrates (id allocation, selection, persistence).
-import type { AppNode, Operation, ProjectDefaults, RequestDef } from './model'
+import {
+  DELAY_DEFAULT_MS,
+  MOCK_DEFAULT_STATUS,
+  type AppNode,
+  type Operation,
+  type ProjectDefaults,
+  type RequestDef,
+} from './model'
 import { emptyJsonRawBody, splitUrl } from './request'
 import { slugifyKey, takenKeys, uniqueKey } from './refs'
 import { DEFAULT_TRANSFORM_SCRIPT } from './transform'
@@ -115,6 +122,45 @@ export function makeTransformNode(
       mode: 'pick',
       pick: [],
       script: DEFAULT_TRANSFORM_SCRIPT,
+    },
+  }
+}
+
+/** A mock node (plan 09): a pure data source — no target, no env, no credential. */
+export function makeMockNode(
+  id: string,
+  existing: readonly AppNode[],
+  position: { x: number; y: number },
+): AppNode {
+  return {
+    id,
+    type: 'mock',
+    position,
+    data: {
+      name: 'Mock',
+      key: uniqueKey('mock', takenKeys(existing)),
+      status: 'idle',
+      body: '{}',
+      statusCode: MOCK_DEFAULT_STATUS,
+    },
+  }
+}
+
+/** A delay node (plan 09): a timed gate — no target, no env, no credential. */
+export function makeDelayNode(
+  id: string,
+  existing: readonly AppNode[],
+  position: { x: number; y: number },
+): AppNode {
+  return {
+    id,
+    type: 'delay',
+    position,
+    data: {
+      name: 'Delay',
+      key: uniqueKey('delay', takenKeys(existing)),
+      status: 'idle',
+      durationMs: DELAY_DEFAULT_MS,
     },
   }
 }

@@ -454,3 +454,111 @@ describe('raw-body sim capture (plan 10 §3c)', () => {
     expect(app.responses['r']?.body).toEqual([1, 2, 3])
   })
 })
+
+describe('mock nodes in the sim (plan 09 N2)', () => {
+  beforeEach(() => {
+    app.responses = {}
+  })
+
+  const mkMock = (id: string, body: string): AppNode => ({
+    id,
+    type: 'mock',
+    position: { x: 0, y: 0 },
+    data: { name: id, key: `key_${id}`, status: 'idle', body, statusCode: 201 },
+  })
+
+  it('emits the parsed body as a captured response under the configured status', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkMock('m1', '{"users":[{"name":"ada"}]}'), mkNode('a1')]
+    app.edges = [mkEdge('m1', 'a1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('m1')).toBe('success')
+    expect(statusOf('a1')).toBe('success')
+    expect(app.responses.m1).toMatchObject({
+      status: 201,
+      body: { users: [{ name: 'ada' }] },
+    })
+  })
+
+  it('fails the node on unparseable JSON and skips its descendants only', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkMock('m1', '{"broken'), mkNode('a1'), mkNode('b1')]
+    app.edges = [mkEdge('m1', 'a1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('m1')).toBe('failed')
+    expect(statusOf('a1')).toBe('skipped')
+    expect(statusOf('b1')).toBe('success')
+    expect(app.responses.m1).toBeUndefined()
+  })
+})
+
+describe('delay nodes in the sim (plan 09 N3)', () => {
+  beforeEach(() => {
+    app.responses = {}
+  })
+
+  const mkMock = (id: string, body: string): AppNode => ({
+    id,
+    type: 'mock',
+    position: { x: 0, y: 0 },
+    data: { name: id, key: `key_${id}`, status: 'idle', body, statusCode: 201 },
+  })
+
+  const mkDelay = (id: string, durationMs: number): AppNode => ({
+    id,
+    type: 'delay',
+    position: { x: 0, y: 0 },
+    data: { name: id, key: `key_${id}`, status: 'idle', durationMs },
+  })
+
+  it('passes its single upstream response through unchanged', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkMock('m1', '{"id":"u1"}'), mkDelay('d1', 500), mkNode('a1')]
+    app.edges = [mkEdge('m1', 'd1'), mkEdge('d1', 'a1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('d1')).toBe('success')
+    expect(statusOf('a1')).toBe('success')
+    // Pass-through: the delay's output IS the upstream capture.
+    expect(app.responses.d1).toBe(app.responses.m1)
+  })
+
+  it('outputs a status-0 null body without an upstream (a gate, not a joiner)', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkDelay('d1', 500)]
+    app.edges = []
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('d1')).toBe('success')
+    expect(app.responses.d1).toMatchObject({ status: 0, body: null })
+  })
+
+  it('fails on an out-of-range duration and skips its descendants only', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkDelay('d1', 0), mkNode('a1'), mkNode('b1')]
+    app.edges = [mkEdge('d1', 'a1')]
+
+    const run = app.simulateRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('d1')).toBe('failed')
+    expect(statusOf('a1')).toBe('skipped')
+    expect(statusOf('b1')).toBe('success')
+    expect(app.responses.d1).toBeUndefined()
+  })
+})

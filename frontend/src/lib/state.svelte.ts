@@ -42,8 +42,10 @@ import {
 import {
   duplicateAppNode,
   makeCustomHttpNode,
+  makeDelayNode,
   makeHttpNode,
   makeHttpNodeFromRequest,
+  makeMockNode,
   makeNoteNode,
   makeTransformNode,
 } from './nodeFactory'
@@ -285,6 +287,16 @@ export class AppState {
     this.insertNode(
       makeTransformNode(`transform-${this.addCounter}`, this.nodes, position ?? this.autoPosition()),
     )
+  }
+
+  addMockNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    this.insertNode(makeMockNode(`mock-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+  }
+
+  addDelayNode(position?: { x: number; y: number }) {
+    this.addCounter += 1
+    this.insertNode(makeDelayNode(`delay-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
   }
 
   addNoteNode(position?: { x: number; y: number }) {

@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { libraryMenuItems, menuItems } from './contextMenu'
 
 describe('context menu contents (plan 03 §2)', () => {
-  it('pane menu offers add-node, custom request, add-transform, add-note, paste and fit view', () => {
+  it('pane menu offers add-node, custom request, add-transform, add-mock, add-delay, add-note, paste and fit view', () => {
     const items = menuItems('pane', { isRunning: false })
     expect(items.map((i) => i.label)).toEqual([
       'Add node…',
       'Add custom request',
       'Add transform',
+      'Add mock',
+      'Add delay',
       'Add note',
       'Paste',
       'Fit view',

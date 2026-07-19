@@ -1,7 +1,8 @@
 <script lang="ts">
   import { javascript } from '@codemirror/lang-javascript'
-  import { json } from '@codemirror/lang-json'
+  import { json, jsonParseLinter } from '@codemirror/lang-json'
   import { syntaxHighlighting } from '@codemirror/language'
+  import { linter } from '@codemirror/lint'
   import { classHighlighter } from '@lezer/highlight'
   import { basicSetup, EditorView } from 'codemirror'
   import { untrack } from 'svelte'
@@ -10,11 +11,18 @@
     value,
     onChange,
     language = 'javascript',
+    lint = false,
   }: {
     value: string
     onChange: (value: string) => void
     /** Transform scripts are JS; raw JSON bodies get JSON highlighting (plan 10 §3c). */
     language?: 'javascript' | 'json'
+    /**
+     * Squiggle JSON parse errors inline (plan 09 N2, json only). Opt-in:
+     * raw bodies also use json mode but may hold {{…}} templates that are
+     * not parseable JSON by design.
+     */
+    lint?: boolean
   } = $props()
 
   let host = $state<HTMLDivElement | null>(null)
@@ -47,6 +55,7 @@
       extensions: [
         basicSetup,
         language === 'json' ? json() : javascript(),
+        ...(lint && language === 'json' ? [linter(jsonParseLinter())] : []),
         syntaxHighlighting(classHighlighter),
         EditorView.theme({}, { dark: true }),
         EditorView.updateListener.of((update) => {

@@ -299,3 +299,94 @@ describe('transform nodes round-trip (plan 06)', () => {
     expect(nodes[0].data).toMatchObject({ mode: 'pick', pick: [], script: '' })
   })
 })
+
+describe('mock/delay/for nodes round-trip (plan 09 N1)', () => {
+  const mockNode: AppNode = {
+    id: 'm1',
+    type: 'mock',
+    position: { x: 5, y: 6 },
+    data: {
+      name: 'Fixture',
+      key: 'fixture',
+      status: 'success',
+      body: '{"users":[{"name":"ada"}]}',
+      statusCode: 201,
+    },
+  }
+  const forNode: AppNode = {
+    id: 'f1',
+    type: 'for',
+    position: { x: 100, y: 0 },
+    data: {
+      name: 'Seed Users',
+      key: 'seedUsers',
+      status: 'idle',
+      mode: 'each',
+      count: 1,
+      source: { nodeId: 'm1', path: 'body.users' },
+    },
+  }
+  const childNode: AppNode = {
+    id: 'c1',
+    type: 'delay',
+    parentId: 'f1',
+    position: { x: 20, y: 40 },
+    data: { name: 'Wait', key: 'wait', status: 'idle', durationMs: 500 },
+  }
+
+  it('persists parent on the wire node and round-trips containment', () => {
+    const board = serializeBoard('b1', 'Main', [mockNode, forNode, childNode], [])
+    expect(board.formatVersion).toBe(BOARD_FORMAT_VERSION)
+    expect(board.nodes[2]).toMatchObject({ id: 'c1', type: 'delay', parent: 'f1' })
+    expect(board.nodes[0]).not.toHaveProperty('parent')
+    expect(board.nodes[1]).not.toHaveProperty('parent')
+    // Children keep container-relative coordinates in the layout, untranslated.
+    expect(board.layout.positions.c1).toEqual({ x: 20, y: 40 })
+
+    const { nodes } = deserializeBoard(board)
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    expect(byId.get('c1')?.parentId).toBe('f1')
+    expect(byId.get('c1')?.position).toEqual({ x: 20, y: 40 })
+    expect(byId.get('m1')?.parentId).toBeUndefined()
+    expect(byId.get('m1')?.data).toMatchObject({
+      status: 'idle',
+      body: '{"users":[{"name":"ada"}]}',
+      statusCode: 201,
+    })
+    expect(byId.get('f1')?.data).toMatchObject({
+      mode: 'each',
+      count: 1,
+      source: { nodeId: 'm1', path: 'body.users' },
+    })
+    expect(byId.get('c1')?.data).toMatchObject({ durationMs: 500 })
+  })
+
+  it('reorders children after their container so xyflow can resolve parentId', () => {
+    const board = serializeBoard('b1', 'Main', [childNode, forNode], [])
+    const { nodes } = deserializeBoard(board)
+    expect(nodes.map((n) => n.id)).toEqual(['f1', 'c1'])
+  })
+
+  it('defaults absent config and drops parents on non-child-capable types', () => {
+    const board: BoardJSON = {
+      formatVersion: BOARD_FORMAT_VERSION,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        { id: 'm1', type: 'mock' },
+        { id: 'd1', type: 'delay' },
+        { id: 'f1', type: 'for' },
+        { id: 'f2', type: 'for', parent: 'f1' },
+      ],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    expect(byId.get('m1')?.data).toMatchObject({ body: '{}', statusCode: 200 })
+    expect(byId.get('d1')?.data).toMatchObject({ durationMs: 1000 })
+    expect(byId.get('f1')?.data).toMatchObject({ mode: 'count', count: 1 })
+    // A nested for is invalid (v1) — the parent link is dropped on load, not fatal.
+    expect(byId.get('f2')?.parentId).toBeUndefined()
+  })
+})

@@ -55,15 +55,40 @@ func TestUnmarshalExplicitNodeTypes(t *testing.T) {
 }
 
 func TestUnmarshalRejectsUnknownNodeType(t *testing.T) {
-	doc := `{"formatVersion": 1, "nodes": [{"id": "a", "type": "delay"}], "edges": []}`
+	doc := `{"formatVersion": 1, "nodes": [{"id": "a", "type": "webhook"}], "edges": []}`
 
 	var g Graph
 	err := json.Unmarshal([]byte(doc), &g)
 	if err == nil {
 		t.Fatal("Unmarshal() expected unknown-type error, got nil")
 	}
-	if !strings.Contains(err.Error(), "delay") {
+	if !strings.Contains(err.Error(), "webhook") {
 		t.Errorf("error %q does not name the offending type", err)
+	}
+}
+
+func TestParentStaysFormatVersionOne(t *testing.T) {
+	// The parent key is additive (plan 09): a graph using containment still
+	// writes formatVersion 1, and top-level nodes omit the key entirely so
+	// pre-plan-09 readers and diffs see no change.
+	g := Graph{Nodes: []Node{
+		{ID: "loop", Type: NodeTypeFor},
+		{ID: "child", Type: NodeTypeHTTP, Parent: "loop"},
+	}}
+
+	data, err := json.Marshal(g)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	s := string(data)
+	if !strings.Contains(s, `"formatVersion":1`) {
+		t.Errorf("Marshal() = %s, containment must not bump the format version", s)
+	}
+	if !strings.Contains(s, `"parent":"loop"`) {
+		t.Errorf("Marshal() = %s, missing parent key on the child", s)
+	}
+	if strings.Count(s, `"parent"`) != 1 {
+		t.Errorf("Marshal() = %s, top-level nodes must omit the parent key", s)
 	}
 }
 
@@ -102,6 +127,10 @@ func TestGraphRoundTrip(t *testing.T) {
 			{ID: "a", Type: NodeTypeHTTP, Name: "A"},
 			{ID: "b", Type: NodeTypeTransform, Name: "B"},
 			{ID: "c", Type: NodeTypeNote, Name: "C"},
+			{ID: "fixture", Type: NodeTypeMock, Name: "Fixture"},
+			{ID: "wait", Type: NodeTypeDelay, Name: "Wait"},
+			{ID: "loop", Type: NodeTypeFor, Name: "Loop"},
+			{ID: "child", Type: NodeTypeHTTP, Name: "Child", Parent: "loop"},
 		},
 		Edges: []Edge{{From: "a", To: "b"}},
 	}

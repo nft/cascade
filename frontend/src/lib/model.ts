@@ -3,9 +3,12 @@ import type { Edge, Node } from '@xyflow/svelte'
 /**
  * Node type discriminator (plan 06). Only `http` nodes make requests;
  * `transform` reshapes upstream data in-process; `note` is a canvas
- * annotation that never executes. Mirrors `core.NodeType` on the Go side.
+ * annotation that never executes. Plan 09 adds `mock` (emits user-authored
+ * static JSON), `delay` (holds its branch for a duration), and `for` (a
+ * container that runs its child nodes repeatedly). Mirrors `core.NodeType`
+ * on the Go side.
  */
-export const NODE_TYPES = ['http', 'transform', 'note'] as const
+export const NODE_TYPES = ['http', 'transform', 'note', 'mock', 'delay', 'for'] as const
 export type NodeType = (typeof NODE_TYPES)[number]
 
 export function isNodeType(value: unknown): value is NodeType {
@@ -226,12 +229,60 @@ export type NoteNodeData = {
   text: string
 }
 
+/** Default mock output status, so downstream `status` bindings behave like a real call (plan 09). */
+export const MOCK_DEFAULT_STATUS = 200
+
+/**
+ * A pure data source (plan 09): running the node emits the authored JSON as
+ * its output body. `body` is JSON *text* (authoring format; parsed at run
+ * time) and strictly literal — {{…}} templates are not resolved; reshaping
+ * upstream data is what transform nodes are for. Named `statusCode` (the
+ * plan says `status`) because RunnableNodeData.status already carries the
+ * run state.
+ */
+export type MockNodeData = RunnableNodeData & {
+  body: string
+  statusCode: number
+}
+
+export const DELAY_DEFAULT_MS = 1000
+export const DELAY_MIN_MS = 1
+/** 5 min — a typo'd huge delay must not wedge a run for hours (plan 09). */
+export const DELAY_MAX_MS = 300_000
+
+/** A timed gate (plan 09): waits `durationMs`, then releases its downstream. */
+export type DelayNodeData = RunnableNodeData & {
+  durationMs: number
+}
+
+export const FOR_MODES = ['count', 'each'] as const
+export type ForMode = (typeof FOR_MODES)[number]
+
+export const FOR_MIN_COUNT = 1
+export const FOR_MAX_ITERATIONS = 10_000
+
+/**
+ * The For container (plan 09): runs the child nodes placed inside it N times
+ * (`count` mode) or once per element of an upstream array (`each` mode). Its
+ * output aggregates every child's output, keyed by child key, one array
+ * element per iteration.
+ */
+export type ForNodeData = RunnableNodeData & {
+  mode: ForMode
+  count: number
+  /** each-mode: binding ref that must resolve to an array. */
+  source?: FieldRef
+}
+
 export type HttpNode = Node<OperationNodeData, 'http'>
 export type TransformNode = Node<TransformNodeData, 'transform'>
 export type NoteNode = Node<NoteNodeData, 'note'>
-export type AppNode = HttpNode | TransformNode | NoteNode
+export type MockNode = Node<MockNodeData, 'mock'>
+export type DelayNode = Node<DelayNodeData, 'delay'>
+export type ForNode = Node<ForNodeData, 'for'>
+export type AppNode = HttpNode | TransformNode | NoteNode | MockNode | DelayNode | ForNode
 /** The node types that run and produce an output other nodes bind against. */
-export type RunnableNode = HttpNode | TransformNode
+export type RunnableNode = HttpNode | TransformNode | MockNode | DelayNode | ForNode
 export type AppEdge = Edge
 
 export function isHttpNode(node: AppNode): node is HttpNode {
@@ -242,8 +293,20 @@ export function isTransformNode(node: AppNode): node is TransformNode {
   return node.type === 'transform'
 }
 
+export function isMockNode(node: AppNode): node is MockNode {
+  return node.type === 'mock'
+}
+
+export function isDelayNode(node: AppNode): node is DelayNode {
+  return node.type === 'delay'
+}
+
+export function isForNode(node: AppNode): node is ForNode {
+  return node.type === 'for'
+}
+
 export function isRunnableNode(node: AppNode): node is RunnableNode {
-  return node.type === 'http' || node.type === 'transform'
+  return node.type !== 'note'
 }
 
 export interface EnvironmentDef {
@@ -318,6 +381,8 @@ export interface BoardNodeJSON {
   id: string
   type?: string
   name?: string
+  /** For container this node lives in (plan 09); absent means top level. */
+  parent?: string
   data?: Record<string, unknown>
 }
 

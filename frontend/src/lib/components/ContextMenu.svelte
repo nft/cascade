@@ -58,6 +58,12 @@
       case 'add-transform':
         app.addTransformNode(menu.flow ?? screenToFlowPosition(menu.screen))
         break
+      case 'add-mock':
+        app.addMockNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
+      case 'add-delay':
+        app.addDelayNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        break
       case 'add-note':
         app.addNoteNode(menu.flow ?? screenToFlowPosition(menu.screen))
         break

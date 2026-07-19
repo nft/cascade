@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeCustomHttpNode, makeHttpNode, makeHttpNodeFromRequest } from './nodeFactory'
+import { makeCustomHttpNode, makeDelayNode, makeHttpNode, makeHttpNodeFromRequest, makeMockNode } from './nodeFactory'
 import type { RequestDef } from './model'
 
 const defaults = { environment: 'staging', credential: 'staging-admin' }
@@ -80,5 +80,27 @@ describe('raw-JSON-first bodies (plan 10 §3c)', () => {
     if (node.type !== 'http') throw new Error('expected an http node')
     expect(node.data.rawBody).toEqual(request.rawBody)
     expect(node.data.rawBody).not.toBe(request.rawBody)
+  })
+})
+
+describe('makeMockNode (plan 09 N2)', () => {
+  it('seeds an empty JSON body with the default status and a board-unique key', () => {
+    const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
+    const existing = [makeMockNode('mock-1', [], { x: 0, y: 0 })]
+    const node = makeMockNode('mock-2', existing, { x: 10, y: 20 })
+    expect(node.type).toBe('mock')
+    expect(node.data).toMatchObject({ body: '{}', statusCode: 200, status: 'idle' })
+    expect(keyOf(node)).not.toBe(keyOf(existing[0]))
+  })
+})
+
+describe('makeDelayNode (plan 09 N3)', () => {
+  it('seeds the default duration and a board-unique key', () => {
+    const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
+    const existing = [makeDelayNode('delay-1', [], { x: 0, y: 0 })]
+    const node = makeDelayNode('delay-2', existing, { x: 10, y: 20 })
+    expect(node.type).toBe('delay')
+    expect(node.data).toMatchObject({ durationMs: 1000, status: 'idle' })
+    expect(keyOf(node)).not.toBe(keyOf(existing[0]))
   })
 })
