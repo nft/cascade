@@ -3,8 +3,10 @@
 // `api` resolves to the in-memory implementation seeded from mock.ts — the
 // same shape the Go store serves.
 import { flushSync, mount, unmount } from 'svelte'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { api } from './api'
 import Sidebar from './components/Sidebar.svelte'
+import { dialogs } from './dialogs.svelte'
 import type { HttpNode } from './model'
 import { app } from './state.svelte'
 
@@ -19,6 +21,7 @@ const mountSidebar = () => {
 afterEach(() => {
   if (instance) unmount(instance)
   instance = null
+  vi.restoreAllMocks()
 })
 
 /** Open a project by name via the switcher's data source. */
@@ -81,6 +84,21 @@ describe('project state (plan 01)', () => {
     const reloaded = app.nodes.find((n) => n.id === added.id) as HttpNode
     expect(reloaded.position).toEqual({ x: 42, y: 43 })
     expect(reloaded.data.name).toBe(added.data.name)
+  })
+
+  it('a failed save is toasted, and leaves the canvas alone', async () => {
+    await app.init()
+    await openByName('Default')
+    dialogs.toast = null
+    vi.spyOn(api, 'saveBoard').mockRejectedValue(new Error('permission denied'))
+
+    app.addNode(app.operations[0], { x: 7, y: 8 })
+    const added = app.nodes.at(-1)!
+    await app.flushBoardSave()
+
+    expect(dialogs.toast).toContain('Board save failed')
+    expect(dialogs.toast).toContain('permission denied')
+    expect(app.nodes.at(-1)).toBe(added)
   })
 
   it('renaming updates the chip data and index', async () => {

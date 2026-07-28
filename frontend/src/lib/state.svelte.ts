@@ -1,5 +1,5 @@
 import { api } from './api'
-import { deserializeBoard, serializeBoard } from './board'
+import { deserializeBoard, serializeBoard, TRANSIENT_NODE_KEYS } from './board'
 import {
   addFolder,
   addRequest,
@@ -77,8 +77,8 @@ const BOARD_SAVE_DEBOUNCE_MS = 400
 /** Mirrors the Go-side first-launch bootstrap name (bootstrap.go). */
 const DEFAULT_PROJECT_NAME = 'Default'
 
-/** Node data keys that are run products, not user edits — changing only these never triggers a board save. */
-const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note', 'progress'])
+/** Prefix of the toast raised when persistence fails; the cause follows it. */
+const BOARD_SAVE_FAILED_MESSAGE = 'Board save failed'
 
 /** Most recently opened first; never-opened projects sort last in index order. */
 const byLastOpened = (a: ProjectInfo, b: ProjectInfo) =>
@@ -246,9 +246,12 @@ export class AppState {
     try {
       await api.saveBoard(projectId, board)
     } catch (err) {
-      // Surfacing via the global ui store lands with that store; a failed
-      // save must not take down the canvas.
-      console.error('board save failed:', err)
+      // Swallowed on purpose — a failed save must not take down the canvas.
+      // It is still toasted: silence would leave the user editing a board
+      // that stopped being persisted.
+      dialogs.showToast(
+        `${BOARD_SAVE_FAILED_MESSAGE}: ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 

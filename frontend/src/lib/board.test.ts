@@ -361,6 +361,17 @@ describe('mock/delay/for nodes round-trip (plan 09 N1)', () => {
     expect(byId.get('c1')?.data).toMatchObject({ durationMs: 500 })
   })
 
+  it('never persists a loop’s live progress, however the save was triggered', () => {
+    const running: AppNode = {
+      ...forNode,
+      data: { ...forNode.data, status: 'running', progress: { done: 3, total: 20 } },
+    }
+    const board = serializeBoard('b1', 'Main', [running, childNode], [])
+    expect(board.nodes[0].data).not.toHaveProperty('progress')
+    expect(JSON.stringify(board)).not.toContain('progress')
+    expect(board.nodes[0].data).toMatchObject({ mode: 'each', count: 1 })
+  })
+
   it('reorders children after their container so xyflow can resolve parentId', () => {
     const board = serializeBoard('b1', 'Main', [childNode, forNode], [])
     const { nodes } = deserializeBoard(board)

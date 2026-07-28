@@ -41,11 +41,18 @@ const LEGACY_BINDING_SEPARATOR = ' → '
 const LEGACY_INDEX_TOKEN = '{i}'
 
 /**
- * Run products (status, note) are never persisted: boards are meant to live
- * in git, and statuses changing on every run would churn diffs. Last
- * responses do persist (in layout) — they power schema inference and picker
- * previews on machines that never ran the board (plan 05 §8).
+ * Node data keys that are run products, not user edits. They are never
+ * persisted (boards are meant to live in git, and statuses changing on every
+ * run would churn diffs) and, in `AppState.updateNodeData`, never a reason to
+ * schedule a save. One exported set so the two rules cannot drift: while they
+ * were separate lists, a For's live `progress` was exempt from the save
+ * *schedule* yet still reached disk on the next unrelated edit.
+ *
+ * Last responses do persist (in layout) — they power schema inference and
+ * picker previews on machines that never ran the board (plan 05 §8).
  */
+export const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note', 'progress'])
+
 export function serializeBoard(
   id: string,
   name: string,
@@ -67,13 +74,13 @@ export function serializeBoard(
     if (node.type === 'note') {
       return { id: node.id, type: node.type, data: { ...node.data } }
     }
-    const { name: nodeName, status: _status, note: _note, ...rest } = node.data
+    const { name: nodeName, ...rest } = node.data
     return {
       id: node.id,
       type: node.type,
       name: nodeName,
       ...(node.parentId ? { parent: node.parentId } : {}),
-      data: rest,
+      data: Object.fromEntries(Object.entries(rest).filter(([key]) => !TRANSIENT_NODE_KEYS.has(key))),
     }
   })
   // Responses of deleted nodes must not linger in the file.
