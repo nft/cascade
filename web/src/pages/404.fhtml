@@ -1,0 +1,23 @@
+include ../partials/icons
+include ../partials/layout
+include ../partials/ui
+
+doctype
+html(lang=en) scroll-pt-24
+  +doc_head(title="Page not found · Cascade" description="That page does not exist." canonical=canonical base=base)
+  body min-h-screen antialiased
+    +icon_sprite()
+    +site_header(links=nav home_href=base toggle_ae=ae.navToggle panel_ae=ae.navPanel)
+
+    main mx-auto flex max-w-6xl flex-col items-start gap-6 px-5 py-28 sm:py-40
+      +eyebrow(text="404")
+      h1 text-balance text-4xl font-semibold tracking-tight sm:text-5xl "This page did not resolve."
+      p max-w-prose text-pretty leading-relaxed text-muted
+        | Nothing upstream produced it. Head back to the start, or read the docs.
+      div flex flex-wrap items-center gap-3
+        a(href={base}) inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover
+          | Back home
+          +icon(name="arrow" box_class="size-4")
+        a(href="{base}docs.html") rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-line/40 hover:text-ink "Read the docs"
+
+    +site_footer(columns=footer credits=siteStack year=year repo_url=site.repo repo_label=site.repoLabel license_name=site.license)
