@@ -64,9 +64,36 @@ describe('buildTestRequest (plan 08 C9)', () => {
     expect('error' in result && result.error).toContain('"userId"')
   })
 
+  it('a raw-mode request sends rawBody, and never the body rows alongside it', () => {
+    const rawBody = { contentType: 'application/xml', text: '<invoice amount="100"/>' }
+    const result = buildTestRequest(
+      def({ rawBody }, [lit('header.X-Debug', 'on'), lit('body.amount', '100')]),
+      'https://staging.example.com',
+      '',
+    )
+    expect(result).toEqual({
+      request: {
+        protocol: 'http',
+        method: 'POST',
+        envBase: 'https://staging.example.com',
+        path: '/v1/invoices',
+        headers: { 'X-Debug': 'on' },
+        rawBody,
+      },
+    })
+  })
+
   it('GET drops body rows instead of failing; ws is rejected (plan 08 C10)', () => {
     const get = buildTestRequest(def({ method: 'GET' }, [lit('body.junk', '1')]), 'https://x.io', '')
     expect('request' in get && get.request.body).toBeUndefined()
+
+    // A bodyless method drops a raw body the same way — httpcall.Do rejects it.
+    const rawGet = buildTestRequest(
+      def({ method: 'GET', rawBody: { contentType: 'application/json', text: '{"a":1}' } }),
+      'https://x.io',
+      '',
+    )
+    expect('request' in rawGet && rawGet.request.rawBody).toBeUndefined()
 
     const ws = buildTestRequest(def({ protocol: 'ws', method: undefined }), 'https://x.io', '')
     expect(ws).toEqual({ error: 'ws requests cannot be sent yet — only http executes' })

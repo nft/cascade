@@ -59,8 +59,14 @@ export function buildTestRequest(
   if (Object.keys(pathParams).length > 0) built.pathParams = pathParams
   if (Object.keys(query).length > 0) built.query = query
   if (Object.keys(headers).length > 0) built.headers = headers
-  // GET/HEAD never carry a body (plan 08 A1) — drop rows instead of failing.
-  if (hasBody && methodAllowsBody(method)) built.body = body
+  // GET/HEAD never carry a body (plan 08 A1) — drop it instead of failing.
+  if (methodAllowsBody(method)) {
+    // Raw mode (`rawBody !== undefined`, the editor's own mode switch)
+    // replaces the field body outright: httpcall.Do rejects a request that
+    // carries both.
+    if (request.rawBody) built.rawBody = request.rawBody
+    else if (hasBody) built.body = body
+  }
   if (credential !== '') built.credential = credential
   return { request: built }
 }
