@@ -3,11 +3,14 @@ export const REPO_URL = 'https://github.com/nft/cascade'
 /** Public origin of the published site, used for canonical and og:url tags. */
 export const SITE_URL = 'https://nft.github.io/cascade/'
 
+/** GitHub serves the newest release here, so the link never needs a version bump. */
+export const RELEASES_URL = `${REPO_URL}/releases/latest`
+
 export const SITE = {
   name: 'Cascade',
   tagline: 'Test data that actually hangs together',
   description:
-    'Cascade turns an OpenAPI schema into a visual graph of real API calls. Wire the nodes together, bind each field to an upstream response, and run — relationally consistent data cascades through your stack.',
+    'Cascade is a desktop app for building realistic test data. Draw your API calls as a graph, let each step feed the next, and fill a whole environment with data that actually connects up.',
   repo: REPO_URL,
   /** Bare display form of `repo`, so the footer link text cannot drift from its href. */
   repoLabel: REPO_URL.replace(/^https?:\/\//, ''),
@@ -26,23 +29,34 @@ export const NAV_LINKS: NavLink[] = [
   { href: '#how', label: 'How it works' },
   { href: '#features', label: 'Features' },
   { href: 'docs.html', label: 'Docs' },
-  { href: REPO_URL, label: 'GitHub', external: true },
+  { href: '#download', label: 'Download' },
 ]
 
 export const HERO = {
-  eyebrow: 'Open source desktop app',
+  eyebrow: 'Free desktop app for macOS and Windows',
   headline: 'Test data that actually hangs together.',
-  lede: 'Stop writing one-off seed scripts that rot. Cascade reads your OpenAPI schema, lets you wire operations into a graph, and cascades real responses downstream — so every row you generate points at something that exists.',
-  primaryCta: { href: '#how', label: 'See how it works' },
-  secondaryCta: { href: REPO_URL, label: 'View on GitHub' },
+  lede: 'Filling a staging environment by hand is miserable, and seed scripts go stale the week you write them. Cascade lets you draw the calls once — a user, then their org, then their projects — and every run produces fresh data where everything points at something real.',
+  primaryCta: { href: '#download', label: 'Download Cascade' },
+  secondaryCta: { href: '#how', label: 'See how it works' },
 } as const
 
-/** Cascade ships from source today, so the site shows the clone line rather
- * than inventing a package-manager channel. */
-export const INSTALL = {
-  label: 'Build from source',
-  command: 'git clone https://github.com/nft/cascade.git',
-  note: 'Requires Go 1.23+, Bun, and the Wails v2 CLI.',
+export interface Download {
+  platform: string
+  detail: string
+  href: string
+}
+
+/** Both entries point at the newest release; that page carries the per-platform files. */
+export const DOWNLOADS: Download[] = [
+  { platform: 'Download for macOS', detail: 'Apple silicon and Intel', href: RELEASES_URL },
+  { platform: 'Download for Windows', detail: '64-bit installer', href: RELEASES_URL },
+]
+
+export const DOWNLOAD_SECTION = {
+  label: 'Download',
+  title: 'Get Cascade',
+  lede: 'One download, no account, and no server to run. Your data and your keys stay on your own machine.',
+  note: 'Cascade is an early preview and still under active development. Expect rough edges — and please report anything that breaks.',
 } as const
 
 export interface Feature {
@@ -54,43 +68,43 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
-    title: 'Schema-driven, not hand-rolled',
-    body: 'Import OpenAPI 3.x from a URL or a file. Cascade parses every operation, its parameters, request body, and response schema with $refs resolved. Request shapes are read from the spec, never invented.',
+    title: 'Built from your own API',
+    body: 'Point Cascade at your API description and every endpoint becomes a block you can drop on the canvas, fields already laid out. Nothing to hand-write, nothing to keep in sync.',
     icon: 'schema',
   },
   {
-    title: 'Bindings instead of copy-paste',
-    body: 'Point a field at an upstream node — body.owner_id ← Create User.response.body.id — and it resolves at call time from the live response. No fixture files, no stale ids.',
+    title: 'Steps feed each other',
+    body: "Draw a line from one call to the next and pick the value to carry across — the new user's id, a token, a whole nested object. It is filled in from the real response, every run.",
     icon: 'binding',
   },
   {
-    title: 'Runs as a DAG',
-    body: 'Topological order with independent branches in parallel, plus opt-in retry and timeout per node. Cycles are rejected while you edit, not at 3am during a run.',
+    title: 'Runs in the right order',
+    body: 'Cascade works out what depends on what, and runs independent branches side by side. Nothing fires before the thing it needs has come back.',
     icon: 'dag',
   },
   {
-    title: 'Fan-out for volume',
-    body: 'Repeat a node N times, or loop it over an array an upstream node returned. Three connected calls become three thousand consistent rows.',
+    title: 'Three rows or three thousand',
+    body: 'Tell a step to repeat, or to run once for every item an earlier step returned. The relationships hold however far you scale it up.',
     icon: 'fanout',
   },
   {
-    title: 'Every call is logged',
-    body: 'Resolved URL, request and response headers and bodies, status, and duration for each call. A failed node is one click from the exact request that broke it. Secrets are redacted.',
+    title: 'See exactly what was sent',
+    body: 'Every call is recorded with its full request and response, status and timing. When something fails, the request that broke it is one click away.',
     icon: 'logs',
   },
   {
-    title: 'Environments and credentials',
-    body: 'Named base URLs and write-only credentials, chosen per node. Two nodes on the same operation can point at different environments with different keys.',
+    title: 'Keep your environments straight',
+    body: "Save your local, staging and sandbox targets with their own keys, then choose per step which one to hit. Keys live in your operating system's keychain, never in your files.",
     icon: 'lock',
   },
   {
-    title: 'Git-friendly export',
-    body: 'Workspaces export to versioned, diff-friendly JSON built to live in a repo. Secrets never travel with them — credentials export as named placeholders.',
+    title: 'Save it and share it',
+    body: 'A setup is a single file you can keep beside your project or hand to a teammate. Your secrets are left out — the file only names which credential to use.',
     icon: 'commit',
   },
   {
-    title: 'Native, and local by default',
-    body: 'A Go engine in a Wails desktop shell. Requests leave from Go, so there is no CORS wall between you and your own staging environment.',
+    title: 'Stays on your machine',
+    body: 'A real desktop app, not a hosted service. Requests go straight from your computer to your API, so private and local environments work like any other.',
     icon: 'desktop',
   },
 ]
@@ -102,42 +116,21 @@ export interface Step {
 
 export const STEPS: Step[] = [
   {
-    title: 'Import a schema',
-    body: 'Point Cascade at an OpenAPI document. Every operation it finds becomes something you can drop on the canvas. Re-importing flags drifted nodes as stale instead of deleting them.',
+    title: 'Add the calls you need',
+    body: 'Pick the endpoints you want and drop them on the canvas — create a user, create an org, add a project.',
   },
   {
-    title: 'Drop operations on the canvas',
-    body: 'Search the palette for POST /v1/users, place it, then choose which environment and credential that node calls with.',
+    title: 'Join them up',
+    body: 'Drag a line between two steps to say this one needs that one first, then point a field at the value you want carried over.',
   },
   {
-    title: 'Wire and bind',
-    body: 'An edge means "this node depends on that one". Fill fields with literals, generators, or bindings that read straight out of an upstream response.',
+    title: 'Say how much you want',
+    body: 'Leave a step as a single call, or ask for fifty. Repeat a fixed number of times, or once per item something upstream returned.',
   },
   {
-    title: 'Run the cascade',
-    body: 'Cascade walks the graph, resolves each binding against live responses, and streams node state back to the canvas while it goes.',
+    title: 'Press run',
+    body: 'Watch it work through the graph, filling your environment as it goes. Every call is logged, so you can check anything that looks off.',
   },
-]
-
-export interface StackItem {
-  name: string
-  role: string
-  href: string
-}
-
-export const STACK: StackItem[] = [
-  { name: 'Go', role: 'Engine and HTTP client', href: 'https://go.dev' },
-  { name: 'Wails v2', role: 'Desktop shell', href: 'https://wails.io' },
-  { name: 'Svelte 5', role: 'App interface', href: 'https://svelte.dev' },
-  { name: 'Svelte Flow', role: 'Node canvas', href: 'https://svelteflow.dev' },
-]
-
-/** Credits for the stack this marketing site itself is built on. */
-export const SITE_STACK: StackItem[] = [
-  { name: 'fhtml', role: 'Markup', href: 'https://nft.github.io/fhtml/' },
-  { name: 'ae', role: 'Reactivity', href: 'https://nft.github.io/ae/' },
-  { name: 'Tailwind CSS', role: 'Styling', href: 'https://tailwindcss.com' },
-  { name: 'Vite', role: 'Build', href: 'https://vite.dev' },
 ]
 
 export interface FooterColumn {
@@ -149,86 +142,147 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
   {
     heading: 'Product',
     links: [
-      { href: '#how', label: 'How it works' },
+      { href: '#download', label: 'Download' },
       { href: '#features', label: 'Features' },
-      { href: 'docs.html', label: 'Documentation' },
+      { href: '#how', label: 'How it works' },
     ],
   },
   {
-    heading: 'Project',
+    heading: 'Help',
     links: [
-      { href: REPO_URL, label: 'Source', external: true },
-      { href: `${REPO_URL}/blob/main/PROJECT.md`, label: 'Scope & architecture', external: true },
-      { href: `${REPO_URL}/blob/main/docs/ROADMAP.md`, label: 'Roadmap', external: true },
-      { href: `${REPO_URL}/issues`, label: 'Issues', external: true },
+      { href: 'docs.html', label: 'Documentation' },
+      { href: `${REPO_URL}/issues`, label: 'Report a problem', external: true },
+      { href: REPO_URL, label: 'Source on GitHub', external: true },
     ],
   },
 ]
+
+/** A still or clip the docs should carry, described well enough to shoot. */
+export interface Media {
+  /** Chooses the placeholder's icon and label. */
+  kind: 'image' | 'video'
+  caption: string
+  /** What the finished asset needs to show. */
+  brief: string
+}
 
 export interface DocsSection {
   id: string
   heading: string
   paragraphs: string[]
-  code?: { caption: string; body: string }
+  media?: Media
   bullets?: string[]
+  callout?: string
 }
 
 export const DOCS_INTRO =
-  'Cascade is in active development. This page covers what exists today: getting the app running, the concepts behind the canvas, and the shape of the files it writes.'
+  'Everything here is written for someone using Cascade, not building it. Start with installing, then work through your first cascade — dip into the rest when you need it.'
 
 export const DOCS_SECTIONS: DocsSection[] = [
   {
-    id: 'getting-started',
-    heading: 'Getting started',
+    id: 'install',
+    heading: 'Installing',
     paragraphs: [
-      'Cascade is a Wails desktop app: a Go engine with a Svelte interface. You need Go 1.23 or newer, Bun, and the Wails v2 CLI on your path.',
+      'Download the file for your platform and open it. There is nothing else to set up — no account, no server, no command line.',
+      'On macOS, drag Cascade to your Applications folder. The first time you open it, macOS may say it is from an unidentified developer: right-click the app, choose Open, then confirm. On Windows, run the installer; if SmartScreen appears, choose More info and then Run anyway.',
     ],
-    code: {
-      caption: 'Clone and run with hot reload',
-      body: [
-        'go install github.com/wailsapp/wails/v2/cmd/wails@latest',
-        'git clone https://github.com/nft/cascade.git',
-        'cd cascade',
-        'wails dev',
-      ].join('\n'),
+    media: {
+      kind: 'image',
+      caption: 'The macOS install window',
+      brief:
+        'Screenshot of the opened .dmg: the Cascade icon on the left, the Applications folder shortcut on the right, drag arrow between them.',
     },
     bullets: [
-      'wails dev runs the app with hot reload for both Go and the frontend.',
-      'wails build produces a production binary in build/bin.',
-      'go test ./... runs the engine tests; cd frontend && bun run test runs the interface tests.',
+      'macOS 12 or newer, Apple silicon or Intel.',
+      'Windows 10 or newer, 64-bit.',
+      'Cascade needs network access to reach the API you point it at, and nothing else.',
     ],
   },
   {
-    id: 'concepts',
-    heading: 'Concepts',
+    id: 'first-run',
+    heading: 'Your first cascade',
     paragraphs: [
-      'A workspace holds imported schemas, environments, credentials, and graphs. A graph is a set of nodes and the edges between them.',
-      'A node is one operation from an imported schema, aimed at one environment with one credential. An edge means the target depends on the source — it sets execution order and makes the source\'s response available for binding.',
-      'A binding reads a value out of an upstream response at call time: a JSON path into the body, a header, or the status. Fields that are not bound take a literal or a generator.',
+      'Cascade opens with an example project already loaded, so you can see the shape of things before pointing it at your own API. The canvas in the middle holds your calls, the panel on the left lists what you can add, and the panel on the right configures whichever step is selected.',
+      'Select a step, look at its fields on the right, then press Run in the top bar. Steps light up as they go: blue while the call is in flight, green when the response comes back, red if it fails.',
     ],
+    media: {
+      kind: 'video',
+      caption: 'Building and running a small graph',
+      brief:
+        'Screen recording, roughly 45 seconds, no narration. Add two steps from the sidebar, connect them, bind one field from the first response, press Run, let the steps turn green. End on the run log with both requests visible.',
+    },
   },
   {
-    id: 'execution',
-    heading: 'Execution',
+    id: 'connecting',
+    heading: 'Carrying values between steps',
     paragraphs: [
-      'A run walks the graph in topological order. Independent branches run in parallel, and a node starts only once every upstream node has succeeded. Nodes downstream of a failure are marked skipped rather than attempted.',
-      'You can run the whole graph, or run a single node and everything it needs to get there.',
+      "A line between two steps means the second waits for the first. It also makes the first step's response available to it, which is the part that does the real work.",
+      'To use a value, click the field you want to fill and choose it from the earlier response instead of typing something in. When the graph runs, that field is filled from whatever actually came back — so the org you create really does belong to the user you just created.',
+      'Fields you leave unbound take a plain value you type, or a generator for things that must differ each time, like an email address.',
     ],
+    media: {
+      kind: 'image',
+      caption: 'Choosing a value from an earlier step',
+      brief:
+        'Screenshot of the field picker open on a body field, showing the upstream response tree with an id highlighted, and the resulting binding on the field behind it.',
+    },
+  },
+  {
+    id: 'volume',
+    heading: 'Making more data',
+    paragraphs: [
+      'Any step can run more than once. Set a count to repeat it a fixed number of times, or point it at a list from an earlier step to run once per item.',
+      'Everything downstream follows along, so turning one user into fifty gives you fifty organisations and their projects too, each attached to its own user.',
+    ],
+    media: {
+      kind: 'image',
+      caption: 'A repeating step and what it produces',
+      brief:
+        'Screenshot of the canvas with a step showing a repeat badge, its downstream steps showing matching counts, and the record total in the run summary.',
+    },
+  },
+  {
+    id: 'environments',
+    heading: 'Environments and keys',
+    paragraphs: [
+      'An environment is a name and a base address — local, staging, whatever you use. A credential is the key or token that goes with it. Set both up once, then pick them per step, so two copies of the same call can hit two different places.',
+      "Keys are held in your operating system's keychain, not in your project files. Once saved, a key is never shown again, and it is blanked out everywhere it would otherwise appear, including the run log.",
+    ],
+    media: {
+      kind: 'image',
+      caption: 'The environments and credentials screen',
+      brief:
+        'Screenshot of the settings area with two environments listed and a credential row showing a masked value and its injection rule.',
+    },
+    callout:
+      'Sharing a setup never shares your keys. The exported file records which credential a step uses by name; whoever opens it fills in their own.',
   },
   {
     id: 'logs',
-    heading: 'Logs',
+    heading: 'When something goes wrong',
     paragraphs: [
-      'Every executed call produces a log entry with the timestamp, node, operation, resolved URL, request headers and body after binding resolution, response status, headers and body, and duration.',
-      'Logs filter by run, node, status, and free text. Credential values are redacted in both the log display and any export.',
+      'Every call is written to the run log with the address it used, what it sent, what came back, and how long it took. A failed step is one click from the exact request that broke.',
+      'The usual culprits are a missing required field, a key pointed at the wrong environment, or a value that never got carried over from an earlier step. The log tells you which, because it shows the request as it was actually sent.',
     ],
+    media: {
+      kind: 'image',
+      caption: 'A failed step and its request',
+      brief:
+        'Screenshot of a red step on the canvas beside its opened log entry, showing the request body and a 422 response with the validation message visible.',
+    },
   },
   {
-    id: 'files',
-    heading: 'Files on disk',
+    id: 'sharing',
+    heading: 'Saving and sharing your work',
     paragraphs: [
-      'A workspace exports to a single JSON file, versioned and formatted to diff cleanly so it can live in a repository next to the service it seeds.',
-      'Secrets are stored separately and never enter that file. Credentials export as named placeholders, which the importing machine fills in locally.',
+      'Your work saves as you go. To hand a setup to someone else, export it — you get a single file that can live in your project repository next to the service it fills.',
+      'Because the file is plain text and leaves keys out, it reviews like any other change, and a teammate who opens it gets your exact graph pointed at their own environment.',
     ],
+    media: {
+      kind: 'image',
+      caption: 'Exporting a setup',
+      brief:
+        'Screenshot of the export dialog with a target file chosen, plus a small inset of the resulting file open in an editor showing a credential referenced by name only.',
+    },
   },
 ]

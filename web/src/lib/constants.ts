@@ -8,8 +8,6 @@
 export const AE = {
   navToggle: 'nav-toggle',
   navPanel: 'nav-panel',
-  copyInstall: 'copy-install',
-  copyLabel: 'copy-label',
   runDemo: 'run-demo',
   resetDemo: 'reset-demo',
   demoNode: 'demo-node',
@@ -86,14 +84,12 @@ export const METHOD_CLASS_FALLBACK = 'text-muted'
 export const DATASET = {
   nodeId: 'nodeId',
   edgeId: 'edgeId',
-  clipboard: 'clipboard',
 } as const
 
 /** Attribute names as written in markup, paired with `DATASET` above. */
 export const DATA_ATTR = {
   nodeId: 'data-node-id',
   edgeId: 'data-edge-id',
-  clipboard: 'data-clipboard',
 } as const
 
 /** Demo pacing, in milliseconds. */
@@ -102,11 +98,3 @@ export const DEMO_TIMING = {
   runningDwell: 480,
 } as const
 
-/** How long the copy button confirms before reverting its label. */
-export const COPY_FEEDBACK_MS = 1600
-
-export const COPY_LABEL = {
-  idle: 'Copy',
-  done: 'Copied',
-  failed: 'Press ⌘C',
-} as const

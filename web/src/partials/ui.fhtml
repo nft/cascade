@@ -31,11 +31,32 @@ def state_chip(label description swatch)
       span text-xs font-medium "{label}"
       span text-xs text-faint "{description}"
 
-def stack_item(name role href)
+def download_button(label detail href)
   li
-    a(href={href} target=_blank rel="noopener noreferrer") flex flex-col gap-0.5 rounded-xl border border-line bg-surface px-4 py-3 transition-colors hover:border-line/40 hover:bg-raised
-      span text-sm font-medium "{name}"
-      span text-xs text-faint "{role}"
+    a(href={href} target=_blank rel="noopener noreferrer") group flex items-center gap-3 rounded-xl bg-accent px-5 py-3.5 text-white transition-colors hover:bg-accent-hover
+      +icon(name="download" box_class="size-5")
+      span flex flex-col leading-tight
+        span text-sm font-semibold "{label}"
+        span text-xs text-white/70 "{detail}"
+
+// Stands in for artwork that has not been produced yet. The brief is rendered
+// so whoever shoots the asset can read it straight off the page.
+def media_placeholder(kind label caption brief)
+  figure flex flex-col gap-2
+    div flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface px-6 py-12 text-center
+      span grid size-11 place-items-center rounded-xl border border-line bg-raised text-accent-soft
+        +icon(name={kind} box_class="size-5")
+      div flex flex-col gap-1
+        span text-xs font-semibold uppercase tracking-widest text-faint "{label} to come"
+        span text-sm font-medium "{caption}"
+      p max-w-md text-xs leading-relaxed text-faint "{brief}"
+    figcaption text-xs text-faint "{caption}"
+
+def docs_callout(text)
+  aside flex gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3
+    span mt-0.5 text-accent-soft
+      +icon(name="lock" box_class="size-4")
+    p text-sm leading-relaxed text-muted "{text}"
 
 // A graph node on the demo canvas. Absolutely placed from the layout data, so
 // its geometry is an inline custom style rather than a built class name.
@@ -49,13 +70,6 @@ def demo_node(node_id label method path binding repeat x y width height ae_name 
       span shrink-0 font-semibold {method_class} "{method}"
       span truncate text-faint "{path}"
     p(title={binding}) truncate font-mono text-[10px] text-muted "{binding}"
-
-def code_block(caption body)
-  figure overflow-hidden rounded-xl border border-line bg-surface
-    figcaption border-b border-line px-4 py-2 text-xs text-faint "{caption}"
-    // Chained inline: a `pre` whose child sits on its own line would inherit the
-    // pretty-printer's indentation as literal leading whitespace.
-    pre(tabindex=0 role=group aria-label={caption}) overflow-x-auto px-4 py-3 text-[13px] leading-relaxed > code font-mono text-muted "{body}"
 
 def docs_nav_link(href label)
   li > a(href={href}) block rounded-lg px-3 py-1.5 text-sm text-muted transition-colors hover:bg-surface hover:text-ink "{label}"

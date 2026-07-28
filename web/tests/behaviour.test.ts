@@ -17,12 +17,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ae } from '@aeroapp/ae'
 import { initNav } from '../src/lib/nav'
-import { initCopy } from '../src/lib/copy'
 import { initDemo } from '../src/lib/demo'
 import {
   AE,
-  COPY_FEEDBACK_MS,
-  COPY_LABEL,
   DATA_ATTR,
   DEMO_TIMING,
   EDGE_CLASS,
@@ -44,14 +41,12 @@ const ID = {
 } as const
 
 const PANEL_LINK_HREF = '#features'
-const INSTALL_COMMAND = 'brew install cascade'
 
 /** Globals jsdom does not implement, stubbed per test and torn down after. */
 const GLOBAL = {
   matchMedia: 'matchMedia',
   intersectionObserver: 'IntersectionObserver',
 } as const
-const CLIPBOARD_PROP = 'clipboard'
 
 /** Row element the log `<template>` stamps; also the selector for the result. */
 const LOG_ROW_TAG = 'li'
@@ -133,14 +128,6 @@ function navFixture(): string {
   `
 }
 
-function copyFixture(): string {
-  return `
-    <button ${aeAttr(AE.copyInstall)} ${DATA_ATTR.clipboard}="${INSTALL_COMMAND}">
-      <span ${aeAttr(AE.copyLabel)}></span>
-    </button>
-  `
-}
-
 function demoFixture(): string {
   const nodes = DEMO_NODES.map(
     (node) => `<div ${aeAttr(AE.demoNode)} ${DATA_ATTR.nodeId}="${node.id}"></div>`,
@@ -208,13 +195,6 @@ function stubReducedMotion(): void {
   defineGlobal(GLOBAL.matchMedia, (media: string) => ({ media, matches: true }))
 }
 
-/** `navigator.clipboard` is undefined outside a secure context, and jsdom never
- * provides it — the module under test treats both the same way. */
-function stubClipboard() {
-  const writeText = vi.fn(async (_text: string): Promise<void> => {})
-  Object.defineProperty(navigator, CLIPBOARD_PROP, { value: { writeText }, configurable: true })
-  return writeText
-}
 
 // ------------------------------------------------------------- demo assertions
 
@@ -345,7 +325,6 @@ afterEach(() => {
   vi.useRealTimers()
   removeGlobal(GLOBAL.matchMedia)
   removeGlobal(GLOBAL.intersectionObserver)
-  Reflect.deleteProperty(navigator, CLIPBOARD_PROP)
 })
 
 describe('nav', () => {
@@ -401,68 +380,6 @@ describe('nav', () => {
   })
 })
 
-describe('copy', () => {
-  function mountCopy(): { button: HTMLElement; label: HTMLElement } {
-    document.body.innerHTML = copyFixture()
-    initCopy()
-    return { button: byName(AE.copyInstall), label: byName(AE.copyLabel) }
-  }
-
-  it('writes the button’s clipboard payload and confirms, then reverts', async () => {
-    vi.useFakeTimers()
-    const writeText = stubClipboard()
-    const { button, label } = mountCopy()
-    await settle()
-
-    expect(textOf(label)).toBe(COPY_LABEL.idle)
-
-    button.click()
-    await settle()
-
-    expect(writeText).toHaveBeenCalledWith(INSTALL_COMMAND)
-    expect(textOf(label)).toBe(COPY_LABEL.done)
-
-    await vi.advanceTimersByTimeAsync(COPY_FEEDBACK_MS)
-    await settle()
-    expect(textOf(label)).toBe(COPY_LABEL.idle)
-  })
-
-  it('keeps confirming for the full feedback window', async () => {
-    vi.useFakeTimers()
-    stubClipboard()
-    const { button, label } = mountCopy()
-
-    button.click()
-    await settle()
-    await vi.advanceTimersByTimeAsync(COPY_FEEDBACK_MS - 1)
-    await settle()
-
-    expect(textOf(label)).toBe(COPY_LABEL.done)
-  })
-
-  it('falls back to the manual label when the clipboard rejects', async () => {
-    vi.useFakeTimers()
-    const unhandled = vi.fn()
-    process.on('unhandledRejection', unhandled)
-
-    try {
-      const writeText = stubClipboard()
-      writeText.mockRejectedValue(new Error('denied'))
-      const { button, label } = mountCopy()
-
-      button.click()
-      await settle()
-      expect(textOf(label)).toBe(COPY_LABEL.failed)
-
-      await vi.advanceTimersByTimeAsync(COPY_FEEDBACK_MS)
-      await settle()
-      expect(textOf(label)).toBe(COPY_LABEL.idle)
-      expect(unhandled).not.toHaveBeenCalled()
-    } finally {
-      process.off('unhandledRejection', unhandled)
-    }
-  })
-})
 
 describe('demo', () => {
   let observers: FakeIntersection[] = []

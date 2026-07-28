@@ -50,24 +50,20 @@ def site_header(links home_href toggle_ae panel_ae)
         for l in links
           +nav_link(href=l.href label=l.label external=l.external link_class="border-b border-line/60 py-3 text-sm text-muted last:border-0")
 
-def site_footer(columns credits year repo_url repo_label license_name)
+def site_footer(columns year repo_url repo_label license_name)
   footer mt-28 border-t border-line bg-surface
-    div mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-4
+    div mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-3
       div flex flex-col gap-3
         span flex items-center gap-2.5 text-ink
           +logo_mark(box_class="h-6")
           span text-sm font-semibold tracking-tight "Cascade"
         p max-w-56 text-sm leading-relaxed text-faint
-          | Generate interdependent test data against real APIs.
+          | Realistic, connected test data for your own API.
       for col in columns
         div flex flex-col gap-3
           h2 text-xs font-semibold uppercase tracking-widest text-faint "{col.heading}"
           for l in col.links
             +nav_link(href=l.href label=l.label external=l.external link_class="text-sm text-muted transition-colors hover:text-ink")
-      div flex flex-col gap-3
-        h2 text-xs font-semibold uppercase tracking-widest text-faint "This site runs on"
-        for c in credits
-          a(href={c.href} target=_blank rel="noopener noreferrer") text-sm text-muted transition-colors hover:text-ink "{c.name}"
     div border-t border-line/70
       div mx-auto flex max-w-6xl flex-col gap-2 px-5 py-6 text-xs text-faint sm:flex-row sm:items-center sm:justify-between
         p "{license_name} licensed. Copyright {year}"

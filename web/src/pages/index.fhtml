@@ -14,36 +14,29 @@ html(lang=en) scroll-pt-20
         div absolute inset-0 grid-backdrop opacity-60
         div relative mx-auto flex max-w-3xl flex-col items-center gap-7 px-5 py-24 text-center sm:py-32
           span inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-muted
-            span size-1.5 rounded-full bg-success
+            span size-1.5 rounded-full bg-accent-soft
             | {hero.eyebrow}
           h1 text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl "{hero.headline}"
           p max-w-2xl text-pretty leading-relaxed text-muted sm:text-lg "{hero.lede}"
 
           div flex flex-col items-stretch gap-3 sm:flex-row sm:items-center
             a(href={hero.primaryCta.href}) inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover
+              +icon(name="download" box_class="size-4")
               | {hero.primaryCta.label}
-              +icon(name="arrow" box_class="size-4")
-            a(href={hero.secondaryCta.href} target=_blank rel="noopener noreferrer") inline-flex items-center justify-center gap-2 rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-line/40 hover:text-ink
+            a(href={hero.secondaryCta.href}) inline-flex items-center justify-center gap-2 rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-line/40 hover:text-ink
               | {hero.secondaryCta.label}
-              +icon(name="external" box_class="size-3.5 opacity-60")
-
-          div flex flex-col items-center gap-2
-            div flex items-center gap-3 rounded-xl border border-line bg-surface py-2 pl-4 pr-2
-              code truncate font-mono text-[13px] text-muted "{install.command}"
-              button(type=button data-ae={ae.copyInstall} data-clipboard={install.command}) inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-line/40 hover:text-ink
-                +icon(name="copy" box_class="size-3.5")
-                span(data-ae={ae.copyLabel} aria-live=polite) "Copy"
-            p text-xs text-faint "{install.note}"
+              +icon(name="arrow" box_class="size-4")
+          p text-xs text-faint "Free · macOS and Windows · nothing leaves your machine"
 
       section #demo border-b border-line
         div mx-auto flex max-w-6xl flex-col gap-8 px-5 py-20 sm:py-24
-          +section_head(label="Live" title="Watch a graph cascade" lede="Press run. Each level fires only once everything it depends on has come back, and parallel branches advance together — the same order the engine schedules.")
+          +section_head(label="See it run" title="Every step waits for the one it needs" lede="A user, then the org that belongs to them, then the projects inside it. Press run and watch the data flow downstream — branches that do not depend on each other go at the same time.")
 
           div flex flex-col gap-5 rounded-2xl border border-line bg-surface p-4 sm:p-6
             div flex flex-wrap items-center gap-3
               button(type=button data-ae={ae.runDemo}) inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover aria-disabled:opacity-60
                 +icon(name="play" box_class="size-3.5")
-                | Run graph
+                | Run
               button(type=button data-ae={ae.resetDemo}) rounded-xl border border-line px-4 py-2 text-sm text-muted transition-colors hover:border-line/40 hover:text-ink "Reset"
               div ml-auto flex items-center gap-5
                 span(data-ae={ae.demoStatus} aria-live=polite) text-sm text-muted "Ready"
@@ -71,41 +64,33 @@ html(lang=en) scroll-pt-20
                       span(data-ae={logPart.status}) shrink-0 font-semibold text-success
                       span(data-ae={logPart.duration}) w-14 shrink-0 text-right text-faint
               div flex flex-col gap-3 rounded-xl border border-line bg-canvas p-4
-                h3 text-xs font-semibold uppercase tracking-widest text-faint "Node states"
+                h3 text-xs font-semibold uppercase tracking-widest text-faint "What the colours mean"
                 ul flex flex-col gap-2.5
                   for c in demo.chips
                     +state_chip(label=c.label description=c.description swatch=c.swatch)
 
       section #how border-b border-line
         div mx-auto flex max-w-6xl flex-col gap-10 px-5 py-20 sm:py-28
-          +section_head(label="How it works" title="From an OpenAPI document to a seeded environment" lede="Cascade never guesses a request shape. Everything it sends is derived from the schema you gave it and the responses it has already collected.")
+          +section_head(label="How it works" title="Four steps to a full environment" lede="You describe the shape of the data once. After that, filling an environment is one click, and it works the same tomorrow.")
           ol flex flex-col gap-7
             for s in steps
               +step_row(index=s.index title=s.title body=s.body)
 
       section #features border-b border-line
         div mx-auto flex max-w-6xl flex-col gap-10 px-5 py-20 sm:py-28
-          +section_head(label="Features" title="Built for data that has to line up" lede="Fixtures drift, seed scripts rot, and hand-copied ids break the moment a migration runs. Cascade keeps the relationships live.")
+          +section_head(label="Features" title="Built for data that has to line up" lede="Fixtures drift, seed scripts rot, and hand-copied ids break the moment someone runs a migration. Cascade keeps the relationships live.")
           ul grid gap-4 sm:grid-cols-2 lg:grid-cols-4
             for f in features
               +feature_card(title=f.title body=f.body icon_name=f.icon)
 
-      section border-b border-line
-        div mx-auto flex max-w-6xl flex-col gap-8 px-5 py-20
-          +section_head(label="Under the hood" title="A Go engine in a native shell" lede="The engine is deliberately free of any UI dependency, so the same code can back the desktop app, a headless runner, and a server build.")
-          ul grid gap-3 sm:grid-cols-2 lg:grid-cols-4
-            for s in stack
-              +stack_item(name=s.name role=s.role href=s.href)
+      section #download
+        div mx-auto flex max-w-3xl flex-col items-center gap-7 px-5 py-24 text-center
+          +eyebrow(text={download.label})
+          h2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl "{download.title}"
+          p max-w-xl text-pretty leading-relaxed text-muted "{download.lede}"
+          ul flex flex-col items-stretch gap-3 sm:flex-row
+            for d in downloads
+              +download_button(label=d.platform detail=d.detail href=d.href)
+          p max-w-lg text-xs leading-relaxed text-faint "{download.note}"
 
-      section
-        div mx-auto flex max-w-3xl flex-col items-center gap-6 px-5 py-24 text-center
-          h2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl "Stop hand-rolling seed scripts."
-          p max-w-xl text-pretty leading-relaxed text-muted
-            | Cascade is open source and in active development. Clone it, point it at a schema, and wire your first graph.
-          div flex flex-col items-stretch gap-3 sm:flex-row
-            a(href={site.repo} target=_blank rel="noopener noreferrer") inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover
-              | Get the source
-              +icon(name="external" box_class="size-3.5 opacity-70")
-            a(href="{base}docs.html") rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-line/40 hover:text-ink "Read the docs"
-
-    +site_footer(columns=footer credits=siteStack year=year repo_url=site.repo repo_label=site.repoLabel license_name=site.license)
+    +site_footer(columns=footer year=year repo_url=site.repo repo_label=site.repoLabel license_name=site.license)

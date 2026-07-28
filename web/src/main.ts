@@ -1,4 +1,3 @@
-import { initCopy } from './lib/copy'
 import { initDemo } from './lib/demo'
 import { initNav } from './lib/nav'
 
@@ -10,5 +9,4 @@ import { initNav } from './lib/nav'
  * it must not wait on JavaScript.
  */
 initNav()
-initCopy()
 initDemo()

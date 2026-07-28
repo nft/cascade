@@ -20,4 +20,4 @@ html(lang=en) scroll-pt-24
           +icon(name="arrow" box_class="size-4")
         a(href="{base}docs.html") rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-line/40 hover:text-ink "Read the docs"
 
-    +site_footer(columns=footer credits=siteStack year=year repo_url=site.repo repo_label=site.repoLabel license_name=site.license)
+    +site_footer(columns=footer year=year repo_url=site.repo repo_label=site.repoLabel license_name=site.license)

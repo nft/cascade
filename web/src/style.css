@@ -26,13 +26,13 @@
   --color-muted: #a1a1aa;
   --color-faint: #808088;
 
-  /* Run-state accents, identical to the colours the app paints on its canvas. */
-  /* Text sits on these at 14px/500, so both clear WCAG AA (4.5:1) against
-     white: accent 4.59, accent-hover 5.63. `accent-soft` is a FOREGROUND
-     colour only (6.67:1 on canvas) — it fails as a background under white. */
-  --color-accent: #6264ee;
-  --color-accent-hover: #5457d8;
-  --color-accent-soft: #818cf8;
+  /* Brand green, sampled from the app's own Run button. `accent-hover` is a
+     darker step, so the hover state gains contrast rather than losing it.
+     `accent-soft` is a FOREGROUND-only tint (8.7:1 on canvas) — never a
+     background under white text. */
+  --color-accent: #35966a;
+  --color-accent-hover: #2b7f58;
+  --color-accent-soft: #4fbf8b;
   --color-running: #38bdf8;
   --color-success: #34d399;
   --color-failed: #f43f5e;

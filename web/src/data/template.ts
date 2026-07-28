@@ -17,16 +17,16 @@ import {
 import {
   DOCS_INTRO,
   DOCS_SECTIONS,
+  DOWNLOAD_SECTION,
+  DOWNLOADS,
   FEATURES,
   FOOTER_COLUMNS,
   HERO,
-  INSTALL,
   NAV_LINKS,
   SITE,
-  SITE_STACK,
   SITE_URL,
-  STACK,
   STEPS,
+  type DocsSection,
   type NavLink,
 } from './site'
 
@@ -53,6 +53,18 @@ function resolveLinks(links: NavLink[], base: string) {
     href: resolveHref(link.href, base),
     external: link.external === true,
   }))
+}
+
+/** Labels the media placeholder by kind — the template cannot build one. */
+const MEDIA_LABEL: Record<string, string> = { image: 'Screenshot', video: 'Screen recording' }
+
+/** Adds the placeholder's label; the rest of the section passes through. */
+function docsSection(section: DocsSection) {
+  if (section.media === undefined) return section
+  return {
+    ...section,
+    media: { ...section.media, label: MEDIA_LABEL[section.media.kind] ?? section.media.kind },
+  }
 }
 
 /** Render-ready demo node: absolute placement plus its display strings. */
@@ -91,17 +103,16 @@ export function templateData(ctx: PageContext) {
     hero: {
       ...HERO,
       primaryCta: { ...HERO.primaryCta, href: resolveHref(HERO.primaryCta.href, base) },
-      secondaryCta: HERO.secondaryCta,
+      secondaryCta: { ...HERO.secondaryCta, href: resolveHref(HERO.secondaryCta.href, base) },
     },
-    install: INSTALL,
+    downloads: DOWNLOADS,
+    download: DOWNLOAD_SECTION,
     nav: resolveLinks(NAV_LINKS, base),
     features: FEATURES,
     steps: STEPS.map((step, i) => ({ ...step, index: String(i + 1).padStart(2, '0') })),
-    stack: STACK,
-    siteStack: SITE_STACK,
     footer: FOOTER_COLUMNS.map((col) => ({ ...col, links: resolveLinks(col.links, base) })),
 
-    docs: { intro: DOCS_INTRO, sections: DOCS_SECTIONS },
+    docs: { intro: DOCS_INTRO, sections: DOCS_SECTIONS.map(docsSection) },
 
     demo: {
       canvas: DEMO_CANVAS,

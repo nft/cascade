@@ -10,16 +10,16 @@ import { DEMO_BINDINGS, DEMO_EDGES, DEMO_NODES, STATE_CHIPS } from '../src/data/
 import {
   DOCS_INTRO,
   DOCS_SECTIONS,
+  DOWNLOAD_SECTION,
+  DOWNLOADS,
   FEATURES,
   FOOTER_COLUMNS,
   HERO,
-  INSTALL,
   NAV_LINKS,
   SITE,
-  SITE_STACK,
   SITE_URL,
-  STACK,
   STEPS,
+  type DocsSection,
 } from '../src/data/site'
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url))
@@ -140,9 +140,6 @@ function expectedCopy(page: string): string[] {
     SITE.name,
     ...NAV_LINKS.map((link) => link.label),
     ...FOOTER_COLUMNS.flatMap((col) => [col.heading, ...col.links.map((link) => link.label)]),
-    // The footer credits list names only; `role` is carried for the stack
-    // section on the index page, not for this one.
-    ...SITE_STACK.map((item) => item.name),
   ]
 
   if (page === PAGE.index) {
@@ -151,11 +148,12 @@ function expectedCopy(page: string): string[] {
       HERO.eyebrow,
       HERO.headline,
       HERO.lede,
-      INSTALL.command,
-      INSTALL.note,
+      DOWNLOAD_SECTION.title,
+      DOWNLOAD_SECTION.lede,
+      DOWNLOAD_SECTION.note,
+      ...DOWNLOADS.flatMap((d) => [d.platform, d.detail]),
       ...FEATURES.flatMap((f) => [f.title, f.body]),
       ...STEPS.flatMap((s) => [s.title, s.body]),
-      ...STACK.flatMap((s) => [s.name, s.role]),
       ...STATE_CHIPS.flatMap((c) => [c.label, c.description]),
       ...DEMO_NODES.flatMap((n) => [n.label, n.path]),
       ...Object.values(DEMO_BINDINGS),
@@ -166,11 +164,13 @@ function expectedCopy(page: string): string[] {
     return [
       ...chrome,
       DOCS_INTRO,
-      ...DOCS_SECTIONS.flatMap((s) => [
+      ...DOCS_SECTIONS.flatMap((s: DocsSection) => [
         s.heading,
         ...s.paragraphs,
         ...(s.bullets ?? []),
-        ...(s.code === undefined ? [] : [s.code.caption, s.code.body]),
+        ...(s.callout === undefined ? [] : [s.callout]),
+        // The placeholder renders its own brief, so it must reach the page too.
+        ...(s.media === undefined ? [] : [s.media.caption, s.media.brief]),
       ]),
     ]
   }
