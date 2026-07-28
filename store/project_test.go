@@ -107,11 +107,11 @@ func testBoard(id string) Board {
 			Positions: map[string]Position{"create-user": {X: 0, Y: 140}, "create-org": {X: 300, Y: 140}},
 			// Last responses ride along in the layout sidecar (plan 05 §8) and
 			// must survive the round trip untouched.
-			Responses: map[string]any{
-				"create-user": map[string]any{
-					"status": float64(201),
-					"body":   map[string]any{"id": "u1"},
-					"at":     "2026-07-06T14:02:00Z",
+			Responses: map[string]CapturedResponse{
+				"create-user": {
+					Status: 201,
+					Body:   map[string]any{"id": "u1"},
+					At:     "2026-07-06T14:02:00Z",
 				},
 			},
 		},
@@ -130,6 +130,32 @@ func TestBoardSaveLoadRoundTrip(t *testing.T) {
 		t.Fatalf("Board: %v", err)
 	}
 	board.FormatVersion = BoardFormatVersion // normalized on save
+	if !reflect.DeepEqual(got, board) {
+		t.Fatalf("round trip mismatch:\n got  %+v\n want %+v", got, board)
+	}
+}
+
+// TestBoardSaveLoadKeepsContainment covers the real filesystem path for the
+// two fields that are pure loss when dropped: a For's children and its size.
+func TestBoardSaveLoadKeepsContainment(t *testing.T) {
+	_, p := newTestProject(t)
+	board := loopBoard("loops")
+	if err := p.SaveBoard(board); err != nil {
+		t.Fatalf("SaveBoard: %v", err)
+	}
+
+	got, err := p.Board("loops")
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	for _, id := range []string{"create-user", "create-org"} {
+		if parent := boardNodeByID(t, got, id).Parent; parent != "each" {
+			t.Errorf("node %q parent = %q after save/load, want %q", id, parent, "each")
+		}
+	}
+	if size := got.Layout.Sizes["each"]; size != (Size{Width: 720, Height: 260}) {
+		t.Errorf("container size = %+v after save/load", size)
+	}
 	if !reflect.DeepEqual(got, board) {
 		t.Fatalf("round trip mismatch:\n got  %+v\n want %+v", got, board)
 	}

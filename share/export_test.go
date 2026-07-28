@@ -3,6 +3,7 @@ package share
 import (
 	"bytes"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -106,8 +107,10 @@ func testBoard() store.Board {
 			Positions: map[string]store.Position{
 				"n1": {X: 0, Y: 0}, "n2": {X: 300, Y: 40}, "n3": {X: 600, Y: 80},
 			},
-			Viewport:  &store.Viewport{X: 12, Y: 34, Zoom: 1.5},
-			Responses: map[string]any{"n1": map[string]any{"status": 201, "body": map[string]any{"id": "u_1"}}},
+			Viewport: &store.Viewport{X: 12, Y: 34, Zoom: 1.5},
+			Responses: map[string]store.CapturedResponse{
+				"n1": {Status: 201, Body: map[string]any{"id": "u_1"}, At: "2026-07-06T14:02:00Z"},
+			},
 		},
 	}
 }
@@ -307,6 +310,79 @@ func TestExportSelectionResSugarDangles(t *testing.T) {
 	dangling, _ := res["dangling"].(map[string]any)
 	if dangling["originalKey"] != "createInvoice" || dangling["path"] != "body.id" {
 		t.Errorf("dangling marker = %v", dangling)
+	}
+}
+
+// loopBoard is a For container with two children, the shape a selection can
+// cut through: containment travels only when the container travels with it.
+func loopBoard() store.Board {
+	return store.Board{
+		ID:   "b2",
+		Name: "Signup loop",
+		Nodes: []store.BoardNode{
+			{ID: "each", Type: "for", Name: "For each seed", Data: map[string]any{
+				"name": "For each seed", "key": "eachSeed", "mode": "each", "source": "seed.body",
+			}},
+			{ID: "child1", Type: "http", Name: "Create User", Parent: "each", Data: map[string]any{
+				"name": "Create User", "key": "createUser", "method": "POST", "path": "/v1/users",
+				"environment": "staging",
+			}},
+			{ID: "child2", Type: "http", Name: "Create Org", Parent: "each", Data: map[string]any{
+				"name": "Create Org", "key": "createOrg", "method": "POST", "path": "/v1/orgs",
+				"environment": "staging",
+			}},
+		},
+		Edges: []store.BoardEdge{{ID: "e1", From: "child1", To: "child2"}},
+		Layout: store.BoardLayout{
+			Positions: map[string]store.Position{
+				"each": {X: 0, Y: 0}, "child1": {X: 40, Y: 60}, "child2": {X: 340, Y: 60},
+			},
+			Sizes: map[string]store.Size{"each": {Width: 720, Height: 260}},
+		},
+	}
+}
+
+func TestExportSelectionKeepsContainmentAndSizes(t *testing.T) {
+	p := newTestProject(t)
+	raw, err := ExportSelection(p, loopBoard(), []string{"each", "child1", "child2"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	payload := exportedBoard(t, raw)
+
+	for _, id := range []string{"child1", "child2"} {
+		if parent := nodeByID(t, payload.Board.Nodes, id).Parent; parent != "each" {
+			t.Errorf("node %q parent = %q, want %q", id, parent, "each")
+		}
+	}
+	want := map[string]store.Size{"each": {Width: 720, Height: 260}}
+	if !reflect.DeepEqual(payload.Board.Layout.Sizes, want) {
+		t.Errorf("layout.sizes = %+v, want %+v", payload.Board.Layout.Sizes, want)
+	}
+}
+
+// TestExportSelectionDropsCutParent is the guard on the field that import
+// validates: a child exported without its For must arrive top level, because
+// a parent naming an absent node is rejected outright. Asserting the empty
+// field is not enough — the envelope has to actually import.
+func TestExportSelectionDropsCutParent(t *testing.T) {
+	p := newTestProject(t)
+	raw, err := ExportSelection(p, loopBoard(), []string{"child1", "child2"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	payload := exportedBoard(t, raw)
+
+	for _, id := range []string{"child1", "child2"} {
+		if parent := nodeByID(t, payload.Board.Nodes, id).Parent; parent != "" {
+			t.Errorf("node %q kept parent %q although the For was cut", id, parent)
+		}
+	}
+	if len(payload.Board.Layout.Sizes) != 0 {
+		t.Errorf("size of the cut For travelled: %+v", payload.Board.Layout.Sizes)
+	}
+	if _, _, err := ImportBoard(p, raw); err != nil {
+		t.Fatalf("ImportBoard of a cut-child selection: %v", err)
 	}
 }
 

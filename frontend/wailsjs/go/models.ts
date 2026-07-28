@@ -395,6 +395,26 @@ export namespace share {
 
 export namespace store {
 	
+	export class CapturedResponse {
+	    status: number;
+	    headers?: Record<string, string>;
+	    body: any;
+	    at: string;
+	    truncated?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CapturedResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.headers = source["headers"];
+	        this.body = source["body"];
+	        this.at = source["at"];
+	        this.truncated = source["truncated"];
+	    }
+	}
 	export class Viewport {
 	    x: number;
 	    y: number;
@@ -409,6 +429,20 @@ export namespace store {
 	        this.x = source["x"];
 	        this.y = source["y"];
 	        this.zoom = source["zoom"];
+	    }
+	}
+	export class Size {
+	    width: number;
+	    height: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Size(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.width = source["width"];
+	        this.height = source["height"];
 	    }
 	}
 	export class Position {
@@ -427,8 +461,9 @@ export namespace store {
 	}
 	export class BoardLayout {
 	    positions: Record<string, Position>;
+	    sizes?: Record<string, Size>;
 	    viewport?: Viewport;
-	    responses?: Record<string, any>;
+	    responses?: Record<string, CapturedResponse>;
 	
 	    static createFrom(source: any = {}) {
 	        return new BoardLayout(source);
@@ -437,8 +472,9 @@ export namespace store {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.positions = this.convertValues(source["positions"], Position, true);
+	        this.sizes = this.convertValues(source["sizes"], Size, true);
 	        this.viewport = this.convertValues(source["viewport"], Viewport);
-	        this.responses = source["responses"];
+	        this.responses = this.convertValues(source["responses"], CapturedResponse, true);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -479,6 +515,7 @@ export namespace store {
 	    id: string;
 	    type?: string;
 	    name?: string;
+	    parent?: string;
 	    data?: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
@@ -490,6 +527,7 @@ export namespace store {
 	        this.id = source["id"];
 	        this.type = source["type"];
 	        this.name = source["name"];
+	        this.parent = source["parent"];
 	        this.data = source["data"];
 	    }
 	}
@@ -533,6 +571,7 @@ export namespace store {
 		    return a;
 		}
 	}
+	
 	
 	
 	
@@ -768,6 +807,7 @@ export namespace store {
 		    return a;
 		}
 	}
+	
 	
 	export class Source {
 	    id: string;

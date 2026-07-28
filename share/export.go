@@ -69,7 +69,17 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 		}
 		sanitizeRunState(data)
 		rewriteDanglingBindings(data, n.ID, keep, upstream, idToKey)
-		out.Nodes = append(out.Nodes, store.BoardNode{ID: n.ID, Type: n.Type, Name: n.Name, Data: data})
+		// Containment travels only when the container is in the selection: a
+		// parent naming an absent node is rejected by core.Graph.Validate on
+		// import, so a cut child exports as top level — the same treatment
+		// rewriteDanglingBindings gives a binding cut by the selection.
+		parent := ""
+		if keep[n.Parent] {
+			parent = n.Parent
+		}
+		out.Nodes = append(out.Nodes, store.BoardNode{
+			ID: n.ID, Type: n.Type, Name: n.Name, Parent: parent, Data: data,
+		})
 	}
 	if len(out.Nodes) == 0 {
 		return nil, errors.New("selection matched no nodes")
@@ -79,13 +89,21 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 			out.Edges = append(out.Edges, e)
 		}
 	}
-	// Positions travel so relative layout survives; viewport and captured
-	// responses are deliberately dropped — pan/zoom is the receiver's, and
-	// last responses are run data that has no business leaving the machine.
+	// Positions and sizes travel so relative layout survives; viewport and
+	// captured responses are deliberately dropped — pan/zoom is the
+	// receiver's, and last responses are run data that has no business
+	// leaving the machine. The layout is rebuilt field by field, so any field
+	// added to store.BoardLayout must be copied here or it is dropped.
 	out.Layout.Positions = map[string]store.Position{}
 	for id, pos := range b.Layout.Positions {
 		if keep[id] {
 			out.Layout.Positions[id] = pos
+		}
+	}
+	out.Layout.Sizes = map[string]store.Size{}
+	for id, size := range b.Layout.Sizes {
+		if keep[id] {
+			out.Layout.Sizes[id] = size
 		}
 	}
 

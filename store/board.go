@@ -21,13 +21,14 @@ type Board struct {
 	Layout        BoardLayout `json:"layout"`
 }
 
-// BoardNode mirrors core.Node (id, type, name) and carries the node's form
-// data opaquely — the store does not interpret it.
+// BoardNode mirrors core.Node (id, type, name, parent) and carries the node's
+// form data opaquely — the store does not interpret it.
 type BoardNode struct {
-	ID   string         `json:"id"`
-	Type string         `json:"type,omitempty"`
-	Name string         `json:"name,omitempty"`
-	Data map[string]any `json:"data,omitempty"`
+	ID     string         `json:"id"`
+	Type   string         `json:"type,omitempty"`
+	Name   string         `json:"name,omitempty"`
+	Parent string         `json:"parent,omitempty"`
+	Data   map[string]any `json:"data,omitempty"`
 }
 
 // BoardEdge mirrors core.Edge; ID is canvas-only.
@@ -37,21 +38,40 @@ type BoardEdge struct {
 	To   string `json:"to"`
 }
 
-// BoardLayout is canvas-only data (node positions, viewport, last responses)
-// that the engine ignores.
+// BoardLayout is canvas-only data (node positions, sizes, viewport, last
+// responses) that the engine ignores.
 type BoardLayout struct {
 	Positions map[string]Position `json:"positions"`
-	Viewport  *Viewport           `json:"viewport,omitempty"`
+	// Sizes holds explicit node dimensions; only resizable For containers
+	// (plan 09) have one, so most nodes are absent here.
+	Sizes    map[string]Size `json:"sizes,omitempty"`
+	Viewport *Viewport       `json:"viewport,omitempty"`
 	// Responses holds each node's last successful response (plan 05 §8) for
-	// schema inference and picker previews; written by the frontend and
-	// treated opaquely by the store.
-	Responses map[string]any `json:"responses,omitempty"`
+	// schema inference and picker previews; written by the frontend.
+	Responses map[string]CapturedResponse `json:"responses,omitempty"`
 }
 
 // Position is a node's canvas coordinate.
 type Position struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+// Size is a node's explicit canvas dimensions.
+type Size struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
+// CapturedResponse is one node's last captured response, mirroring the
+// frontend's CapturedResponse (frontend/src/lib/model.ts). At is the ISO
+// capture timestamp, kept as text so a save round trip is byte-stable.
+type CapturedResponse struct {
+	Status    int               `json:"status"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	Body      any               `json:"body"`
+	At        string            `json:"at"`
+	Truncated bool              `json:"truncated,omitempty"`
 }
 
 // Viewport is the canvas pan/zoom state.
@@ -85,7 +105,12 @@ func (b Board) graph() core.Graph {
 		Edges: make([]core.Edge, len(b.Edges)),
 	}
 	for i, n := range b.Nodes {
-		g.Nodes[i] = core.Node{ID: core.NodeID(n.ID), Type: core.NodeType(n.Type), Name: n.Name}
+		g.Nodes[i] = core.Node{
+			ID:     core.NodeID(n.ID),
+			Type:   core.NodeType(n.Type),
+			Name:   n.Name,
+			Parent: core.NodeID(n.Parent),
+		}
 	}
 	for i, e := range b.Edges {
 		g.Edges[i] = core.Edge{From: core.NodeID(e.From), To: core.NodeID(e.To)}
