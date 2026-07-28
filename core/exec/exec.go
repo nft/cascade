@@ -1,8 +1,9 @@
 // Package exec runs a graph node by node in ExecutionOrder, dispatching per
 // node type (plan 06 T2): http nodes call the injected HTTP runner, transform
 // nodes run in-process via core/transform, and note nodes are never
-// scheduled. The real HTTP pipeline arrives with M1 WP4; until then callers
-// inject it, which also keeps tests network-free.
+// scheduled. The HTTP pipeline itself lives in core/httpcall and reaches this
+// package only through the injected runner, so exec stays independent of the
+// transport and tests run network-free.
 package exec
 
 import (

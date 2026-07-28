@@ -1,15 +1,16 @@
 // Package httpcall executes one fully-resolved HTTP request (plan 08 C2/C9).
-// It is the request build path the M1 executor will share: origin precedence,
-// URL join normalization, path-parameter substitution, JSON/raw bodies,
-// method rules, credential injection with redaction, and capped response
-// capture. Like the rest of core it is UI-free: callers hand it literal
-// values only — no bindings, no store types.
+// It is the request build path the executor shares: origin precedence, URL
+// join normalization, path-parameter substitution, JSON/raw bodies, method
+// rules, credential injection with redaction, and capped response capture.
+// Like the rest of core it is UI-free: callers hand it literal values only —
+// no bindings, no store types.
 package httpcall
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -178,7 +179,7 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 
 	httpReq, err := http.NewRequestWithContext(ctx, req.Method, fullURL, body)
 	if err != nil {
-		return Response{}, err
+		return Response{}, scrubURL(err, fullURL, displayURL)
 	}
 	if contentType != "" {
 		httpReq.Header.Set("Content-Type", contentType)
@@ -197,7 +198,15 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 	started := time.Now()
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return Response{}, err
+		// A transport failure still knows what was attempted and for how
+		// long; returning it alongside the error lets callers build a log row
+		// for a connection refusal. Status stays 0.
+		attempted := Response{
+			DurationMs:  int(time.Since(started).Milliseconds()),
+			URL:         displayURL,
+			SentHeaders: redactedHeaders(httpReq.Header, inj),
+		}
+		return attempted, scrubURL(err, fullURL, displayURL)
 	}
 	defer resp.Body.Close()
 
@@ -224,6 +233,25 @@ func Do(ctx context.Context, client *http.Client, req Request, cred *Credential)
 		}
 	}
 	return out, nil
+}
+
+// scrubURL rewrites a request error so it names the redacted URL. Errors from
+// the http package are *url.Error, whose Error() embeds the request URL
+// verbatim — and fullURL carries the raw query-kind secret while displayURL
+// carries the marker. Without this, every connection refusal, DNS failure and
+// timeout puts the secret in an error string that becomes a copyable log row.
+func scrubURL(err error, fullURL, displayURL string) error {
+	if fullURL == displayURL {
+		return err // no query-kind credential was appended: nothing to leak
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return &url.Error{Op: urlErr.Op, URL: displayURL, Err: urlErr.Err}
+	}
+	// net/http documents every Client.Do error as *url.Error, so this branch
+	// is defensive: it drops the original text rather than risk the raw URL
+	// an unknown error type may have embedded in it.
+	return fmt.Errorf("request to %s failed", displayURL)
 }
 
 // placeholders lists {name} occurrences in order, deduplicated.

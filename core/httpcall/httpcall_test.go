@@ -3,10 +3,12 @@ package httpcall
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildURL(t *testing.T) {
@@ -215,5 +217,85 @@ func TestDoHead(t *testing.T) {
 	}
 	if resp.Status != http.StatusOK || resp.Headers["X-Count"] != "42" || resp.BodyText != "" {
 		t.Errorf("HEAD response = %+v", resp)
+	}
+}
+
+// closedPort binds and immediately releases an address, so a dial to it is
+// guaranteed to be refused rather than to reach some unrelated service.
+func closedPort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := ln.Addr().String()
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close listener: %v", err)
+	}
+	return addr
+}
+
+// TestDoTransportFailureRedactsAndReportsAttempt covers both failure-path
+// defects at once: a *url.Error stringifies the URL it was given, so the raw
+// query-kind secret would otherwise land in a copyable log row; and what the
+// call is known to have attempted must survive alongside the error.
+func TestDoTransportFailureRedactsAndReportsAttempt(t *testing.T) {
+	const secret = "s3cret-query-value"
+	const requestID = "req-1"
+
+	resp, err := Do(context.Background(), nil, Request{
+		Method:  http.MethodGet,
+		EnvBase: "http://" + closedPort(t),
+		Path:    "/v1/users",
+		Headers: map[string]string{"X-Request-Id": requestID},
+	}, &Credential{Kind: KindQuery, Param: "api_key", Secret: secret})
+	if err == nil {
+		t.Fatal("a dial to a closed port returned no error")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("credential value leaked into the error: %v", err)
+	}
+	if !strings.Contains(err.Error(), RedactedValue) {
+		t.Errorf("error does not name the redacted URL: %v", err)
+	}
+
+	if !strings.Contains(resp.URL, RedactedValue) || strings.Contains(resp.URL, secret) {
+		t.Errorf("reported URL = %q", resp.URL)
+	}
+	if resp.SentHeaders["X-Request-Id"] != requestID {
+		t.Errorf("SentHeaders = %v, want the headers as sent", resp.SentHeaders)
+	}
+	if resp.Status != 0 {
+		t.Errorf("Status = %d, want 0 when nothing was received", resp.Status)
+	}
+}
+
+// TestDoTransportFailureReportsElapsed pins the elapsed time on the failure
+// path. A refused connection to loopback completes in far under a
+// millisecond, so a client timeout is the only transport failure whose
+// duration is large enough to observe at DurationMs' resolution.
+func TestDoTransportFailureReportsElapsed(t *testing.T) {
+	const clientTimeout = 30 * time.Millisecond
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-release
+	}))
+	// The handler must be released before Close, which waits for it.
+	defer srv.Close()
+	defer close(release)
+
+	client := srv.Client()
+	client.Timeout = clientTimeout
+	resp, err := Do(context.Background(), client, Request{
+		Method: http.MethodGet, EnvBase: srv.URL, Path: "/slow",
+	}, nil)
+	if err == nil {
+		t.Fatal("a timed-out request returned no error")
+	}
+	if resp.DurationMs <= 0 {
+		t.Errorf("DurationMs = %d, want the elapsed time of the failed attempt", resp.DurationMs)
+	}
+	if resp.URL == "" {
+		t.Error("the attempted URL was discarded")
 	}
 }
