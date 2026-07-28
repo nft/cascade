@@ -28,6 +28,9 @@ const PREFIX_BODY = 'body'
 
 const HINT_KEY_CAP = 8
 
+/** Body-access hint for a response whose body exceeded the capture cap. */
+const HINT_TRUNCATED = 'the response was too large to capture'
+
 // --- node keys -------------------------------------------------------------
 
 /** `Create User` → `createUser`; strips anything non-alphanumeric. */
@@ -350,11 +353,33 @@ function resolveExpr(expr: string, ctx: ResolveContext): unknown {
   return resolveRef(ref, ctx)
 }
 
-function stringify(v: unknown): string {
+/**
+ * Renders a resolved value as the bytes that go on the wire — a query value,
+ * a header value, a raw body, or one interpolated chunk of a template. This
+ * is a specified format (plan 11 D16) that must match Go's
+ * `binding.Stringify` byte for byte; `core/testdata/binding_vectors.json`
+ * pins both sides. `String(v)` on a number already *is* ECMA-262
+ * `Number::toString`, which is the rule Go now implements.
+ */
+export function stringify(v: unknown): string {
   if (v === null || v === undefined) return 'null'
   if (typeof v === 'string') return v
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-  return JSON.stringify(v)
+  return JSON.stringify(v, sortedKeys)
+}
+
+/**
+ * JSON.stringify replacer that emits object keys in sorted order — without it
+ * JS emits insertion order while Go's json encoder sorts map keys. The default
+ * string sort is UTF-16 code-unit order, which agrees with Go's byte-wise sort
+ * for every key in the Basic Multilingual Plane.
+ */
+function sortedKeys(_key: string, value: unknown): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return value
+  const source = value as Record<string, unknown>
+  const sorted: Record<string, unknown> = {}
+  for (const key of Object.keys(source).sort()) sorted[key] = source[key]
+  return sorted
 }
 
 function resolveOutputPath(
@@ -368,7 +393,7 @@ function resolveOutputPath(
   // M1's canonical paths carry a `response.` root; plan 05 accessors omit it.
   if (p === 'response') p = ''
   else if (p.startsWith('response.')) p = p.slice('response.'.length)
-  if (p === '') return out.body
+  if (p === '') return bodyOf(out, path)
   const { owner: first, path: rest } = splitOwner(p)
   switch (first) {
     case PREFIX_STATUS:
@@ -384,7 +409,7 @@ function resolveOutputPath(
       return headers[found]
     }
     case PREFIX_BODY:
-      return resolveValuePath(nodeId, out.body, path, rest)
+      return resolveValuePath(nodeId, bodyOf(out, path), path, rest)
     default: {
       if (allowExports) {
         const exp = exports.find((e) => e.key === first)
@@ -394,9 +419,23 @@ function resolveOutputPath(
           return resolveValuePath(nodeId, base, path, rest)
         }
       }
-      return resolveValuePath(nodeId, out.body, path, p)
+      return resolveValuePath(nodeId, bodyOf(out, path), path, p)
     }
   }
+}
+
+/**
+ * The captured body, or a named error when the capture was truncated —
+ * otherwise the walker reports "value is a JSON null and has no sub-fields"
+ * for a response that was merely too big.
+ */
+function bodyOf(out: CapturedResponse, path: string): unknown {
+  // An empty path is the whole-output reference ({{res}}); quoting it would
+  // read `"": the response was too large`, so name the problem directly.
+  if (out.truncated) {
+    throw new ResolveError(path === '' ? HINT_TRUNCATED : `"${path}": ${HINT_TRUNCATED}`)
+  }
+  return out.body
 }
 
 type PathSegment = { key: string } | { index: number } | { wildcard: true }

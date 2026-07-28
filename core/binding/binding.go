@@ -57,6 +57,10 @@ type Output struct {
 	Status int
 	Header http.Header
 	Body   any
+	// Truncated marks a response whose body exceeded the capture cap and was
+	// dropped (httpcall.Response.Truncated). Body is nil in that case, so body
+	// paths have to report the cap instead of walking into a JSON null.
+	Truncated bool
 }
 
 // Export is a named alias a node declares for a value of its own response:

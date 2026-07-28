@@ -1,9 +1,7 @@
 package binding
 
 import (
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -59,15 +57,15 @@ func parseRefExpr(expr string) (ref Ref, ok bool) {
 	if expr == refIndex {
 		return Ref{}, false
 	}
-	if expr == refRes {
-		return Ref{}, true
-	}
-	if rest, found := strings.CutPrefix(expr, refRes+"."); found {
-		return Ref{Path: rest}, true
-	}
+	// The owner has to come from splitFirst, which also breaks on '[':
+	// comparing expr against "res" and "res." first would leave "res[0].id"
+	// unmatched and turn it into a reference to a node named "res".
 	owner, path := splitFirst(expr)
-	if owner == refItem {
+	switch owner {
+	case refItem:
 		return Ref{}, false
+	case refRes:
+		return Ref{Path: path}, true
 	}
 	return Ref{Node: owner, Path: path}, true
 }
@@ -111,7 +109,7 @@ func (e *Env) resolveTemplate(tpl string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		s, err := stringify(v)
+		s, err := Stringify(v)
 		if err != nil {
 			return nil, err
 		}
@@ -144,29 +142,4 @@ func (e *Env) resolveItem(fullExpr, rest string) (any, error) {
 		return e.Item, nil
 	}
 	return resolveValuePath(refItem, e.Item, fullExpr, rest)
-}
-
-// stringify renders a resolved value for interpolation into surrounding
-// text. Objects and arrays interpolate as compact JSON.
-func stringify(v any) (string, error) {
-	switch t := v.(type) {
-	case nil:
-		return "null", nil
-	case string:
-		return t, nil
-	case bool:
-		return strconv.FormatBool(t), nil
-	case int:
-		return strconv.Itoa(t), nil
-	case int64:
-		return strconv.FormatInt(t, 10), nil
-	case float64:
-		return strconv.FormatFloat(t, 'f', -1, 64), nil
-	default:
-		raw, err := json.Marshal(t)
-		if err != nil {
-			return "", fmt.Errorf("binding: cannot interpolate value of type %T: %w", v, err)
-		}
-		return string(raw), nil
-	}
 }

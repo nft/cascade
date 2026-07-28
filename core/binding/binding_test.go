@@ -256,6 +256,19 @@ func TestTemplateRefs(t *testing.T) {
 	}
 }
 
+// A bracket ends the owner word too, so res[0] must stay the res sugar
+// instead of parsing as a reference to a node literally named "res".
+func TestTemplateRefsOverTopLevelArray(t *testing.T) {
+	refs, err := TemplateRefs("{{res[0].id}}-{{res[0]}}-{{listUsers[1].id}}")
+	if err != nil {
+		t.Fatalf("TemplateRefs: %v", err)
+	}
+	want := []Ref{{Path: "[0].id"}, {Path: "[0]"}, {Node: "listUsers", Path: "[1].id"}}
+	if !reflect.DeepEqual(refs, want) {
+		t.Fatalf("got %#v, want %#v", refs, want)
+	}
+}
+
 func TestLiteralPassthrough(t *testing.T) {
 	got, err := Literal(42).Resolve(&Env{})
 	if err != nil || got != 42 {

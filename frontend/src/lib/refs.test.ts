@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { AppNode, CapturedResponse, NodeField } from './model'
+// The golden vectors live outside frontend/ on purpose: core/binding reads the
+// same file, and a copy here would defeat the point of a shared contract.
+import vectorsSource from '../../../core/testdata/binding_vectors.json?raw'
+import type { AppNode, CapturedResponse, NodeExport, NodeField } from './model'
 import {
   fieldDisplayValue,
   fieldRefs,
@@ -10,6 +13,7 @@ import {
   renderTemplate,
   resolveField,
   slugifyKey,
+  stringify,
   uniqueKey,
   validateFieldRefs,
   type ResolveContext,
@@ -315,4 +319,85 @@ describe('[*] array map (plan 06 T3, mirrors core/binding goldens)', () => {
     expect(field.source).toBe('binding')
     expect(field.ref).toEqual({ nodeId: 'create-org-1', path: 'body.orgs[*].id' })
   })
+})
+
+// --- shared golden vectors (plan 11 D16) -------------------------------------
+
+interface VectorOutput {
+  status: number
+  headers?: Record<string, string>
+  body?: unknown
+  truncated?: boolean
+}
+
+interface VectorCase {
+  name: string
+  /** Exactly one of template / ref is set; presence is the discriminator. */
+  template?: string
+  ref?: { node?: string; path?: string }
+  /** Overrides the file-level upstreams for res-sugar cases. */
+  upstreams?: string[]
+  expect?: string
+  type?: string
+  error?: string
+}
+
+interface VectorFile {
+  index: number
+  upstreams: string[]
+  exports: Record<string, NodeExport[]>
+  outputs: Record<string, VectorOutput>
+  cases: VectorCase[]
+}
+
+/** The JSON type names the vectors use; mirrors core/binding's jsonTypeName. */
+function jsonTypeName(v: unknown): string {
+  if (v === null || v === undefined) return 'null'
+  if (Array.isArray(v)) return 'array'
+  return typeof v
+}
+
+describe('binding vectors (plan 11 D16 — shared with core/binding)', () => {
+  const vectors = JSON.parse(vectorsSource) as VectorFile
+  const captureTime = '2026-07-06T14:02:00Z'
+  const outputs: Record<string, CapturedResponse> = {}
+  for (const [nodeId, out] of Object.entries(vectors.outputs)) {
+    outputs[nodeId] = {
+      status: out.status,
+      headers: out.headers,
+      body: out.body,
+      at: captureTime,
+      truncated: out.truncated,
+    }
+  }
+
+  it('has cases', () => {
+    expect(vectors.cases.length).toBeGreaterThan(0)
+  })
+
+  for (const vector of vectors.cases) {
+    it(vector.name, () => {
+      const ctx: ResolveContext = {
+        outputs,
+        exports: vectors.exports,
+        upstreams: vector.upstreams ?? vectors.upstreams,
+        index: vectors.index,
+      }
+      const field: NodeField = vector.template !== undefined
+        ? { key: 'k', source: 'template', value: vector.template }
+        : {
+            key: 'k',
+            source: 'binding',
+            value: 'x',
+            ref: { nodeId: vector.ref?.node ?? '', path: vector.ref?.path ?? '' },
+          }
+      if (vector.error !== undefined) {
+        expect(() => resolveField(field, ctx)).toThrow(vector.error)
+        return
+      }
+      const resolved = resolveField(field, ctx)
+      if (vector.type !== undefined) expect(jsonTypeName(resolved)).toBe(vector.type)
+      expect(stringify(resolved)).toBe(vector.expect)
+    })
+  }
 })

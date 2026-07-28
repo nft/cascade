@@ -13,10 +13,17 @@ type PathNotFoundError struct {
 }
 
 func (e *PathNotFoundError) Error() string {
-	if e.Hint == "" {
-		return fmt.Sprintf("binding: path %q not found in output of node %q", e.Path, e.Node)
+	// An empty path is the whole-output reference ({{res}}), which cannot be
+	// "not found" — the output exists, it just cannot be read. Saying so keeps
+	// the truncated-body case from reading `path "" not found`.
+	subject := fmt.Sprintf("path %q not found in output of node %q", e.Path, e.Node)
+	if e.Path == "" {
+		subject = fmt.Sprintf("cannot read the output of node %q", e.Node)
 	}
-	return fmt.Sprintf("binding: path %q not found in output of node %q (%s)", e.Path, e.Node, e.Hint)
+	if e.Hint == "" {
+		return "binding: " + subject
+	}
+	return fmt.Sprintf("binding: %s (%s)", subject, e.Hint)
 }
 
 // UpstreamNotRunError reports a reference to a node that has no captured

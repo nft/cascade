@@ -1,0 +1,422 @@
+{
+  "comment": [
+    "Golden vectors for the binding resolver and the Stringify wire format (plan 11 D16).",
+    "Read by core/binding/vectors_test.go and frontend/src/lib/refs.test.ts: the frontend",
+    "keeps a second resolver for the in-memory fallback, and this table is what stops the",
+    "two from drifting. Hand-authored from the spec — never regenerate it from either",
+    "implementation, since generating would enshrine whichever side is currently wrong.",
+    "Each case resolves one 'template' or one 'ref' against the fixtures below and asserts",
+    "'expect' (the Stringify of the resolved value), optionally 'type' (its JSON type name),",
+    "or 'error' (a substring both implementations' messages must contain). Adding a case",
+    "needs no code change on either side.",
+    "Float boundaries are written as JSON number literals on purpose: 0.1 + 0.2 in Go source",
+    "is an untyped constant folded exactly at compile time, so arithmetic here would compare",
+    "a Go constant against a JS runtime double and chase a phantom."
+  ],
+  "index": 3,
+  "upstreams": ["createUser"],
+  "exports": {
+    "createUser": [
+      { "key": "userId", "path": "body.data.attributes.id" },
+      { "key": "user", "path": "body.data" }
+    ]
+  },
+  "outputs": {
+    "createUser": {
+      "status": 201,
+      "headers": { "Location": "/v1/users/u1", "X-Request-Id": "r-42" },
+      "body": {
+        "id": "u1",
+        "name": "Ada",
+        "data": { "attributes": { "id": "deep-1" } }
+      }
+    },
+    "listUsers": {
+      "status": 200,
+      "body": [{ "id": "u0" }, { "id": "u1" }]
+    },
+    "numbers": {
+      "status": 200,
+      "body": {
+        "int": 42,
+        "decimal": 0.5,
+        "negative": -1.5,
+        "e20": 1e20,
+        "e21": 1e21,
+        "eMinus6": 1e-6,
+        "eMinus7": 1e-7,
+        "denormalMin": 5e-324,
+        "max": 1.7976931348623157e308,
+        "negativeZero": -0,
+        "beyondSafeInt": 9007199254740993
+      }
+    },
+    "unsorted": {
+      "status": 200,
+      "body": { "z": 1, "a": 2, "m": 3, "ключ": 4 }
+    },
+    "markup": {
+      "status": 200,
+      "body": { "html": "<b>a & b</b>", "note": "1 < 2 && 3 > 2" }
+    },
+    "nullish": {
+      "status": 200,
+      "body": { "none": null, "flag": false, "nested": { "none": null } }
+    },
+    "tooBig": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": null,
+      "truncated": true
+    }
+  },
+  "cases": [
+    {
+      "name": "res sugar reads a body key",
+      "template": "{{res.name}}",
+      "expect": "Ada",
+      "type": "string"
+    },
+    {
+      "name": "bare res yields the whole body with sorted keys",
+      "template": "{{res}}",
+      "expect": "{\"data\":{\"attributes\":{\"id\":\"deep-1\"}},\"id\":\"u1\",\"name\":\"Ada\"}",
+      "type": "object"
+    },
+    {
+      "name": "status prefix wins and stays a number",
+      "template": "{{res.status}}",
+      "expect": "201",
+      "type": "number"
+    },
+    {
+      "name": "headers are matched case-insensitively",
+      "template": "{{res.headers.location}}",
+      "expect": "/v1/users/u1",
+      "type": "string"
+    },
+    {
+      "name": "singular header alias canonicalizes the name",
+      "template": "{{res.header.x-request-id}}",
+      "expect": "r-42",
+      "type": "string"
+    },
+    {
+      "name": "bare headers yields the whole map, sorted",
+      "template": "{{res.headers}}",
+      "expect": "{\"Location\":\"/v1/users/u1\",\"X-Request-Id\":\"r-42\"}",
+      "type": "object"
+    },
+    {
+      "name": "export alias resolves its own path",
+      "template": "{{res.userId}}",
+      "expect": "deep-1",
+      "type": "string"
+    },
+    {
+      "name": "export alias with a trailing path",
+      "template": "{{res.user.attributes.id}}",
+      "expect": "deep-1",
+      "type": "string"
+    },
+    {
+      "name": "qualified reference by node id",
+      "template": "{{createUser.body.data.attributes.id}}",
+      "expect": "deep-1",
+      "type": "string"
+    },
+    {
+      "name": "unprefixed qualified path is a body path",
+      "template": "{{createUser.name}}",
+      "expect": "Ada",
+      "type": "string"
+    },
+    {
+      "name": "structured ref, whole body",
+      "ref": { "node": "createUser", "path": "" },
+      "expect": "{\"data\":{\"attributes\":{\"id\":\"deep-1\"}},\"id\":\"u1\",\"name\":\"Ada\"}",
+      "type": "object"
+    },
+
+    {
+      "name": "res over a top-level array element",
+      "template": "{{res[0]}}",
+      "upstreams": ["listUsers"],
+      "expect": "{\"id\":\"u0\"}",
+      "type": "object"
+    },
+    {
+      "name": "res over a field of a top-level array element",
+      "template": "{{res[0].id}}",
+      "upstreams": ["listUsers"],
+      "expect": "u0",
+      "type": "string"
+    },
+    {
+      "name": "qualified index into a top-level array",
+      "template": "{{listUsers[1].id}}",
+      "expect": "u1",
+      "type": "string"
+    },
+    {
+      "name": "structured ref into a top-level array",
+      "ref": { "node": "listUsers", "path": "[0].id" },
+      "expect": "u0",
+      "type": "string"
+    },
+    {
+      "name": "whole top-level array",
+      "template": "{{listUsers}}",
+      "expect": "[{\"id\":\"u0\"},{\"id\":\"u1\"}]",
+      "type": "array"
+    },
+    {
+      "name": "array map over a top-level array",
+      "template": "{{listUsers[*].id}}",
+      "expect": "[\"u0\",\"u1\"]",
+      "type": "array"
+    },
+
+    {
+      "name": "number: plain integer",
+      "template": "{{numbers.int}}",
+      "expect": "42",
+      "type": "number"
+    },
+    {
+      "name": "number: plain decimal",
+      "template": "{{numbers.decimal}}",
+      "expect": "0.5",
+      "type": "number"
+    },
+    {
+      "name": "number: negative decimal",
+      "template": "{{numbers.negative}}",
+      "expect": "-1.5",
+      "type": "number"
+    },
+    {
+      "name": "number: 1e20 stays fixed",
+      "template": "{{numbers.e20}}",
+      "expect": "100000000000000000000",
+      "type": "number"
+    },
+    {
+      "name": "number: 1e21 switches to exponential",
+      "template": "{{numbers.e21}}",
+      "expect": "1e+21",
+      "type": "number"
+    },
+    {
+      "name": "number: 1e-6 stays fixed",
+      "template": "{{numbers.eMinus6}}",
+      "expect": "0.000001",
+      "type": "number"
+    },
+    {
+      "name": "number: 1e-7 switches to exponential without zero padding",
+      "template": "{{numbers.eMinus7}}",
+      "expect": "1e-7",
+      "type": "number"
+    },
+    {
+      "name": "number: smallest denormal",
+      "template": "{{numbers.denormalMin}}",
+      "expect": "5e-324",
+      "type": "number"
+    },
+    {
+      "name": "number: MaxFloat64",
+      "template": "{{numbers.max}}",
+      "expect": "1.7976931348623157e+308",
+      "type": "number"
+    },
+    {
+      "name": "number: negative zero renders as 0",
+      "template": "{{numbers.negativeZero}}",
+      "expect": "0",
+      "type": "number"
+    },
+    {
+      "name": "number: 2^53+1 rounds to the nearest double",
+      "template": "{{numbers.beyondSafeInt}}",
+      "expect": "9007199254740992",
+      "type": "number"
+    },
+    {
+      "name": "nested numbers render exactly like scalar ones",
+      "template": "{{numbers}}",
+      "expect": "{\"beyondSafeInt\":9007199254740992,\"decimal\":0.5,\"denormalMin\":5e-324,\"e20\":100000000000000000000,\"e21\":1e+21,\"eMinus6\":0.000001,\"eMinus7\":1e-7,\"int\":42,\"max\":1.7976931348623157e+308,\"negative\":-1.5,\"negativeZero\":0}",
+      "type": "object"
+    },
+    {
+      "name": "interpolated number uses the same rule as the whole value",
+      "template": "n={{numbers.eMinus7}}",
+      "expect": "n=1e-7",
+      "type": "string"
+    },
+
+    {
+      "name": "object keys sort regardless of arrival order",
+      "template": "{{unsorted}}",
+      "expect": "{\"a\":2,\"m\":3,\"z\":1,\"ключ\":4}",
+      "type": "object"
+    },
+
+    {
+      "name": "HTML runes survive a composite unescaped",
+      "template": "{{markup}}",
+      "expect": "{\"html\":\"<b>a & b</b>\",\"note\":\"1 < 2 && 3 > 2\"}",
+      "type": "object"
+    },
+    {
+      "name": "HTML runes survive a scalar unescaped",
+      "template": "{{markup.html}}",
+      "expect": "<b>a & b</b>",
+      "type": "string"
+    },
+    {
+      "name": "HTML runes survive interpolation unescaped",
+      "template": "<p>{{markup.html}}</p>",
+      "expect": "<p><b>a & b</b></p>",
+      "type": "string"
+    },
+
+    {
+      "name": "null keeps its type as a whole value",
+      "template": "{{nullish.none}}",
+      "expect": "null",
+      "type": "null"
+    },
+    {
+      "name": "null interpolates as the text null",
+      "template": "v={{nullish.none}}",
+      "expect": "v=null",
+      "type": "string"
+    },
+    {
+      "name": "false keeps its type as a whole value",
+      "template": "{{nullish.flag}}",
+      "expect": "false",
+      "type": "boolean"
+    },
+    {
+      "name": "nulls survive a composite",
+      "template": "{{nullish}}",
+      "expect": "{\"flag\":false,\"nested\":{\"none\":null},\"none\":null}",
+      "type": "object"
+    },
+
+    {
+      "name": "whole-value template keeps the JSON type",
+      "template": "{{createUser.status}}",
+      "expect": "201",
+      "type": "number"
+    },
+    {
+      "name": "mixed template coerces to a string",
+      "template": "status={{createUser.status}} for {{createUser.name}}",
+      "expect": "status=201 for Ada",
+      "type": "string"
+    },
+    {
+      "name": "loop index keeps its number type",
+      "template": "{{i}}",
+      "expect": "3",
+      "type": "number"
+    },
+    {
+      "name": "loop index interpolates",
+      "template": "member+{{i}}@example.com",
+      "expect": "member+3@example.com",
+      "type": "string"
+    },
+    {
+      "name": "an object interpolates as compact JSON",
+      "template": "v={{createUser.body.data}}",
+      "expect": "v={\"attributes\":{\"id\":\"deep-1\"}}",
+      "type": "string"
+    },
+    {
+      "name": "whitespace inside the braces is trimmed",
+      "template": "{{ res.name }}",
+      "expect": "Ada",
+      "type": "string"
+    },
+
+    {
+      "name": "truncated body path reports the capture cap",
+      "ref": { "node": "tooBig", "path": "body.id" },
+      "error": "the response was too large to capture"
+    },
+    {
+      "name": "truncated whole body reports the capture cap",
+      "template": "{{tooBig}}",
+      "error": "the response was too large to capture"
+    },
+    {
+      "name": "truncated unprefixed path reports the capture cap",
+      "template": "{{tooBig.id}}",
+      "error": "the response was too large to capture"
+    },
+    {
+      "name": "status still resolves on a truncated response",
+      "template": "{{tooBig.status}}",
+      "expect": "200",
+      "type": "number"
+    },
+    {
+      "name": "headers still resolve on a truncated response",
+      "template": "{{tooBig.headers.content-type}}",
+      "expect": "application/json",
+      "type": "string"
+    },
+
+    {
+      "name": "missing key hints the siblings, sorted",
+      "ref": { "node": "createUser", "path": "body.nam" },
+      "error": "available keys are data, id, name"
+    },
+    {
+      "name": "walking into a leaf names the leaf type",
+      "template": "{{createUser.body.name.first}}",
+      "error": "value is a JSON string and has no sub-fields"
+    },
+    {
+      "name": "a key path into an array asks for an index",
+      "template": "{{listUsers.id}}",
+      "error": "value is an array of 2 elements; use [index]"
+    },
+    {
+      "name": "an out-of-range index fails",
+      "template": "{{listUsers[9].id}}",
+      "error": "out of range"
+    },
+    {
+      "name": "an unknown header hints the header names",
+      "template": "{{createUser.headers.nope}}",
+      "error": "headers are Location, X-Request-Id"
+    },
+    {
+      "name": "a reference to a node with no output is named",
+      "ref": { "node": "neverRan", "path": "body.id" },
+      "error": "has not produced an output"
+    },
+    {
+      "name": "res with several upstreams is ambiguous",
+      "template": "{{res.name}}",
+      "upstreams": ["createUser", "listUsers"],
+      "error": "res is ambiguous with 2 upstream nodes"
+    },
+    {
+      "name": "array map needs an array",
+      "template": "{{createUser.body[*].id}}",
+      "error": "[*] needs an array, but the value is a JSON object"
+    },
+    {
+      "name": "item outside an each-mode loop is a named error",
+      "template": "{{item.name}}",
+      "error": "only available inside an each-mode for loop"
+    }
+  ]
+}

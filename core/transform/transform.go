@@ -119,15 +119,17 @@ func executePick(rows []PickRow, env *binding.Env) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("transform: pick %q: %w", key, err)
 		}
-		setKeyPath(result, key, value)
+		SetKeyPath(result, key, value)
 	}
 	return result, nil
 }
 
-// setKeyPath writes value at a dot path inside the result, creating
-// intermediate objects ("user.id" → {"user": {"id": …}}). A non-object on
-// the way is replaced — later rows win, same as the sim's body builder.
-func setKeyPath(target map[string]any, path string, value any) {
+// SetKeyPath writes value at a dot path inside target, creating intermediate
+// objects ("user.id" → {"user": {"id": …}}). A non-object on the way is
+// replaced — later writes win, same as the sim's body builder. Exported so a
+// request body's nested keys ("body.user.name") nest through the same code
+// path as pick rows.
+func SetKeyPath(target map[string]any, path string, value any) {
 	segs := strings.Split(path, ".")
 	current := target
 	for _, seg := range segs[:len(segs)-1] {

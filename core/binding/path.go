@@ -25,6 +25,11 @@ const (
 // hintKeyCap bounds how many sibling keys a PathNotFoundError hint lists.
 const hintKeyCap = 8
 
+// hintTruncated explains a body access against a response whose body was
+// dropped for exceeding the capture cap. Without it the walker would report
+// the misleading "value is a JSON null and has no sub-fields".
+const hintTruncated = "the response was too large to capture"
+
 // wildcardSegment is the bracket content of the [*] array-map extension
 // (plan 06 T3): "orgs[*].id" maps the rest of the path over every element.
 const wildcardSegment = "*"
@@ -120,6 +125,9 @@ func resolveOutputPath(node string, out *Output, exports []Export, path string) 
 		p = p[len(prefixResponse)+1:]
 	}
 	if p == "" {
+		if out.Truncated {
+			return nil, &PathNotFoundError{Node: node, Path: path, Hint: hintTruncated}
+		}
 		return out.Body, nil
 	}
 	first, rest := splitFirst(p)
@@ -132,7 +140,7 @@ func resolveOutputPath(node string, out *Output, exports []Export, path string) 
 	case prefixHeaders, prefixHeader:
 		return resolveHeader(node, out, path, rest)
 	case prefixBody:
-		return resolveBodyPath(node, out.Body, path, rest)
+		return resolveBodyPath(node, out, path, rest)
 	default:
 		for _, ex := range exports {
 			if ex.Key != first {
@@ -146,7 +154,7 @@ func resolveOutputPath(node string, out *Output, exports []Export, path string) 
 		}
 		// No explicit prefix and no export matched: the whole path is a
 		// body path ("name" ≡ "body.name").
-		return resolveBodyPath(node, out.Body, path, p)
+		return resolveBodyPath(node, out, path, p)
 	}
 }
 
@@ -172,12 +180,15 @@ func resolveHeader(node string, out *Output, fullPath, name string) (any, error)
 	return nil, &PathNotFoundError{Node: node, Path: fullPath, Hint: hintFromKeys("headers are", names)}
 }
 
-func resolveBodyPath(node string, body any, fullPath, rest string) (any, error) {
+func resolveBodyPath(node string, out *Output, fullPath, rest string) (any, error) {
+	if out.Truncated {
+		return nil, &PathNotFoundError{Node: node, Path: fullPath, Hint: hintTruncated}
+	}
 	segs, err := parsePath(rest)
 	if err != nil {
 		return nil, err
 	}
-	return resolveSegments(node, body, fullPath, segs)
+	return resolveSegments(node, out.Body, fullPath, segs)
 }
 
 func resolveValuePath(node string, value any, fullPath, rest string) (any, error) {
