@@ -43,6 +43,17 @@ var methods = map[string]bool{
 // (real APIs require DELETE bodies — Elasticsearch bulk deletes, batch APIs).
 var bodylessMethods = map[string]bool{http.MethodGet: true, http.MethodHead: true}
 
+// SupportedMethod reports whether Do will execute a method. Exported so
+// request builders and edit-time validation can reach the same verdict
+// without transcribing the set (the Go twin of model.ts HTTP_METHODS).
+func SupportedMethod(method string) bool { return methods[method] }
+
+// MethodAllowsBody reports whether a method may carry a request body.
+// Exported so request builders can drop a body before Do rejects the pair —
+// Do hard-fails GET/HEAD with any body, and the most common hand-made node is
+// a GET seeded with an empty raw body.
+func MethodAllowsBody(method string) bool { return !bodylessMethods[method] }
+
 // RawBody is a verbatim request body (plan 08 A1's escape hatch).
 type RawBody struct {
 	ContentType string `json:"contentType"`
@@ -90,7 +101,7 @@ func BuildURL(req Request) (string, error) {
 	}
 
 	path := req.Path
-	for _, name := range placeholders(path) {
+	for _, name := range Placeholders(path) {
 		value, ok := req.PathParams[name]
 		if !ok || strings.TrimSpace(value) == "" {
 			return "", fmt.Errorf("path parameter {%s} has no value", name)
@@ -254,8 +265,10 @@ func scrubURL(err error, fullURL, displayURL string) error {
 	return fmt.Errorf("request to %s failed", displayURL)
 }
 
-// placeholders lists {name} occurrences in order, deduplicated.
-func placeholders(path string) []string {
+// Placeholders lists {name} occurrences in a path, in order, deduplicated.
+// Exported so a request builder can report a missing path parameter in its own
+// words before BuildURL reaches it.
+func Placeholders(path string) []string {
 	var names []string
 	seen := map[string]bool{}
 	rest := path

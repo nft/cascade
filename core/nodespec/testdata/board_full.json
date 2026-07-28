@@ -1,0 +1,182 @@
+{
+  "formatVersion": 1,
+  "id": "board-full",
+  "name": "Full",
+  "nodes": [
+    {
+      "id": "create-org",
+      "type": "http",
+      "name": "Create Org",
+      "data": {
+        "key": "createOrg",
+        "method": "POST",
+        "path": "/v1/orgs",
+        "environment": "staging",
+        "credential": "staging-admin",
+        "fields": [{ "key": "body.name", "source": "literal", "value": "Acme" }],
+        "exports": [{ "key": "orgId", "path": "body.id" }],
+        "repeat": 3
+      }
+    },
+    {
+      "id": "create-user",
+      "type": "http",
+      "name": "Create User",
+      "data": {
+        "key": "createUser",
+        "method": "POST",
+        "path": "/v1/orgs/{orgId}/users",
+        "environment": "staging",
+        "credential": "staging-admin",
+        "fields": [
+          {
+            "key": "path.orgId",
+            "source": "binding",
+            "value": "create-org.body.id",
+            "ref": { "nodeId": "create-org", "path": "body.id" }
+          },
+          { "key": "query.expand", "source": "literal", "value": "profile" },
+          {
+            "key": "header.X-Request-Id",
+            "source": "template",
+            "value": "req-{{i}}-{{res.body.id}}"
+          },
+          { "key": "body.user.name", "source": "literal", "value": "Ada" },
+          {
+            "key": "body.user.orgId",
+            "source": "binding",
+            "value": "res.body.id",
+            "ref": { "nodeId": "", "path": "body.id" }
+          },
+          {
+            "key": "body.plan",
+            "source": "literal",
+            "value": "",
+            "dangling": { "originalKey": "pickPlan", "path": "body.plan" }
+          }
+        ],
+        "exports": [
+          { "key": "userId", "path": "body.id" },
+          { "key": "location", "path": "headers.Location" }
+        ],
+        "requestRef": { "collectionId": "internal-apis", "requestId": "create-user" },
+        "responseSchema": { "type": "object", "properties": { "id": { "type": "string" } } }
+      }
+    },
+    {
+      "id": "send-raw",
+      "type": "http",
+      "name": "Notify",
+      "data": {
+        "key": "notify",
+        "method": "POST",
+        "path": "/hooks/user-created",
+        "origin": "https://hooks.example.com",
+        "environment": "",
+        "credential": "",
+        "fields": [],
+        "rawBody": {
+          "contentType": "application/json",
+          "text": "{{create-user.body}}"
+        }
+      }
+    },
+    {
+      "id": "reshape",
+      "type": "transform",
+      "name": "Reshape",
+      "data": {
+        "key": "reshape",
+        "mode": "pick",
+        "pick": [
+          {
+            "key": "user.id",
+            "source": "binding",
+            "value": "res.body.id",
+            "ref": { "nodeId": "", "path": "body.id" }
+          },
+          { "key": "user.tier", "source": "literal", "value": "free" }
+        ],
+        "script": ""
+      }
+    },
+    {
+      "id": "script-step",
+      "type": "transform",
+      "name": "Script",
+      "data": {
+        "key": "summarize",
+        "mode": "script",
+        "pick": [],
+        "script": "return res.body.users.length"
+      }
+    },
+    {
+      "id": "fixture",
+      "type": "mock",
+      "name": "Fixture",
+      "data": {
+        "key": "fixture",
+        "body": "{\"tags\":[\"a\",\"b\"]}",
+        "statusCode": 201
+      }
+    },
+    {
+      "id": "hold",
+      "type": "delay",
+      "name": "Hold",
+      "data": {
+        "key": "hold",
+        "durationMs": 1500
+      }
+    },
+    {
+      "id": "loop",
+      "type": "for",
+      "name": "For each tag",
+      "data": {
+        "key": "eachTag",
+        "mode": "each",
+        "count": 3,
+        "source": { "nodeId": "fixture", "path": "body.tags" }
+      }
+    },
+    {
+      "id": "loop-child",
+      "type": "http",
+      "parent": "loop",
+      "name": "Tag User",
+      "data": {
+        "key": "tagUser",
+        "method": "PUT",
+        "path": "/v1/users/{id}/tags",
+        "environment": "staging",
+        "credential": "staging-admin",
+        "fields": [
+          {
+            "key": "path.id",
+            "source": "binding",
+            "value": "create-user.body.id",
+            "ref": { "nodeId": "create-user", "path": "body.id" }
+          },
+          { "key": "body.tag", "source": "template", "value": "{{item}}-{{i}}" }
+        ]
+      }
+    },
+    {
+      "id": "sticky",
+      "type": "note",
+      "name": "Note",
+      "data": { "text": "Runs against staging only." }
+    }
+  ],
+  "edges": [
+    { "from": "create-org", "to": "create-user" },
+    { "from": "create-user", "to": "send-raw" },
+    { "from": "create-user", "to": "reshape" },
+    { "from": "reshape", "to": "script-step" },
+    { "from": "fixture", "to": "loop" },
+    { "from": "loop", "to": "hold" }
+  ],
+  "layout": { "positions": {} }
+}
