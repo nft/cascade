@@ -2,6 +2,7 @@ import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { handleGlobalKeydown } from '../keyboard'
 import { operations } from '../mock'
+import type { AppNode } from '../model'
 import { app } from '../state.svelte'
 import Harness from './testing/ContextMenuHarness.svelte'
 
@@ -13,11 +14,28 @@ const itemLabels = () =>
     (el) => el.textContent ?? '',
   )
 
+function clickItem(label: string) {
+  const item = [...document.querySelectorAll('[role="menuitem"]')].find((el) =>
+    el.textContent?.includes(label),
+  ) as HTMLButtonElement
+  item.click()
+  flushSync()
+}
+
+const mkTransform = (id: string): AppNode => ({
+  id,
+  type: 'transform',
+  position: { x: 0, y: 0 },
+  data: { name: id, key: id, status: 'idle', mode: 'pick', pick: [], script: '' },
+})
+
 beforeEach(() => {
   document.body.innerHTML = ''
   app.contextMenu = null
   app.isRunning = false
   app.canvasTool = 'select'
+  app.nodes = []
+  app.edges = []
   // The add-node palette lists the open project's operations (plan 01).
   app.project = {
     project: { id: 'test-project', name: 'Test' },
@@ -62,12 +80,28 @@ describe('ContextMenu component (plan 03 §2)', () => {
     }
   })
 
-  it('opens the edge menu with the single cut entry', () => {
+  it('opens the edge menu with the insert entries and the cut entry', () => {
     app.openContextMenu({ kind: 'edge', id: 'e1', screen: { x: 10, y: 10 } })
     flushSync()
     const labels = itemLabels()
-    expect(labels).toHaveLength(1)
-    expect(labels[0]).toContain('Cut connection')
+    expect(labels.some((l) => l.includes('Insert transform'))).toBe(true)
+    expect(labels.at(-1)).toContain('Cut connection')
+  })
+
+  it('an insert entry splices the new node into the connection', () => {
+    app.nodes = [mkTransform('a'), mkTransform('b')]
+    app.edges = [{ id: 'e1', source: 'a', target: 'b' }]
+    app.openContextMenu({ kind: 'edge', id: 'e1', screen: { x: 400, y: 300 } })
+    flushSync()
+    clickItem('Insert transform')
+    const inserted = app.nodes.find((n) => n.id !== 'a' && n.id !== 'b')!
+    expect(app.edges.map((e) => [e.source, e.target])).toEqual([
+      ['a', inserted.id],
+      [inserted.id, 'b'],
+    ])
+    // Centered on the right-clicked point of the wire (screen fallback in jsdom).
+    expect(inserted.position.x).toBeLessThan(400)
+    expect(app.contextMenu).toBeNull()
   })
 
   it('closes on Escape', () => {

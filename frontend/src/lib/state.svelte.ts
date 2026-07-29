@@ -5,6 +5,7 @@ import { requestRefCount } from './collections'
 import type { ContextMenuKind } from './contextMenu'
 import { deleteCredential, saveCredential } from './credentialActions.svelte'
 import { credentialRefCount } from './credentials'
+import { adoptEdgeScope, spliceEdge } from './edgeInsert'
 import {
   saveNodeToCollection,
   updateCollectionRequestFromNode,
@@ -282,54 +283,56 @@ export class AppState {
     if (Object.keys(patch).some((key) => !TRANSIENT_NODE_KEYS.has(key))) this.scheduleBoardSave()
   }
 
-  addNode(op: Operation, position?: { x: number; y: number }) {
+  /** Adds the node and returns its id — callers wire the fresh node up (edge insert). */
+  addNode(op: Operation, position?: { x: number; y: number }): string {
     this.addCounter += 1
     const defaults = this.project?.project.defaults
-    this.insertNode(
+    return this.insertNode(
       makeHttpNode(op, `${op.ref}-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
     )
   }
 
   /** Ad-hoc request node (plan 08 A3) — hand-configured, credential none. */
-  addCustomHttpNode(position?: { x: number; y: number }) {
+  addCustomHttpNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
     const defaults = this.project?.project.defaults
-    this.insertNode(
+    return this.insertNode(
       makeCustomHttpNode(`custom-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
     )
   }
 
-  addTransformNode(position?: { x: number; y: number }) {
+  addTransformNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
-    this.insertNode(
+    return this.insertNode(
       makeTransformNode(`transform-${this.addCounter}`, this.nodes, position ?? this.autoPosition()),
     )
   }
 
-  addMockNode(position?: { x: number; y: number }) {
+  addMockNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
-    this.insertNode(makeMockNode(`mock-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeMockNode(`mock-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
   }
 
-  addDelayNode(position?: { x: number; y: number }) {
+  addDelayNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
-    this.insertNode(makeDelayNode(`delay-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeDelayNode(`delay-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
   }
 
-  addForNode(position?: { x: number; y: number }) {
+  addForNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
-    this.insertNode(makeForNode(`for-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeForNode(`for-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
   }
 
-  addNoteNode(position?: { x: number; y: number }) {
+  addNoteNode(position?: { x: number; y: number }): string {
     this.addCounter += 1
-    this.insertNode(makeNoteNode(`note-${this.addCounter}`, position ?? this.autoPosition()))
+    return this.insertNode(makeNoteNode(`note-${this.addCounter}`, position ?? this.autoPosition()))
   }
 
-  private insertNode(node: AppNode) {
+  private insertNode(node: AppNode): string {
     this.nodes = [...this.nodes, node]
     this.selectedNodeId = node.id
     this.scheduleBoardSave()
+    return node.id
   }
 
   /** Stagger sidebar-added nodes so they do not stack (add-at-cursor passes a position). */
@@ -353,6 +356,19 @@ export class AppState {
 
   removeEdge(id: string) {
     this.edges = this.edges.filter((e) => e.id !== id)
+    this.scheduleBoardSave()
+  }
+
+  /**
+   * Rewire A→B as A→N→B: the node takes the connection's place (the edge
+   * menu's insert entries). The node also joins the connection's loop scope,
+   * since one created from the menu lands top-level.
+   */
+  insertNodeOnEdge(edgeId: string, nodeId: string) {
+    const edge = this.edges.find((e) => e.id === edgeId)
+    if (!edge || !this.nodes.some((n) => n.id === nodeId)) return
+    this.nodes = adoptEdgeScope(this.nodes, nodeId, edge)
+    this.edges = spliceEdge(this.edges, edgeId, nodeId)
     this.scheduleBoardSave()
   }
 
@@ -404,6 +420,11 @@ export class AppState {
   requestRename(id: string) {
     this.selectedNodeId = id
     this.renameSignal += 1
+  }
+
+  /** Edge whose context menu is open; the canvas highlights it while the menu stands. */
+  get contextEdgeId(): string | null {
+    return this.contextMenu?.kind === 'edge' ? (this.contextMenu.id ?? null) : null
   }
 
   openContextMenu(menu: ContextMenuState) {

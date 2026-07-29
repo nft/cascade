@@ -15,6 +15,10 @@ import { formatEdgeLabel, nodeSendKeys } from './nodeIO'
  * Precedence: a live run wins over the hover highlight, the hover highlight
  * wins over failed (the panel already shows the red; the canvas shows where).
  *
+ * `contextEdgeId` is the edge whose context menu is open: every entry in that
+ * menu acts on this one connection, so it outranks the other classes — the
+ * user needs to see which wire they right-clicked.
+ *
  * Edges also get a label naming what the source hands over — the names
  * downstream nodes can reference off it — so the payload is readable on the
  * wire rather than only inside the two cards it runs between.
@@ -24,6 +28,7 @@ export function decorateEdges(
   edges: AppEdge[],
   activeRunIds: ReadonlySet<string> | null = null,
   highlightNodeId: string | null = null,
+  contextEdgeId: string | null = null,
 ): AppEdge[] {
   // Note nodes carry no status; their edges (which validation rejects anyway)
   // simply get no decoration.
@@ -40,13 +45,16 @@ export function decorateEdges(
       ...edge,
       animated,
       label: sends.length > 0 ? formatEdgeLabel(sends) : undefined,
-      class: animated
-        ? 'edge-active'
-        : highlighted
-          ? 'edge-log-highlight'
-          : targetStatus === 'failed'
-            ? 'edge-failed'
-            : undefined,
+      class:
+        edge.id === contextEdgeId
+          ? 'edge-context'
+          : animated
+            ? 'edge-active'
+            : highlighted
+              ? 'edge-log-highlight'
+              : targetStatus === 'failed'
+                ? 'edge-failed'
+                : undefined,
     }
   })
 }

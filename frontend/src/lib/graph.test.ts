@@ -63,6 +63,14 @@ describe('decorateEdges (plan 03 §3)', () => {
     expect(decorated.every((e) => e.animated === false)).toBe(true)
   })
 
+  it('marks the edge whose context menu is open, over any other state', () => {
+    const nodes = [mkNode('a', 'success'), mkNode('b', 'running')]
+    const edges = [mkEdge('a', 'b')]
+    const [edge] = decorateEdges(nodes, edges, null, null, 'a->b')
+    expect(edge.class).toBe('edge-context')
+    expect(decorateEdges(nodes, edges, null, null, 'other')[0].class).toBe('edge-active')
+  })
+
   it('leaves edges touching status-less note nodes undecorated', () => {
     const memo: NoteNode = { id: 'memo', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }
     const nodes = [mkNode('a', 'running'), memo]

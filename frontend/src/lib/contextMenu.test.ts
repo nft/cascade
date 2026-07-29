@@ -75,9 +75,26 @@ describe('context menu contents (plan 03 §2)', () => {
     expect(items.find((i) => i.action === 'run-chain')?.disabled).toBe(true)
   })
 
-  it('edge menu has the single "Cut connection" entry', () => {
+  it('edge menu offers the insert entries above "Cut connection"', () => {
     const items = menuItems('edge', { isRunning: false })
-    expect(items.map((i) => i.label)).toEqual(['Cut connection'])
+    expect(items.map((i) => i.label)).toEqual([
+      'Insert node…',
+      'Insert custom request',
+      'Insert transform',
+      'Insert mock',
+      'Insert delay',
+      'Insert for loop',
+      'Cut connection',
+    ])
+    // Notes have no ports — an annotation cannot sit on a connection.
+    expect(items.some((i) => i.action === 'add-note')).toBe(false)
+    expect(items.find((i) => i.action === 'cut-edge')?.danger).toBe(true)
+  })
+
+  it('edge menu inside a loop drops the for-loop entry (loops never nest)', () => {
+    const items = menuItems('edge', { isRunning: false, insideLoop: true })
+    expect(items.some((i) => i.action === 'add-for')).toBe(false)
+    expect(items.some((i) => i.action === 'add-transform')).toBe(true)
   })
 })
 

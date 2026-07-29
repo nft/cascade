@@ -15,7 +15,9 @@
 
   const scissors = $derived(app.canvasTool === 'scissors')
   const interactive = $derived(!scissors && !app.canvasLocked)
-  const displayEdges = $derived(decorateEdges(app.nodes, app.edges, app.activeRunIds, app.logHoverNodeId))
+  const displayEdges = $derived(
+    decorateEdges(app.nodes, app.edges, app.activeRunIds, app.logHoverNodeId, app.contextEdgeId),
+  )
 
   function screenPoint(event: MouseEvent | TouchEvent) {
     const p = 'touches' in event ? event.touches[0] : event

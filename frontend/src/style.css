@@ -39,6 +39,12 @@
   .svelte-flow__edge.edge-failed {
     --xy-edge-stroke: var(--color-rose-500);
   }
+  /* The right-clicked connection, while its context menu stands: every entry
+     in that menu acts on this edge, so it must be unmistakable. */
+  .svelte-flow__edge.edge-context {
+    --xy-edge-stroke: var(--color-violet-400);
+    --xy-edge-stroke-width: 3;
+  }
   /* Hovered log row → incident edges of the originating node (plan 10 §2). */
   .svelte-flow__edge.edge-log-highlight {
     --xy-edge-stroke: var(--color-sky-400);

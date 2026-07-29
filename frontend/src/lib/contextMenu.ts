@@ -37,6 +37,33 @@ export interface MenuItem {
 const NO_RESPONSE_TITLE = 'Run the node first — inference needs a captured response'
 const LIBRARY_CLEAN_TITLE = 'The node matches its library request'
 
+/**
+ * The node-creating entries, shared by the pane menu ("Add …", at the cursor)
+ * and the edge menu ("Insert …", spliced into the connection). Order is the
+ * menu order.
+ */
+const ADD_ENTRIES: Array<{ action: MenuAction; icon: string; noun: string }> = [
+  { action: 'add-node', icon: 'add_circle', noun: 'node…' },
+  { action: 'add-custom-request', icon: 'http', noun: 'custom request' },
+  { action: 'add-transform', icon: 'function', noun: 'transform' },
+  { action: 'add-mock', icon: 'data_object', noun: 'mock' },
+  { action: 'add-delay', icon: 'timer', noun: 'delay' },
+  { action: 'add-for', icon: 'laps', noun: 'for loop' },
+  { action: 'add-note', icon: 'sticky_note_2', noun: 'note' },
+]
+
+/** Entries an edge cannot take: a note has no ports, and For loops never nest. */
+const notInsertable = (action: MenuAction, insideLoop: boolean) =>
+  action === 'add-note' || (action === 'add-for' && insideLoop)
+
+function addEntries(verb: string, skip: (action: MenuAction) => boolean = () => false): MenuItem[] {
+  return ADD_ENTRIES.filter((e) => !skip(e.action)).map(({ action, icon, noun }) => ({
+    action,
+    icon,
+    label: `${verb} ${noun}`,
+  }))
+}
+
 export function menuItems(
   kind: ContextMenuKind,
   opts: {
@@ -45,18 +72,14 @@ export function menuItems(
     nodeType?: NodeType
     /** Library link of an http node; drives the collection entries (plan 08 B3). */
     library?: LibraryLinkState
+    /** Edge menu: whether the connection lives inside a For container. */
+    insideLoop?: boolean
   },
 ): MenuItem[] {
   switch (kind) {
     case 'pane':
       return [
-        { action: 'add-node', icon: 'add_circle', label: 'Add node…' },
-        { action: 'add-custom-request', icon: 'http', label: 'Add custom request' },
-        { action: 'add-transform', icon: 'function', label: 'Add transform' },
-        { action: 'add-mock', icon: 'data_object', label: 'Add mock' },
-        { action: 'add-delay', icon: 'timer', label: 'Add delay' },
-        { action: 'add-for', icon: 'laps', label: 'Add for loop' },
-        { action: 'add-note', icon: 'sticky_note_2', label: 'Add note' },
+        ...addEntries('Add'),
         { action: 'paste', icon: 'content_paste', label: 'Paste' },
         { action: 'fit-view', icon: 'fit_screen', label: 'Fit view' },
       ]
@@ -108,7 +131,12 @@ export function menuItems(
         { action: 'delete-node', icon: 'delete', label: 'Delete', danger: true },
       ]
     case 'edge':
-      return [{ action: 'cut-edge', icon: 'content_cut', label: 'Cut connection', danger: true }]
+      // The add entries splice the new node into the connection (A→B becomes
+      // A→N→B), so the same actions serve both menus — only the verb differs.
+      return [
+        ...addEntries('Insert', (action) => notInsertable(action, opts.insideLoop ?? false)),
+        { action: 'cut-edge', icon: 'content_cut', label: 'Cut connection', danger: true },
+      ]
   }
 }
 

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { useSvelteFlow } from '@xyflow/svelte'
+  import type { XY } from '../containment'
   import { menuItems, type MenuItem } from '../contextMenu'
   import { dialogs } from '../dialogs.svelte'
+  import { centeredNodePosition, edgeScope } from '../edgeInsert'
   import { libraryLinkState } from '../library'
   import { isHttpNode, type Operation } from '../model'
   import { copyNodes, pasteFromClipboard, selectionForCopy } from '../shareActions'
@@ -13,6 +15,9 @@
   const { screenToFlowPosition, fitView } = useSvelteFlow()
 
   const menu = $derived(app.contextMenu)
+  const menuEdge = $derived(
+    menu?.kind === 'edge' ? app.edges.find((e) => e.id === menu.id) : undefined,
+  )
   const items = $derived.by(() => {
     if (!menu) return []
     const node = menu.id !== undefined ? app.nodes.find((n) => n.id === menu.id) : undefined
@@ -21,6 +26,7 @@
       hasResponse: menu.id !== undefined && menu.id in app.responses,
       nodeType: node?.type,
       library: node && isHttpNode(node) ? libraryLinkState(app.collections, node.data) : undefined,
+      insideLoop: menuEdge ? edgeScope(app.nodes, menuEdge) !== null : false,
     })
   })
 
@@ -46,6 +52,17 @@
     if (paletteOpen) searchEl?.focus()
   })
 
+  /**
+   * Create the node where the menu was opened — centered over the wire for an
+   * edge menu — and splice it into that connection (A→B becomes A→N→B).
+   */
+  function place(create: (position: XY) => string) {
+    if (!menu) return
+    const point = menu.flow ?? screenToFlowPosition(menu.screen)
+    const id = create(menuEdge ? centeredNodePosition(point) : point)
+    if (menuEdge) app.insertNodeOnEdge(menuEdge.id, id)
+  }
+
   function run(item: MenuItem) {
     if (!menu || item.disabled) return
     switch (item.action) {
@@ -53,22 +70,22 @@
         paletteOpen = true
         return // keep the menu open, showing the palette
       case 'add-custom-request':
-        app.addCustomHttpNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addCustomHttpNode(p))
         break
       case 'add-transform':
-        app.addTransformNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addTransformNode(p))
         break
       case 'add-mock':
-        app.addMockNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addMockNode(p))
         break
       case 'add-delay':
-        app.addDelayNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addDelayNode(p))
         break
       case 'add-for':
-        app.addForNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addForNode(p))
         break
       case 'add-note':
-        app.addNoteNode(menu.flow ?? screenToFlowPosition(menu.screen))
+        place((p) => app.addNoteNode(p))
         break
       case 'paste':
         void pasteFromClipboard(app, menu.flow ?? screenToFlowPosition(menu.screen))
@@ -112,7 +129,7 @@
 
   function pick(op: Operation) {
     if (!menu) return
-    app.addNode(op, menu.flow ?? screenToFlowPosition(menu.screen))
+    place((p) => app.addNode(op, p))
     app.closeContextMenu()
   }
 
@@ -162,12 +179,14 @@
         {/each}
       </div>
     {:else}
-      {#each items as item (item.action)}
+      {#each items as item, i (item.action)}
+        <!-- Destructive entries close the list; a hairline keeps them from
+             sitting flush against the constructive ones. -->
         <button
           role="menuitem"
           class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs disabled:cursor-not-allowed disabled:text-zinc-600 {item.danger
             ? 'text-rose-400 hover:bg-rose-500/10'
-            : 'text-zinc-300 hover:bg-zinc-800'}"
+            : 'text-zinc-300 hover:bg-zinc-800'} {item.danger && i > 0 ? 'mt-1 border-t border-zinc-800 pt-2' : ''}"
           disabled={item.disabled}
           title={item.title}
           onclick={() => run(item)}
