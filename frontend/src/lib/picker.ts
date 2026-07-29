@@ -1,5 +1,6 @@
 // Pure logic behind the binding picker (plan 05 V4), kept out of the Svelte
 // components so it stays unit-testable.
+import { formatClock } from './format'
 import { upstreamIds } from './graph'
 import {
   isHttpNode,
@@ -42,7 +43,7 @@ export function nodeSchemaSource(
     return {
       schema: inferFromBody(captured.body),
       origin: 'inferred',
-      label: `inferred from last run · ${captured.at.slice(11, 16)}`,
+      label: `inferred from last run · ${formatClock(captured.at)}`,
     }
   }
   return null

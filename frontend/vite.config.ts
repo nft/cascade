@@ -14,5 +14,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
     include: ['src/**/*.test.ts'],
+    // Capture timestamps are UTC on the wire and rendered in the viewer's
+    // clock, so a UTC test machine would pass either way. Tokyo has no DST,
+    // which keeps the expected values fixed year-round.
+    env: { TZ: 'Asia/Tokyo' },
   },
 })

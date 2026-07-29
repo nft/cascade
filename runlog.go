@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -26,6 +27,16 @@ const captureTimeLayout = "2006-01-02T15:04:05.000Z"
 // execErrorPrefix tags engine errors for Go callers. The user is already
 // inside the engine, so it is stripped on the way out.
 const execErrorPrefix = "exec: "
+
+// stoppedMessage replaces context.Canceled's text wherever it reaches the
+// user. Stop cancels the run's context, so the node that was in flight
+// reports "context canceled" — plumbing, and worded as if something went
+// wrong, for the one outcome the user asked for.
+const stoppedMessage = "stopped"
+
+// cancelledText is what context.Canceled renders as inside a wrapped engine
+// error. Read from the sentinel rather than transcribed, so it cannot drift.
+var cancelledText = context.Canceled.Error()
 
 type runProgress struct {
 	Done  int `json:"done"`
@@ -144,7 +155,7 @@ func (c runContext) event(e exec.Event) runEvent {
 	case exec.EventLoopProgress:
 		out.Progress = &runProgress{Done: e.Done, Total: e.Total}
 	case exec.EventRunFinished:
-		out.Error = c.rewriteNodeIDs(strings.TrimPrefix(e.Err, execErrorPrefix))
+		out.Error = c.message(e.Err)
 		out.Cancelled = e.Cancelled
 	}
 	return out
@@ -194,7 +205,7 @@ func (c runContext) logEntry(e exec.Event) *runLogEntry {
 		NodeID:     string(rec.Node),
 		DurationMs: int(rec.Duration.Milliseconds()),
 		Iteration:  iterationOf(rec.Iteration),
-		Error:      c.rewriteNodeIDs(strings.TrimPrefix(rec.Err, execErrorPrefix)),
+		Error:      c.message(rec.Err),
 	}
 	switch rec.Type {
 	case core.NodeTypeHTTP:
@@ -271,7 +282,15 @@ func (c runContext) note(message string, id core.NodeID, kind core.NodeType) str
 			break
 		}
 	}
-	return c.rewriteNodeIDs(message)
+	return c.message(message)
+}
+
+// message turns an engine error into the text a user reads: the Go-caller
+// prefix off, cancellation named as the thing the user did, node ids as node
+// keys.
+func (c runContext) message(message string) string {
+	message = strings.TrimPrefix(message, execErrorPrefix)
+	return c.rewriteNodeIDs(strings.ReplaceAll(message, cancelledText, stoppedMessage))
 }
 
 // quotedToken matches the `"…"` an engine error puts a node id in.

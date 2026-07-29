@@ -109,15 +109,11 @@ declare global {
 
 const insideWails = typeof window !== 'undefined' && window.go !== undefined
 
-/**
- * Runs still go through the simulator in both modes; flipping this selects the
- * Go engine, and with it real HTTP calls. The Wails implementations above are
- * written and unused on purpose: the switch is then one line rather than an
- * integration.
- */
-const ENGINE_RUNS: boolean = false
-
+// Runs go through the Go engine — real HTTP — inside the app. Outside it
+// (vitest, `bun run dev`) the simulator stands in, which is why the run stream
+// is selected separately from the store: a browser session has no backend to
+// call but must still be able to drive a board.
 export const api: CascadeApi = {
   ...(insideWails ? wailsApi : createInMemoryApi()),
-  ...(ENGINE_RUNS && insideWails ? wailsRunApi : createInMemoryRunApi()),
+  ...(insideWails ? wailsRunApi : createInMemoryRunApi()),
 }

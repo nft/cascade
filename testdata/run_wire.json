@@ -1,0 +1,417 @@
+{
+  "events": [
+    {
+      "kind": "run.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "nodes": [
+        "create-user",
+        "loop",
+        "pause",
+        "invite",
+        "canned",
+        "shape",
+        "rejected",
+        "never"
+      ]
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "create-user"
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "create-user",
+      "status": "success",
+      "log": {
+        "kind": "http",
+        "id": "run-wire-create-user",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Create User",
+        "nodeId": "create-user",
+        "durationMs": 0,
+        "method": "POST",
+        "url": "http://api.test/v1/users",
+        "status": 201,
+        "request": "{\"name\":\"Ada\"}",
+        "response": "{\"id\":\"usr_1\",\"name\":\"Ada\"}"
+      },
+      "capture": {
+        "status": 201,
+        "headers": {
+          "Content-Length": "27",
+          "Content-Type": "application/json",
+          "Date": "Thu, 01 Jan 2026 00:00:00 GMT"
+        },
+        "body": {
+          "id": "usr_1",
+          "name": "Ada"
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "loop"
+    },
+    {
+      "kind": "loop.progress",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "loop",
+      "progress": {
+        "done": 0,
+        "total": 2
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "pause",
+      "iteration": 0
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "pause",
+      "iteration": 0,
+      "status": "success",
+      "log": {
+        "kind": "delay",
+        "id": "run-wire-pause-0",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Pause",
+        "nodeId": "pause",
+        "durationMs": 0,
+        "iteration": 0
+      },
+      "capture": {
+        "status": 0,
+        "body": null,
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "invite",
+      "iteration": 0
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "invite",
+      "iteration": 0,
+      "status": "success",
+      "log": {
+        "kind": "http",
+        "id": "run-wire-invite-0",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Invite",
+        "nodeId": "invite",
+        "durationMs": 0,
+        "iteration": 0,
+        "method": "POST",
+        "url": "http://api.test/v1/invites",
+        "status": 201,
+        "request": "{\"email\":\"member+0@example.com\"}",
+        "response": "{\"id\":\"generic\"}"
+      },
+      "capture": {
+        "status": 201,
+        "headers": {
+          "Content-Length": "16",
+          "Content-Type": "application/json",
+          "Date": "Thu, 01 Jan 2026 00:00:00 GMT"
+        },
+        "body": {
+          "id": "generic"
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "loop.progress",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "loop",
+      "progress": {
+        "done": 1,
+        "total": 2
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "pause",
+      "iteration": 1
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "pause",
+      "iteration": 1,
+      "status": "success",
+      "log": {
+        "kind": "delay",
+        "id": "run-wire-pause-1",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Pause",
+        "nodeId": "pause",
+        "durationMs": 0,
+        "iteration": 1
+      },
+      "capture": {
+        "status": 0,
+        "body": null,
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "invite",
+      "iteration": 1
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "invite",
+      "iteration": 1,
+      "status": "success",
+      "log": {
+        "kind": "http",
+        "id": "run-wire-invite-1",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Invite",
+        "nodeId": "invite",
+        "durationMs": 0,
+        "iteration": 1,
+        "method": "POST",
+        "url": "http://api.test/v1/invites",
+        "status": 201,
+        "request": "{\"email\":\"member+1@example.com\"}",
+        "response": "{\"id\":\"generic\"}"
+      },
+      "capture": {
+        "status": 201,
+        "headers": {
+          "Content-Length": "16",
+          "Content-Type": "application/json",
+          "Date": "Thu, 01 Jan 2026 00:00:00 GMT"
+        },
+        "body": {
+          "id": "generic"
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "loop.progress",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "loop",
+      "progress": {
+        "done": 2,
+        "total": 2
+      }
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "loop",
+      "status": "success",
+      "log": {
+        "kind": "for",
+        "id": "run-wire-loop",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Repeat",
+        "nodeId": "loop",
+        "durationMs": 0,
+        "iterations": 2
+      },
+      "capture": {
+        "status": 0,
+        "body": {
+          "invite": [
+            {
+              "id": "generic"
+            },
+            {
+              "id": "generic"
+            }
+          ]
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "canned"
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "canned",
+      "status": "success",
+      "log": {
+        "kind": "mock",
+        "id": "run-wire-canned",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Canned",
+        "nodeId": "canned",
+        "durationMs": 0,
+        "status": 201,
+        "output": "{\"plan\":\"pro\"}"
+      },
+      "capture": {
+        "status": 201,
+        "body": {
+          "plan": "pro"
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "shape"
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "shape",
+      "status": "success",
+      "log": {
+        "kind": "transform",
+        "id": "run-wire-shape",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Shape",
+        "nodeId": "shape",
+        "durationMs": 0,
+        "inputNodes": [
+          "createUser",
+          "canned"
+        ],
+        "output": "{\"id\":\"usr_1\"}"
+      },
+      "capture": {
+        "status": 0,
+        "body": {
+          "id": "usr_1"
+        },
+        "at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "kind": "node.started",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "rejected"
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "rejected",
+      "status": "failed",
+      "note": "422 Unprocessable Entity",
+      "log": {
+        "kind": "http",
+        "id": "run-wire-rejected",
+        "runId": "run-wire",
+        "time": "00:00:00.000",
+        "node": "Rejected",
+        "nodeId": "rejected",
+        "durationMs": 0,
+        "error": "422 Unprocessable Entity",
+        "method": "POST",
+        "url": "http://api.test/v1/rejects",
+        "status": 422,
+        "response": "{\"error\":\"invalid\"}"
+      }
+    },
+    {
+      "kind": "node.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire",
+      "node": "never",
+      "status": "skipped"
+    },
+    {
+      "kind": "run.finished",
+      "runId": "run-wire",
+      "projectId": "project-wire",
+      "boardId": "board-wire"
+    }
+  ],
+  "result": {
+    "runId": "run-wire",
+    "projectId": "project-wire",
+    "boardId": "board-wire",
+    "statuses": {
+      "canned": "success",
+      "create-user": "success",
+      "invite": "success",
+      "loop": "success",
+      "never": "skipped",
+      "pause": "success",
+      "rejected": "failed",
+      "shape": "success"
+    },
+    "notes": {
+      "rejected": "422 Unprocessable Entity"
+    }
+  }
+}

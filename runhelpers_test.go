@@ -180,6 +180,18 @@ func (c *eventCollector) logs() []runLogEntry {
 	return rows
 }
 
+// finishedFor returns the node.finished event for one node.
+func (c *eventCollector) finishedFor(t *testing.T, nodeID string) runEvent {
+	t.Helper()
+	for _, e := range c.all() {
+		if e.Kind == string(exec.EventNodeFinished) && e.Node == nodeID {
+			return e
+		}
+	}
+	t.Fatalf("no node.finished for node %q", nodeID)
+	return runEvent{}
+}
+
 func (c *eventCollector) logFor(t *testing.T, nodeID string) runLogEntry {
 	t.Helper()
 	for _, row := range c.logs() {

@@ -60,6 +60,17 @@ func TestStopRunInterruptsADelay(t *testing.T) {
 	if last.Kind != string(exec.EventRunFinished) || !last.Cancelled {
 		t.Fatalf("last event = %+v, want a cancelled run.finished", last)
 	}
+	// The node card and its log row are where the user reads what Stop did.
+	// context.Canceled's own wording names the plumbing and reads like a
+	// fault, for the one outcome they asked for.
+	finished := collector.finishedFor(t, "wait")
+	if finished.Note != stoppedMessage {
+		t.Errorf("note = %q, want %q", finished.Note, stoppedMessage)
+	}
+	row := collector.logFor(t, "wait")
+	if strings.Contains(row.Error, cancelledText) || !strings.Contains(row.Error, stoppedMessage) {
+		t.Errorf("log row error = %q, want it to say %q", row.Error, stoppedMessage)
+	}
 	// Stopping an id that is not running must not error, so a second click or
 	// a late Stop is harmless.
 	if err := app.StopRun("run-6"); err != nil {

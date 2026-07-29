@@ -60,7 +60,10 @@ describe('binding picker (plan 05 V4)', () => {
     const picker = document.querySelector('[data-testid="binding-picker"]')!
     expect(picker).not.toBeNull()
     expect(picker.textContent).toContain('createUser')
-    expect(picker.textContent).toContain('inferred from last run · 14:02')
+    // 14:02Z read on the pinned test clock (Asia/Tokyo) — the capture time is
+    // UTC on the wire and shown in the viewer's zone, beside a run log the Go
+    // side already writes in local time.
+    expect(picker.textContent).toContain('inferred from last run · 23:02')
     // inferred body keys appear as pickable rows
     expect(picker.textContent).toContain('name')
     expect(picker.textContent).toContain('nested')

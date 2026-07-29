@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatClock } from '../../format'
   import type { HttpNode } from '../../model'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
@@ -20,7 +21,7 @@
         pinned
       </span>
     {:else if captured}
-      <span class="text-[10px] text-zinc-600">inferred from last run · {captured.at.slice(11, 16)}</span>
+      <span class="text-[10px] text-zinc-600">inferred from last run · {formatClock(captured.at)}</span>
     {:else}
       <span class="text-[10px] text-zinc-600">run the node to infer one</span>
     {/if}
