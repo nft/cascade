@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { AppNode, CapturedResponse, HttpNode, NodeField, TransformNode } from './model'
+import type {
+  AppEdge,
+  AppNode,
+  CapturedResponse,
+  DelayNode,
+  HttpNode,
+  NodeExport,
+  NodeField,
+  TransformNode,
+} from './model'
 import {
   EMPTY_EXPR_LABEL,
   bodyShape,
@@ -52,6 +61,17 @@ function transformNode(id: string, pick: NodeField[], extra: Partial<TransformNo
     data: { name: id, key: id, status: 'idle', mode: 'pick', pick, script: '', ...extra },
   }
 }
+
+function delayNode(id: string, exports: NodeExport[] = []): DelayNode {
+  return {
+    id,
+    type: 'delay',
+    position: { x: 0, y: 0 },
+    data: { name: id, key: id, status: 'idle', durationMs: 1000, exports },
+  }
+}
+
+const edge = (source: string, target: string): AppEdge => ({ id: `${source}->${target}`, source, target })
 
 const captured = (body: unknown, truncated = false): CapturedResponse => ({
   status: 200,
@@ -126,20 +146,51 @@ describe('exportKeys', () => {
 })
 
 describe('nodeSendKeys', () => {
+  const sends = (node: AppNode, nodes: AppNode[] = [node], edges: AppEdge[] = []) =>
+    nodeSendKeys(node, nodes, edges)
+
   it("is a request node's declared exports", () => {
     const node = httpNode('n1', [], { exports: [{ key: 'userId', path: 'body.data.id' }] })
-    expect(nodeSendKeys(node)).toEqual(['userId'])
+    expect(sends(node)).toEqual(['userId'])
   })
 
   it("folds a transform's pick keys in with its exports", () => {
     const node = transformNode('n1', [literal('test', 'x')], { exports: [{ key: 'title', path: 'Title' }] })
-    expect(nodeSendKeys(node)).toEqual(['title', 'test'])
+    expect(sends(node)).toEqual(['title', 'test'])
   })
 
   it('is empty for a node that names nothing, and for a note', () => {
-    expect(nodeSendKeys(httpNode('n1', []))).toEqual([])
+    expect(sends(httpNode('n1', []))).toEqual([])
     const note: AppNode = { id: 'n2', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }
-    expect(nodeSendKeys(note)).toEqual([])
+    expect(sends(note)).toEqual([])
+  })
+
+  it('sends its upstream names on through a delay, and through a chain of them', () => {
+    const source = httpNode('src', [], { exports: [{ key: 'userId', path: 'body.id' }] })
+    const first = delayNode('d1')
+    const second = delayNode('d2')
+    const nodes = [source, first, second]
+    const edges = [edge('src', 'd1'), edge('d1', 'd2')]
+    expect(sends(first, nodes, edges)).toEqual(['userId'])
+    expect(sends(second, nodes, edges)).toEqual(['userId'])
+  })
+
+  it("puts a delay's own exports before what passes through it, deduped", () => {
+    const source = httpNode('src', [], { exports: [{ key: 'userId', path: 'body.id' }] })
+    const wait = delayNode('d1', [
+      { key: 'id', path: 'body.id' },
+      { key: 'userId', path: 'body.id' },
+    ])
+    expect(sends(wait, [source, wait], [edge('src', 'd1')])).toEqual(['id', 'userId'])
+  })
+
+  it('sends nothing through a delay that gates zero or several upstreams', () => {
+    const a = httpNode('a', [], { exports: [{ key: 'userId', path: 'body.id' }] })
+    const b = httpNode('b', [], { exports: [{ key: 'orgId', path: 'body.id' }] })
+    const wait = delayNode('d1')
+    expect(sends(wait, [a, b, wait], [])).toEqual([])
+    // A delay joins nothing: with two upstreams its output is a null body.
+    expect(sends(wait, [a, b, wait], [edge('a', 'd1'), edge('b', 'd1')])).toEqual([])
   })
 })
 

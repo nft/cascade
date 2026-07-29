@@ -33,7 +33,7 @@ export function decorateEdges(
   // Note nodes carry no status; their edges (which validation rejects anyway)
   // simply get no decoration.
   const statusById = new Map(nodes.map((n) => [n.id, 'status' in n.data ? n.data.status : undefined]))
-  const sendsById = new Map(nodes.map((n) => [n.id, nodeSendKeys(n)]))
+  const sendsById = new Map(nodes.map((n) => [n.id, nodeSendKeys(n, nodes, edges)]))
   return edges.map((edge) => {
     const targetStatus = statusById.get(edge.target)
     const sends = sendsById.get(edge.source) ?? []

@@ -2,8 +2,10 @@
 // the shape of the body it produces, and the names its outgoing edges carry.
 // Pure, so the cards stay markup and the rules stay unit-tested.
 import {
+  isDelayNode,
   isRunnableNode,
   isTransformNode,
+  type AppEdge,
   type AppNode,
   type CapturedResponse,
   type NodeField,
@@ -85,14 +87,49 @@ export function transformOutputKeys(data: TransformNodeData): string[] {
   return keys
 }
 
+/** A delay proxies one upstream; with none or several it is a gate, not a joiner. */
+const DELAY_PASSTHROUGH_UPSTREAMS = 1
+
+function directUpstreamIds(edges: readonly AppEdge[], nodeId: string): string[] {
+  return edges.filter((e) => e.target === nodeId).map((e) => e.source)
+}
+
 /**
  * The names this node hands to every node after it — what its outgoing edges
  * are labelled with. Empty means the edge only orders the run as far as names
  * go; the whole response body is still reachable through `res`.
+ *
+ * A delay is transparent: it waits, then hands its single upstream's output
+ * downstream unchanged (core/exec delayOutput), so it sends on whatever
+ * reached it — through a chain of delays if need be. Names it exports itself
+ * come first: those are aliases the user wrote for that same body.
  */
-export function nodeSendKeys(node: AppNode): string[] {
-  if (!isRunnableNode(node)) return []
-  return isTransformNode(node) ? transformOutputKeys(node.data) : exportKeys(node.data)
+export function nodeSendKeys(
+  node: AppNode,
+  nodes: readonly AppNode[],
+  edges: readonly AppEdge[],
+): string[] {
+  return sendKeys(node, nodes, edges, new Set())
+}
+
+function sendKeys(
+  node: AppNode,
+  nodes: readonly AppNode[],
+  edges: readonly AppEdge[],
+  seen: Set<string>,
+): string[] {
+  // An imported board could carry a cycle the editor would have rejected;
+  // walking a delay chain must terminate regardless.
+  if (!isRunnableNode(node) || seen.has(node.id)) return []
+  seen.add(node.id)
+  if (isTransformNode(node)) return transformOutputKeys(node.data)
+  const keys = exportKeys(node.data)
+  if (!isDelayNode(node)) return keys
+  const ups = directUpstreamIds(edges, node.id)
+  if (ups.length !== DELAY_PASSTHROUGH_UPSTREAMS) return keys
+  const upstream = nodes.find((n) => n.id === ups[0])
+  if (!upstream) return keys
+  return [...new Set([...keys, ...sendKeys(upstream, nodes, edges, seen)])]
 }
 
 /** One edge's label: the first names the source sends, then "+N" for the rest. */

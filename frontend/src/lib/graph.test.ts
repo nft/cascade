@@ -94,6 +94,21 @@ describe('decorateEdges value labels', () => {
     const [edge] = decorateEdges([mkNode('a', 'success'), mkNode('b', 'idle')], [mkEdge('a', 'b')])
     expect(edge.label).toBeUndefined()
   })
+
+  it('carries the names on past a delay, which proxies its upstream', () => {
+    const source = mkNode('a', 'success')
+    source.data = { ...source.data, exports: [{ key: 'userId', path: 'body.data.id' }] }
+    const wait: AppNode = {
+      id: 'wait',
+      type: 'delay',
+      position: { x: 0, y: 0 },
+      data: { name: 'wait', key: 'wait', status: 'idle', durationMs: 1000 },
+    }
+    const nodes = [source, wait, mkNode('b', 'idle')]
+    const [intoDelay, outOfDelay] = decorateEdges(nodes, [mkEdge('a', 'wait'), mkEdge('wait', 'b')])
+    expect(intoDelay.label).toBe('userId')
+    expect(outOfDelay.label).toBe('userId')
+  })
 })
 
 describe('decorateEdges log-hover highlight (plan 10 §2)', () => {
