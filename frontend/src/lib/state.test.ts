@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { api } from './api'
+import { serializeBoard } from './board'
 import { dialogs } from './dialogs.svelte'
 import { handleGlobalKeydown } from './keyboard'
 import { operations } from './mock'
@@ -36,11 +38,16 @@ beforeEach(() => {
   app.contextMenu = null
   app.canvasTool = 'select'
   app.isRunning = false
+  app.runId = null
+  app.boardId = null
   app.activeRunIds = null
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  // Restored here, not in the test body: a failing assertion would otherwise
+  // leak a spy into every test after it.
+  vi.restoreAllMocks()
 })
 
 describe('addNode placement (plan 03 §2)', () => {
@@ -186,70 +193,87 @@ describe('targeted simulateRun (plan 03 §4)', () => {
   })
 })
 
-describe('response capture and schema pinning (plan 05)', () => {
-  const withFields = (id: string, fields: HttpNode['data']['fields']): AppNode => {
-    const node = mkNode(id) as HttpNode
-    node.data.fields = fields
-    return node
-  }
-
-  it('captures each successful response and resolves the FK chain through refs', async () => {
+describe('run control (plan 11)', () => {
+  it('stopRun ends the run between nodes, leaving what it already did', async () => {
     vi.useFakeTimers()
+    app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
+    app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
+
+    const run = app.simulateRun()
+    await vi.advanceTimersByTimeAsync(600) // a1 finished, a2 in flight
+    await app.stopRun()
+    await vi.runAllTimersAsync()
+    await run
+
+    expect(statusOf('a1')).toBe('success')
+    expect(statusOf('a2')).toBe('success') // the in-flight node still lands
+    expect(statusOf('a3')).toBe('idle') // never reached
+    expect(app.isRunning).toBe(false)
+    expect(app.runId).toBeNull()
+  })
+
+  it('openBoard cancels the run, and the old run never touches the new board', async () => {
+    vi.useFakeTimers()
+    app.boardId = 'b1'
     app.responses = {}
-    app.nodes = [
-      withFields('u1', [{ key: 'body.email', source: 'literal', value: 'ada@example.com' }]),
-      withFields('o1', [
-        { key: 'body.owner_id', source: 'binding', value: 'u1.body.id', ref: { nodeId: 'u1', path: 'body.id' } },
-        { key: 'body.greeting', source: 'template', value: 'welcome-{{u1.body.email}}' },
-      ]),
-    ]
-    app.edges = [mkEdge('u1', 'o1')]
+    app.nodes = [mkNode('a1'), mkNode('a2')]
+    app.edges = [mkEdge('a1', 'a2')]
+
+    const run = app.simulateRun()
+    expect(app.isRunning).toBe(true)
+    await app.openBoard(serializeBoard('b2', 'Other', [], []))
+    expect(app.isRunning).toBe(false)
+    expect(app.runId).toBeNull()
+    expect(app.activeRunIds).toBeNull()
+
+    await vi.runAllTimersAsync()
+    await run
+
+    // Scoped by (project, board), not by node id: the ids collide across
+    // boards by design, so nothing from b1's run may land on b2 (plan 11 D17).
+    expect(app.isRunning).toBe(false)
+    expect(app.logs).toEqual([])
+    expect(app.responses).toEqual({})
+  })
+
+  it('reconciles the canvas from the terminal result when every event is lost', async () => {
+    vi.useFakeTimers()
+    app.nodes = [mkNode('a1'), mkNode('a2')]
+    app.edges = [mkEdge('a1', 'a2')]
+    // The engine's channel is lossless, but the Wails bus across the webview
+    // boundary has no delivery guarantee (plan 11 D12) — so this is a run
+    // whose entire event stream failed to arrive.
+    const subscribe = vi.spyOn(api, 'onRunEvent').mockReturnValue(() => {})
 
     const run = app.simulateRun()
     await vi.runAllTimersAsync()
     await run
 
-    const userBody = app.responses['u1'].body as Record<string, unknown>
-    const orgBody = app.responses['o1'].body as Record<string, unknown>
-    expect(userBody.email).toBe('ada@example.com')
-    // the org's binding resolved against the user's captured response
-    expect(orgBody.owner_id).toBe(userBody.id)
-    expect(orgBody.greeting).toBe('welcome-ada@example.com')
-    expect(app.responses['u1'].status).toBe(201)
+    expect(subscribe).toHaveBeenCalled()
+    // Rows and captures travel as events and are genuinely gone; the statuses
+    // are what the backstop exists to rescue, and they are correct.
+    expect(app.logs).toEqual([])
+    expect(statusOf('a1')).toBe('success')
+    expect(statusOf('a2')).toBe('success')
   })
 
-  it('res sugar resolves against the single direct upstream during the sim', async () => {
+  it('a finishing run never clears flags a later run already owns', async () => {
     vi.useFakeTimers()
-    app.responses = {}
-    app.nodes = [
-      withFields('u1', [{ key: 'body.name', source: 'literal', value: 'Ada' }]),
-      withFields('o1', [
-        { key: 'body.owner', source: 'binding', value: 'res.name', ref: { nodeId: '', path: 'name' } },
-      ]),
-    ]
-    app.edges = [mkEdge('u1', 'o1')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-    expect((app.responses['o1'].body as Record<string, unknown>).owner).toBe('Ada')
-  })
-
-  it('useLastResponseAsSchema pins an inferred schema onto the node', async () => {
-    vi.useFakeTimers()
-    app.responses = {}
-    app.nodes = [withFields('u1', [{ key: 'body.email', source: 'literal', value: 'ada@example.com' }])]
+    app.nodes = [mkNode('a1')]
     app.edges = []
 
     const run = app.simulateRun()
+    // Stand in for a successor run: the flags now belong to it, not to `run`.
+    app.runId = 'run-later'
+    app.isRunning = true
+    app.activeRunIds = new Set(['a1'])
+
     await vi.runAllTimersAsync()
     await run
 
-    app.useLastResponseAsSchema('u1')
-    const node = app.nodes[0] as HttpNode
-    expect(node.data.responseSchema?.type).toBe('object')
-    expect(node.data.responseSchema?.properties?.email).toEqual({ type: 'string', format: 'email' })
-    expect(node.data.responseSchema?.properties?.id.format).toBe('uuid')
+    expect(app.runId).toBe('run-later')
+    expect(app.isRunning).toBe(true)
+    expect(app.activeRunIds).toEqual(new Set(['a1']))
   })
 })
 
@@ -278,80 +302,6 @@ describe('node keys (plan 05 §9a)', () => {
     expect(app.setNodeKey('a1', (app.nodes[1] as HttpNode).data.key)).toMatch(/already used/)
     expect(app.setNodeKey('a1', 'makeUser')).toBeNull()
     expect((app.nodes[0] as HttpNode).data.key).toBe('makeUser')
-  })
-})
-
-describe('transform nodes in the sim (plan 06 T2)', () => {
-  const mkTransform = (id: string, script: string): AppNode => ({
-    id,
-    type: 'transform',
-    position: { x: 0, y: 0 },
-    data: {
-      name: id,
-      key: `key_${id.replace(/[^A-Za-z0-9]/g, '_')}`,
-      status: 'idle',
-      mode: 'script',
-      pick: [],
-      script,
-    },
-  })
-
-  it('executes a transform between two http nodes; bindings resolve through it', async () => {
-    vi.useFakeTimers()
-    const upstream = mkNode('create-org')
-    const invite = mkNode('invite')
-    invite.data = {
-      ...invite.data,
-      fields: [{ key: 'body.from', source: 'binding', value: 'shape.label', ref: { nodeId: 'shape', path: 'label' } }],
-    } as HttpNode['data']
-    app.nodes = [upstream, mkTransform('shape', 'return { label: "org " + res.body.name }'), invite]
-    app.edges = [mkEdge('create-org', 'shape'), mkEdge('shape', 'invite')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('shape')).toBe('success')
-    // Synthetic output captured like a response (status 0) and bound downstream.
-    expect(app.responses['shape']?.status).toBe(0)
-    expect(app.responses['shape']?.body).toEqual({ label: 'org Apollo' })
-    expect((app.responses['invite']?.body as { from: string }).from).toBe('org Apollo')
-    // Transform log record variant: input keys and output, no url/status.
-    const entry = app.logs.find((l) => l.kind === 'transform')
-    expect(entry).toBeDefined()
-    if (entry?.kind === 'transform') {
-      expect(entry.inputNodes).toEqual(['key_create_org'])
-      expect(entry.output).toBe(JSON.stringify({ label: 'org Apollo' }))
-    }
-  })
-
-  it('a failing script fails the node with the message and skips downstream', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkNode('a'), mkTransform('t', 'throw new Error("boom")'), mkNode('b')]
-    app.edges = [mkEdge('a', 't'), mkEdge('t', 'b')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('t')).toBe('failed')
-    expect(statusOf('b')).toBe('skipped')
-    const entry = app.logs.find((l) => l.kind === 'transform')
-    expect(entry?.error).toMatch(/boom/)
-  })
-
-  it('note nodes are never scheduled: no status, no log entry', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkNode('a'), { id: 'sticky', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }]
-    app.edges = []
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('sticky')).toBeUndefined()
-    expect(app.logs.some((l) => l.node === 'sticky')).toBe(false)
-    expect(app.responses['sticky']).toBeUndefined()
   })
 })
 
@@ -401,166 +351,6 @@ describe('renameField (plan 10 §3b)', () => {
     app.nodes = [node]
     app.renameField('a', 'query.b', 'query.a')
     expect((app.nodes[0] as HttpNode).data.fields.map((f) => f.key)).toEqual(['query.a', 'query.b', 'query.c'])
-  })
-})
-
-describe('raw-body sim capture (plan 10 §3c)', () => {
-  const rawNode = (id: string, text: string, contentType = 'application/json'): HttpNode => {
-    const node = mkNode(id) as HttpNode
-    node.data.fields = []
-    node.data.rawBody = { contentType, text }
-    return node
-  }
-
-  it('merges a templated JSON object over the id/created_at stub, user keys winning', async () => {
-    vi.useFakeTimers()
-    const upstream = mkNode('u') as HttpNode
-    upstream.data.key = 'u'
-    upstream.data.fields = [{ key: 'body.name', source: 'literal', value: 'Apollo' }]
-    const raw = rawNode('r', '{"org": "{{u.body.name}}", "id": "my-own-id"}')
-    app.nodes = [upstream, raw]
-    app.edges = [mkEdge('u', 'r')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    const body = app.responses['r']?.body as Record<string, unknown>
-    expect(body.org).toBe('Apollo') // template resolved against the upstream capture
-    expect(body.id).toBe('my-own-id') // user key wins over the stub
-    expect(body.created_at).toBeDefined() // stub fills what the payload lacks
-  })
-
-  it('echoes non-JSON raw text as the body string instead of a misleading stub', async () => {
-    vi.useFakeTimers()
-    app.nodes = [rawNode('r', 'a,b\n1,2', 'text/csv')]
-    app.edges = []
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(app.responses['r']?.body).toBe('a,b\n1,2')
-  })
-
-  it('uses non-object JSON (array) as the body as-is', async () => {
-    vi.useFakeTimers()
-    app.nodes = [rawNode('r', '[1, 2, 3]')]
-    app.edges = []
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(app.responses['r']?.body).toEqual([1, 2, 3])
-  })
-})
-
-describe('mock nodes in the sim (plan 09 N2)', () => {
-  beforeEach(() => {
-    app.responses = {}
-  })
-
-  const mkMock = (id: string, body: string): AppNode => ({
-    id,
-    type: 'mock',
-    position: { x: 0, y: 0 },
-    data: { name: id, key: `key_${id}`, status: 'idle', body, statusCode: 201 },
-  })
-
-  it('emits the parsed body as a captured response under the configured status', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkMock('m1', '{"users":[{"name":"ada"}]}'), mkNode('a1')]
-    app.edges = [mkEdge('m1', 'a1')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('m1')).toBe('success')
-    expect(statusOf('a1')).toBe('success')
-    expect(app.responses.m1).toMatchObject({
-      status: 201,
-      body: { users: [{ name: 'ada' }] },
-    })
-  })
-
-  it('fails the node on unparseable JSON and skips its descendants only', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkMock('m1', '{"broken'), mkNode('a1'), mkNode('b1')]
-    app.edges = [mkEdge('m1', 'a1')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('m1')).toBe('failed')
-    expect(statusOf('a1')).toBe('skipped')
-    expect(statusOf('b1')).toBe('success')
-    expect(app.responses.m1).toBeUndefined()
-  })
-})
-
-describe('delay nodes in the sim (plan 09 N3)', () => {
-  beforeEach(() => {
-    app.responses = {}
-  })
-
-  const mkMock = (id: string, body: string): AppNode => ({
-    id,
-    type: 'mock',
-    position: { x: 0, y: 0 },
-    data: { name: id, key: `key_${id}`, status: 'idle', body, statusCode: 201 },
-  })
-
-  const mkDelay = (id: string, durationMs: number): AppNode => ({
-    id,
-    type: 'delay',
-    position: { x: 0, y: 0 },
-    data: { name: id, key: `key_${id}`, status: 'idle', durationMs },
-  })
-
-  it('passes its single upstream response through unchanged', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkMock('m1', '{"id":"u1"}'), mkDelay('d1', 500), mkNode('a1')]
-    app.edges = [mkEdge('m1', 'd1'), mkEdge('d1', 'a1')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('d1')).toBe('success')
-    expect(statusOf('a1')).toBe('success')
-    // Pass-through: the delay's output IS the upstream capture.
-    expect(app.responses.d1).toBe(app.responses.m1)
-  })
-
-  it('outputs a status-0 null body without an upstream (a gate, not a joiner)', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkDelay('d1', 500)]
-    app.edges = []
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('d1')).toBe('success')
-    expect(app.responses.d1).toMatchObject({ status: 0, body: null })
-  })
-
-  it('fails on an out-of-range duration and skips its descendants only', async () => {
-    vi.useFakeTimers()
-    app.nodes = [mkDelay('d1', 0), mkNode('a1'), mkNode('b1')]
-    app.edges = [mkEdge('d1', 'a1')]
-
-    const run = app.simulateRun()
-    await vi.runAllTimersAsync()
-    await run
-
-    expect(statusOf('d1')).toBe('failed')
-    expect(statusOf('a1')).toBe('skipped')
-    expect(statusOf('b1')).toBe('success')
-    expect(app.responses.d1).toBeUndefined()
   })
 })
 

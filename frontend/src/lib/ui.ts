@@ -45,8 +45,14 @@ export const statusLabel: Record<NodeStatus, string> = {
   stale: 'stale',
 }
 
+/** The status at which a call counts as failed — mirrors exec.HTTPFailureStatus. */
+export const HTTP_FAILURE_STATUS = 400
+
+const HTTP_SUCCESS_STATUS = 200
+const HTTP_REDIRECT_STATUS = 300
+
 export function httpStatusClass(status: number): string {
-  if (status >= 200 && status < 300) return 'text-emerald-400'
-  if (status >= 400) return 'text-rose-400'
+  if (status >= HTTP_SUCCESS_STATUS && status < HTTP_REDIRECT_STATUS) return 'text-emerald-400'
+  if (status >= HTTP_FAILURE_STATUS) return 'text-rose-400'
   return 'text-zinc-300'
 }

@@ -28,6 +28,7 @@ import {
   type TransformNodeData,
 } from './model'
 import { isValidKey, slugifyKey, uniqueKey } from './refs'
+import { BODY_KEY_PREFIX, sectionOfKey } from './request'
 
 export const BOARD_FORMAT_VERSION = 1
 
@@ -312,7 +313,20 @@ function migrateLegacyFields(nodes: AppNode[]): void {
   }
 }
 
+/**
+ * A request field key must name its section: the engine rejects an unprefixed
+ * one (plan 11 D6) and the sectioned editor cannot display it either, so a
+ * legacy board's bare `amount` would be a field the user believes is set,
+ * silently absent from the request and invisible in the inspector. Only http
+ * nodes reach here — a transform's pick keys are output names, not sections.
+ */
 function migrateField(field: NodeField, idByName: Map<string, string>): NodeField {
+  const migrated = migrateFieldValue(field, idByName)
+  if (sectionOfKey(migrated.key) !== null) return migrated
+  return { ...migrated, key: `${BODY_KEY_PREFIX}${migrated.key}` }
+}
+
+function migrateFieldValue(field: NodeField, idByName: Map<string, string>): NodeField {
   if (!FIELD_SOURCES.has(field.source)) {
     return { key: field.key, source: 'literal', value: String(field.value ?? '') }
   }

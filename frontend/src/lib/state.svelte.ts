@@ -1,18 +1,7 @@
 import { api } from './api'
 import { deserializeBoard, serializeBoard, TRANSIENT_NODE_KEYS } from './board'
-import {
-  addFolder,
-  addRequest,
-  findRequest,
-  libraryId,
-  makeCollection,
-  makeFolder,
-  removeFolder,
-  removeRequest,
-  requestRefCount,
-  updateFolder,
-  updateRequest,
-} from './collections'
+import * as collectionActions from './collectionActions.svelte'
+import { requestRefCount } from './collections'
 import type { ContextMenuKind } from './contextMenu'
 import { deleteCredential, saveCredential } from './credentialActions.svelte'
 import { credentialRefCount } from './credentials'
@@ -39,7 +28,6 @@ import {
   type ProjectInfo,
   type RequestDef,
 } from './model'
-import { absoluteCenter, containerAt, parentsFirst, positionForParent } from './containment'
 import { dialogs } from './dialogs.svelte'
 import {
   duplicateAppNode,
@@ -52,10 +40,18 @@ import {
   makeNoteNode,
   makeTransformNode,
 } from './nodeFactory'
-import { normalizeOrigin } from './request'
-import { isValidKey, takenKeys } from './refs'
-import { inferSchema } from './schema'
-import { simulateRun } from './sim'
+import {
+  dropNode,
+  removeField,
+  removeNode,
+  removeNodeRequest,
+  renameField,
+  setField,
+  setNodeKey,
+  setNodeOrigin,
+  useLastResponseAsSchema,
+} from './nodeActions.svelte'
+import { startRun, stopRun } from './runner'
 
 type SidebarTab = 'operations' | 'environments' | 'credentials'
 
@@ -102,6 +98,11 @@ export class AppState {
   /** Canvas lock (controls toggle): freezes node dragging, connecting and selection; panning stays. */
   canvasLocked = $state(false)
   isRunning = $state(false)
+  /**
+   * The in-flight run's id; null when idle. Stop needs it, and it is how a run
+   * that outlived a board switch tells that the flags are no longer its own.
+   */
+  runId = $state<string | null>(null)
   /** Node ids in the currently running subgraph; null when idle. Drives edge animation. */
   activeRunIds = $state<ReadonlySet<string> | null>(null)
   /** Node id of the hovered log row; rings the node and tints its edges on the canvas (plan 10 §2). */
@@ -152,7 +153,7 @@ export class AppState {
     await this.flushBoardSave()
     const bundle = await api.openProject(id)
     this.project = bundle
-    this.openBoard(bundle.boards[0])
+    await this.openBoard(bundle.boards[0])
     this.logs = []
     this.contextMenu = null
     // Refresh the index so lastOpenedAt ordering stays current.
@@ -160,7 +161,14 @@ export class AppState {
   }
 
   /** Swap the active board in place (project open, board import; tabs later). */
-  openBoard(board: BoardJSON | undefined) {
+  async openBoard(board: BoardJSON | undefined) {
+    // A run outlives the switch — it holds its own copy of the board (plan 11
+    // D1) — so it is cancelled first. Its flags are cleared here regardless:
+    // leaving them set would disable Run on the new board forever and leave
+    // stale `running` paint on whatever node ids happen to collide.
+    await this.stopRun()
+    this.runId = null
+    this.isRunning = false
     const loaded = board
       ? deserializeBoard(board)
       : { nodes: [], edges: [], viewport: undefined, responses: {} }
@@ -330,75 +338,17 @@ export class AppState {
   }
 
   removeNode(id: string) {
-    // A For container takes its children with it (plan 09 N5) — a dangling
-    // parentId would break xyflow; drag-out first is the rescue path.
-    const doomed = new Set([id, ...this.nodes.filter((n) => n.parentId === id).map((n) => n.id)])
-    this.nodes = this.nodes.filter((n) => !doomed.has(n.id))
-    this.edges = this.edges.filter((e) => !doomed.has(e.source) && !doomed.has(e.target))
-    if ([...doomed].some((d) => d in this.responses)) {
-      this.responses = Object.fromEntries(
-        Object.entries(this.responses).filter(([nodeId]) => !doomed.has(nodeId)),
-      )
-    }
-    if (this.selectedNodeId && doomed.has(this.selectedNodeId)) this.selectedNodeId = null
-    this.scheduleBoardSave()
+    removeNode(this, id)
   }
 
-  /**
-   * Delete with the For safeguard: a container that still holds children
-   * asks for confirmation (the dialog calls removeNode on confirm); anything
-   * else deletes immediately.
-   */
+  /** Delete, asking first when a For container still holds children. */
   removeNodeRequest(id: string) {
-    const node = this.nodes.find((n) => n.id === id)
-    if (!node) return
-    const childCount = this.nodes.filter((n) => n.parentId === id).length
-    if (node.type === 'for' && childCount > 0) {
-      dialogs.confirmDeleteFor = { nodeId: id, childCount }
-      return
-    }
-    this.removeNode(id)
+    removeNodeRequest(this, id)
   }
 
-  /**
-   * Loop membership on drop (plan 09 N5): re-parent the dropped node into
-   * the For container under its center, or back to top level, translating
-   * the position so it stays visually put. Refusals (nested For, edges that
-   * would cross the loop boundary) toast and change nothing.
-   */
+  /** Loop membership on drop (plan 09 N5): re-parent into or out of a For container. */
   dropNode(id: string) {
-    const node = this.nodes.find((n) => n.id === id)
-    if (!node || node.type === 'note') return // annotations stay top-level
-    const target = containerAt(this.nodes, absoluteCenter(node, this.nodes), id)
-    const targetId = target?.id ?? null
-    if ((node.parentId ?? null) === targetId) return
-    if (target && node.type === 'for') {
-      dialogs.showToast('Nested for loops are not supported')
-      return
-    }
-    const crossing = this.edges.some((e) => {
-      if (e.source !== id && e.target !== id) return false
-      const otherId = e.source === id ? e.target : e.source
-      const other = this.nodes.find((n) => n.id === otherId)
-      return (other?.parentId ?? null) !== targetId
-    })
-    if (crossing) {
-      dialogs.showToast(
-        target
-          ? `An edge would cross the loop boundary — cut it before moving "${node.data.name}" in`
-          : `An edge to a loop sibling would cross the boundary — cut it before moving "${node.data.name}" out`,
-      )
-      return
-    }
-    const position = positionForParent(node, this.nodes, target)
-    this.nodes = parentsFirst(
-      this.nodes.map((n) => {
-        if (n.id !== id) return n
-        const { parentId: _dropped, ...rest } = n
-        return (target ? { ...rest, parentId: target.id, position } : { ...rest, position }) as AppNode
-      }),
-    )
-    this.scheduleBoardSave()
+    dropNode(this, id)
   }
 
   removeEdge(id: string) {
@@ -416,62 +366,28 @@ export class AppState {
     this.scheduleBoardSave()
   }
 
-  /**
-   * Rename a node's reference key. Returns an error message when the key is
-   * rejected (bad slug, reserved word, or taken on this board); null on
-   * success. Refs store node IDs, so no field on any node is rewritten.
-   */
+  /** Rename a node's reference key; returns a rejection message, or null. */
   setNodeKey(id: string, key: string): string | null {
-    if (!isValidKey(key)) return 'keys are letters, digits and _, starting with a letter ("res" and "i" are reserved)'
-    if (takenKeys(this.nodes, id).has(key)) return `key "${key}" is already used on this board`
-    this.updateNodeData(id, { key })
-    return null
+    return setNodeKey(this, id, key)
   }
 
-  /**
-   * Set or clear a node's origin override (plan 08 A1). Returns an error
-   * message when the value is not an absolute http(s) URL; null on success.
-   * An empty value clears the override back to the environment's base URL.
-   */
+  /** Set or clear a node's origin override; returns a rejection message, or null. */
   setNodeOrigin(id: string, raw: string): string | null {
-    if (raw.trim() === '') {
-      this.updateNodeData(id, { origin: undefined })
-      return null
-    }
-    const origin = normalizeOrigin(raw)
-    if (!origin) return 'origin must be an absolute http(s) URL, e.g. https://api.example.com'
-    this.updateNodeData(id, { origin })
-    return null
+    return setNodeOrigin(this, id, raw)
   }
 
   /** Replace one request field's parsed value (from the inspector editor). */
   setField(nodeId: string, field: NodeField) {
-    const node = this.nodes.find((n) => n.id === nodeId)
-    if (!node || !isHttpNode(node)) return
-    const fields = node.data.fields.some((f) => f.key === field.key)
-      ? node.data.fields.map((f) => (f.key === field.key ? field : f))
-      : [...node.data.fields, field]
-    this.updateNodeData(nodeId, { fields })
+    setField(this, nodeId, field)
   }
 
-  /**
-   * Rename a field in place, keeping its row position — composing
-   * removeField+setField would append the renamed key at the bottom of its
-   * section (setField appends unknown keys), which reads as a bug (plan 10 §3b).
-   */
+  /** Rename a field in place, keeping its row position (plan 10 §3b). */
   renameField(nodeId: string, oldKey: string, newKey: string) {
-    const node = this.nodes.find((n) => n.id === nodeId)
-    if (!node || !isHttpNode(node)) return
-    if (node.data.fields.some((f) => f.key === newKey)) return
-    this.updateNodeData(nodeId, {
-      fields: node.data.fields.map((f) => (f.key === oldKey ? { ...f, key: newKey } : f)),
-    })
+    renameField(this, nodeId, oldKey, newKey)
   }
 
   removeField(nodeId: string, fieldKey: string) {
-    const node = this.nodes.find((n) => n.id === nodeId)
-    if (!node || !isHttpNode(node)) return
-    this.updateNodeData(nodeId, { fields: node.data.fields.filter((f) => f.key !== fieldKey) })
+    removeField(this, nodeId, fieldKey)
   }
 
   /** Replace a node's declared output aliases (inspector Outputs section). */
@@ -479,16 +395,9 @@ export class AppState {
     this.updateNodeData(nodeId, { exports })
   }
 
-  /**
-   * Pin the schema inferred from the node's last captured response onto the
-   * node (plan 05 §8). Pinned schemas serialize with the board, so shared
-   * boards keep working pickers without run history; invoking again after a
-   * newer run re-infers.
-   */
+  /** Pin the schema inferred from the node's last captured response (plan 05 §8). */
   useLastResponseAsSchema(nodeId: string) {
-    const captured = this.responses[nodeId]
-    if (!captured) return
-    this.updateNodeData(nodeId, { responseSchema: inferSchema(captured.body) })
+    useLastResponseAsSchema(this, nodeId)
   }
 
   /** Select the node and ask the inspector to focus its name field. */
@@ -525,9 +434,19 @@ export class AppState {
     this.logHoverNodeId = null
   }
 
-  /** Demo-only run simulation (sim.ts); replaced by engine events once M1 is wired in. */
+  /** Execute the board, or one node's subgraph. Streams run events onto the canvas. */
+  async run(targetId?: string, scope: RunScope = 'upstream') {
+    await startRun(this, targetId, scope)
+  }
+
+  /** @deprecated call run(); kept until the call sites migrate. */
   async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
-    await simulateRun(this, targetId, scope)
+    await this.run(targetId, scope)
+  }
+
+  /** Cancel the in-flight run. Idle is a no-op. */
+  async stopRun() {
+    await stopRun(this)
   }
 
   // --- credentials (plan 04 K2): flow bodies live in credentialActions.svelte.ts
@@ -576,42 +495,20 @@ export class AppState {
     this.project.collections = this.project.collections.map((c) =>
       c.id === collectionId ? next : c,
     )
-    void this.saveCollectionNow(next)
+    void collectionActions.persistCollection(this, next)
     return true
   }
 
-  private async saveCollectionNow(collection: CollectionDef) {
-    const projectId = this.projectId
-    if (!projectId) return
-    try {
-      await api.saveCollection(projectId, $state.snapshot(collection) as CollectionDef)
-    } catch (err) {
-      // Same policy as board saves: a failed write must not take down the UI.
-      console.error('collection save failed:', err)
-    }
-  }
-
   createCollection(name: string): CollectionDef | null {
-    if (!this.project) return null
-    const collection = makeCollection(name)
-    this.project.collections = [...this.project.collections, collection]
-    void this.saveCollectionNow(collection)
-    return collection
+    return collectionActions.createCollection(this, name)
   }
 
   renameCollection(collectionId: string, name: string) {
     this.mutateCollection(collectionId, (c) => ({ ...c, name }))
   }
 
-  async deleteCollection(collectionId: string) {
-    const projectId = this.projectId
-    if (!this.project || !projectId) return
-    this.project.collections = this.project.collections.filter((c) => c.id !== collectionId)
-    try {
-      await api.deleteCollection(projectId, collectionId)
-    } catch (err) {
-      console.error('collection delete failed:', err)
-    }
+  deleteCollection(collectionId: string): Promise<void> {
+    return collectionActions.deleteCollection(this, collectionId)
   }
 
   /** Nodes across all boards (the open one included) referencing the collection. */
@@ -621,54 +518,27 @@ export class AppState {
 
   /** Returns the new folder's id, or null when the parent is missing or the depth cap would break. */
   addCollectionFolder(collectionId: string, parentFolderId: string, name: string): string | null {
-    const folder = makeFolder(name)
-    const ok = this.mutateCollection(collectionId, (c) => {
-      const root = addFolder(c.root, parentFolderId, folder)
-      return root ? { ...c, root } : null
-    })
-    return ok ? folder.id : null
+    return collectionActions.addCollectionFolder(this, collectionId, parentFolderId, name)
   }
 
   renameCollectionFolder(collectionId: string, folderId: string, name: string) {
-    this.mutateCollection(collectionId, (c) => {
-      const root = updateFolder(c.root, folderId, (f) => ({ ...f, name }))
-      return root ? { ...c, root } : null
-    })
+    collectionActions.renameCollectionFolder(this, collectionId, folderId, name)
   }
 
   deleteCollectionFolder(collectionId: string, folderId: string) {
-    this.mutateCollection(collectionId, (c) => {
-      const root = removeFolder(c.root, folderId)
-      return root ? { ...c, root } : null
-    })
+    collectionActions.deleteCollectionFolder(this, collectionId, folderId)
   }
 
   renameCollectionRequest(collectionId: string, requestId: string, name: string) {
-    this.mutateCollection(collectionId, (c) => {
-      const root = updateRequest(c.root, requestId, (r) => ({ ...r, name }))
-      return root ? { ...c, root } : null
-    })
+    collectionActions.renameCollectionRequest(this, collectionId, requestId, name)
   }
 
   duplicateCollectionRequest(collectionId: string, folderId: string, requestId: string) {
-    this.mutateCollection(collectionId, (c) => {
-      const source = findRequest(c.root, requestId)
-      if (!source) return null
-      const copy: RequestDef = {
-        ...structuredClone($state.snapshot(source) as RequestDef),
-        id: libraryId('req'),
-        name: `${source.name} copy`,
-      }
-      const root = addRequest(c.root, folderId, copy)
-      return root ? { ...c, root } : null
-    })
+    collectionActions.duplicateCollectionRequest(this, collectionId, folderId, requestId)
   }
 
   deleteCollectionRequest(collectionId: string, requestId: string) {
-    this.mutateCollection(collectionId, (c) => {
-      const root = removeRequest(c.root, requestId)
-      return root ? { ...c, root } : null
-    })
+    collectionActions.deleteCollectionRequest(this, collectionId, requestId)
   }
 
   /** "Save to collection…" (plan 08 B3); returns the new request's id, or null. */

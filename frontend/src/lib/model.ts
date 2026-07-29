@@ -474,7 +474,8 @@ export type HttpLogEntry = LogEntryBase & {
   kind: 'http'
   method: HttpMethod
   url: string
-  status: number
+  /** Absent when the call never reached a server (DNS, refused, timeout) — 0 is not a usable stand-in. */
+  status?: number
   request?: string
   response?: string
 }

@@ -139,10 +139,13 @@ export type RequestSectionId = 'params' | 'headers' | 'body'
 
 export type ParamKind = 'path' | 'query'
 
+/** Storage prefix of a body field (`body.user.name` → `{"user":{"name":…}}`). */
+export const BODY_KEY_PREFIX = 'body.'
+
 const SECTION_PREFIXES: Record<RequestSectionId, readonly string[]> = {
   params: ['path.', 'query.'],
   headers: ['header.'],
-  body: ['body.'],
+  body: [BODY_KEY_PREFIX],
 }
 
 export function sectionOfKey(key: string): RequestSectionId | null {
@@ -164,7 +167,7 @@ export function sectionFields(fields: readonly NodeField[], section: RequestSect
  */
 export function sectionKey(section: RequestSectionId, name: string, path: string): string {
   if (section === 'headers') return `header.${name}`
-  if (section === 'body') return `body.${name}`
+  if (section === 'body') return `${BODY_KEY_PREFIX}${name}`
   return pathPlaceholders(path).includes(name) ? `path.${name}` : `query.${name}`
 }
 

@@ -17,6 +17,8 @@ export const RESERVED_REF_ROOTS: ReadonlySet<string> = new Set([REF_RES, REF_IND
 
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const TEMPLATE_RE = /\{\{\s*([^{}]*?)\s*\}\}/g
+const TEMPLATE_OPEN = '{{'
+const TEMPLATE_CLOSE = '}}'
 /** A whole-field reference: `res`, `res.body.id`, `createUser.orgs[*].id`, `create-user.status`. */
 const WHOLE_REF_RE = /^([A-Za-z_][A-Za-z0-9_-]*)((?:\.[^\s.[\]{}]+|\[\d+\]|\[\*\])*)$/
 
@@ -223,6 +225,27 @@ export function parseFieldInput(
 
 // --- edit-time validation ----------------------------------------------------
 
+/**
+ * Mirrors core/binding parseTemplate's scanner. TEMPLATE_RE silently treats an
+ * unterminated `{{` as literal text while Go errors on it, so without this
+ * check the field reads as fine in the editor and fails the node at run time
+ * — the one divergence between the two template parsers, caught at edit time
+ * because that is where the user can still fix it.
+ */
+function templateSyntaxError(template: string): string | null {
+  let rest = template
+  for (;;) {
+    const open = rest.indexOf(TEMPLATE_OPEN)
+    if (open < 0) return null
+    rest = rest.slice(open + TEMPLATE_OPEN.length)
+    const close = rest.indexOf(TEMPLATE_CLOSE)
+    if (close < 0) return `unterminated "${TEMPLATE_OPEN}" — close the reference with "${TEMPLATE_CLOSE}"`
+    if (rest.slice(0, close).trim() === '')
+      return `empty reference "${TEMPLATE_OPEN}${TEMPLATE_CLOSE}" — name a node output`
+    rest = rest.slice(close + TEMPLATE_CLOSE.length)
+  }
+}
+
 /** Direct upstream node ids (sources of edges into `nodeId`). */
 export function directUpstreams(edges: readonly { source: string; target: string }[], nodeId: string): string[] {
   const seen = new Set<string>()
@@ -259,6 +282,10 @@ export function validateFieldRefs(
   nodes: readonly AppNode[],
   edges: readonly { source: string; target: string }[],
 ): string | null {
+  if (field.source === 'template') {
+    const syntax = templateSyntaxError(field.value)
+    if (syntax) return syntax
+  }
   const refs = fieldRefs(field)
   if (refs.length === 0) return null
   const upstreams = directUpstreams(edges, nodeId)

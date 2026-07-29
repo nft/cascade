@@ -24,17 +24,12 @@
       Import schema
     </Button>
     <div class="mx-1 h-5 w-px bg-zinc-800"></div>
-    <!-- One Run/Pause toggle: pausing stays disabled until the engine supports it (M7). -->
-    <Button
-      variant="primary"
-      disabled={app.isRunning}
-      title={app.isRunning ? 'Pause — engine support lands in M7' : undefined}
-      onclick={() => app.simulateRun()}
-    >
-      <Icon name={app.isRunning ? 'pause' : 'play_arrow'} size={14} filled={app.isRunning} />
-      {app.isRunning ? 'Pause' : 'Run'}
+    <!-- Run and Stop, not a Run/Pause toggle: the engine cancels but does not pause. -->
+    <Button variant="primary" disabled={app.isRunning} onclick={() => app.run()}>
+      <Icon name="play_arrow" size={14} />
+      Run
     </Button>
-    <Button variant="secondary" disabled title="Stop — engine support lands in M7">
+    <Button variant="secondary" disabled={!app.isRunning} onclick={() => app.stopRun()}>
       <Icon name="stop" size={14} />
       Stop
     </Button>

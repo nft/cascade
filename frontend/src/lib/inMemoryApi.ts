@@ -5,8 +5,9 @@
 // The Go sandbox's `_` helper source, single-sourced from the engine so the
 // browser stand-in and goja agree on helper behavior.
 import helpersSource from '../../../core/transform/helpers.js?raw'
-import type { CascadeApi } from './api'
+import type { RunApi, StoreApi } from './api'
 import { serializeBoard } from './board'
+import { inMemoryRun } from './inMemoryRun'
 import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
 import type {
   BoardJSON,
@@ -19,6 +20,7 @@ import type {
   TestResponse,
 } from './model'
 import { joinUrl } from './request'
+import type { RunEvent } from './runEvents'
 
 const DEFAULT_PROJECT_NAME = 'Default'
 const MAIN_BOARD_NAME = 'Main'
@@ -36,7 +38,39 @@ function newId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}${idCounter}`
 }
 
-export function createInMemoryApi(): CascadeApi {
+/**
+ * The simulator behind api.runBoard when the Go engine is not selected
+ * (vitest, plain-browser dev). It fabricates http responses rather than
+ * calling out, because this path can reach neither a CORS-free client nor a
+ * keychain — everything else (transforms, mocks, delays, loops, bindings,
+ * captures) executes for real.
+ */
+export function createInMemoryRunApi(): RunApi {
+  const handlers = new Set<(event: RunEvent) => void>()
+  let stopping: string | null = null
+  return {
+    runBoard(projectId, request) {
+      stopping = null
+      return inMemoryRun({
+        projectId,
+        request,
+        emit: (event) => {
+          for (const handler of handlers) handler(event)
+        },
+        cancelled: () => stopping === request.runId,
+      })
+    },
+    async stopRun(runId) {
+      stopping = runId
+    },
+    onRunEvent(handler) {
+      handlers.add(handler)
+      return () => handlers.delete(handler)
+    },
+  }
+}
+
+export function createInMemoryApi(): StoreApi {
   const projects = new Map<string, StoredProject>()
 
   function makeProject(name: string, seeded: boolean): StoredProject {

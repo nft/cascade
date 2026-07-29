@@ -120,7 +120,7 @@ export async function importBoardFromFile(app: AppState): Promise<boolean> {
     if (result.cancelled) return false
     await app.flushBoardSave() // the current board's pending edits, before switching away
     app.project.boards = [...app.project.boards, result.board]
-    app.openBoard(result.board)
+    await app.openBoard(result.board)
     // Every node on the canvas now belongs to the import.
     await finishEnvelopeImport(
       app,

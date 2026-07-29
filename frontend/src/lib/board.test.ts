@@ -212,6 +212,45 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(org.data.fields[2].source).toBe('literal')
   })
 
+  it('backfills body. onto unprefixed request field keys (plan 11 D6)', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        {
+          id: 'u1',
+          name: 'Create User',
+          data: {
+            fields: [
+              { key: 'amount', source: 'literal', value: '100' },
+              { key: 'query.limit', source: 'literal', value: '10' },
+              { key: 'header.X-Trace', source: 'literal', value: 'on' },
+            ],
+          },
+        },
+        // Pick keys are output names, not request sections — they must not move.
+        {
+          id: 't1',
+          type: 'transform',
+          name: 'Shape',
+          data: { mode: 'pick', pick: [{ key: 'amount', source: 'literal', value: '1' }] },
+        },
+      ],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    expect((nodes[0] as HttpNode).data.fields.map((f) => f.key)).toEqual([
+      'body.amount',
+      'query.limit',
+      'header.X-Trace',
+    ])
+    const shape = nodes[1]
+    if (shape.type !== 'transform') throw new Error('expected transform node')
+    expect(shape.data.pick[0].key).toBe('amount')
+  })
+
   it('round-trips captured responses through the layout sidecar (plan 05 §8)', () => {
     const responses = {
       a: { status: 201, body: { id: 'u1' }, at: '2026-07-06T14:02:00Z' },

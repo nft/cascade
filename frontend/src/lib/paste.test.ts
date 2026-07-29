@@ -27,9 +27,9 @@ const envelopeBoard = (): BoardJSON => ({
         environment: 'staging',
         credential: '',
         fields: [
-          { key: 'user_id', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
-          { key: 'email', source: 'template', value: 'member+{{n1.body.id}}-{{i}}@x.io' },
-          { key: 'org_id', source: 'literal', value: '', dangling: { originalKey: 'createOrg', path: 'body.id' } },
+          { key: 'body.user_id', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
+          { key: 'body.email', source: 'template', value: 'member+{{n1.body.id}}-{{i}}@x.io' },
+          { key: 'body.org_id', source: 'literal', value: '', dangling: { originalKey: 'createOrg', path: 'body.id' } },
         ],
       },
     },
@@ -121,7 +121,7 @@ describe('buildPaste (plan 07 E3)', () => {
     const invoice = nodes[1]
     if (invoice.type !== 'http') throw new Error('expected http node')
     expect(invoice.data.fields[2]).toEqual({
-      key: 'org_id',
+      key: 'body.org_id',
       source: 'literal',
       value: '',
       dangling: { originalKey: 'createOrg', path: 'body.id' },

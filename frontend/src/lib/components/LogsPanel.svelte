@@ -2,7 +2,7 @@
   import { formatDuration } from '../format'
   import type { LogEntry } from '../model'
   import { app } from '../state.svelte'
-  import { httpStatusClass, methodBadge } from '../ui'
+  import { HTTP_FAILURE_STATUS, httpStatusClass, methodBadge } from '../ui'
   import Icon from './Icon.svelte'
   import IconButton from './ui/IconButton.svelte'
   import Select from './ui/Select.svelte'
@@ -40,8 +40,12 @@
     expandedId = null
   }
 
+  // An http row that never reached a server carries an error and no status,
+  // and `undefined >= 400` is false — so testing the status alone would file
+  // the most common real-run failure under "success".
   function entryFailed(entry: LogEntry): boolean {
-    return entry.kind === 'http' ? entry.status >= 400 : entry.error !== undefined
+    const status = 'status' in entry ? (entry.status ?? 0) : 0
+    return entry.error !== undefined || status >= HTTP_FAILURE_STATUS
   }
 
   function searchText(entry: LogEntry): string {
@@ -213,7 +217,10 @@
                   <span class="mr-1.5 rounded px-1 py-0.5 text-[10px] font-semibold {methodBadge[entry.method]}">{entry.method}</span>
                   <span class="font-mono text-zinc-400">{entry.url}</span>
                 </td>
-                <td class="px-2 py-1.5 text-right font-mono {httpStatusClass(entry.status)}">{entry.status}</td>
+                <!-- No status means the call never reached a server; the row reads like the other kinds' failures. -->
+                <td class="px-2 py-1.5 text-right font-mono {entry.status === undefined ? 'text-rose-400' : httpStatusClass(entry.status)}">
+                  {entry.status ?? 'failed'}
+                </td>
               {/if}
               <td class="px-3 py-1.5 text-right font-mono text-zinc-500">{formatDuration(entry.durationMs)}</td>
             </tr>

@@ -105,6 +105,37 @@ describe('LogsPanel collapse/expand buttons', () => {
   })
 })
 
+describe('LogsPanel rows with no status (plan 11 §6)', () => {
+  // A call that never reached a server has no status, and `undefined >= 400`
+  // is false — testing the status alone would file the most common real-run
+  // failure under "success", in the success colour and hidden by the filter.
+  const refused: HttpLogEntry = {
+    ...mkEntry('l1', 'n1', 'createUser'),
+    status: undefined,
+    error: 'dial tcp 127.0.0.1:9999: connection refused',
+  }
+
+  it('renders a transport failure as failed and keeps it in the failed filter', () => {
+    app.logs = [refused]
+    flushSync()
+    const row = rowFor('createUser')
+    expect(row.textContent).toContain('failed')
+    expect(row.className).toContain('bg-rose-500/5')
+
+    const filter = document.querySelector('select') as HTMLSelectElement
+    filter.value = 'success'
+    filter.dispatchEvent(new Event('change'))
+    flushSync()
+    expect(document.body.textContent).not.toContain('createUser')
+  })
+
+  it('shows no iteration chip outside a loop', () => {
+    app.logs = [mkEntry('l1', 'n1', 'createUser')]
+    flushSync()
+    expect(rowFor('createUser').textContent).not.toContain('#')
+  })
+})
+
 describe('LogsPanel loop rows (plan 09 N6)', () => {
   const summary: ForLogEntry = {
     kind: 'for',

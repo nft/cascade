@@ -1,5 +1,7 @@
-// Run-simulation tests for the plan 09 N7 loop executor. The mock/delay/http
-// sim basics live in state.test.ts; this file covers For iteration.
+// The loop executor's contracts (plan 09 N7), driven end to end through the
+// run event stream. Per-node behaviour lives in runNodes.test.ts and the
+// event-application rules in applyRunEvent.test.ts; this file covers For
+// iteration: scope, aggregation, progress, fail-fast and config tiering.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { isForNode, type AppEdge, type AppNode } from './model'
 import { app } from './state.svelte'

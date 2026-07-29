@@ -3,7 +3,7 @@
 // (vitest, plain-browser `bun run dev`).
 import * as GoApp from '../../wailsjs/go/main/App'
 import type { main as goMain, store as goStore } from '../../wailsjs/go/models'
-import { createInMemoryApi } from './inMemoryApi'
+import { createInMemoryApi, createInMemoryRunApi } from './inMemoryApi'
 import type {
   BoardJSON,
   ClipboardEnvelope,
@@ -17,6 +17,7 @@ import type {
   TestRequest,
   TestResponse,
 } from './model'
+import { subscribeRunEvents, type RunEvent, type RunRequest, type RunResult } from './runEvents'
 
 export interface CascadeApi {
   listProjects(): Promise<ProjectInfo[]>
@@ -49,11 +50,23 @@ export interface CascadeApi {
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
   /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
   sendTestRequest(projectId: string, request: TestRequest): Promise<TestResponse>
+  /** Executes the board, streaming events until it finishes; resolves with the terminal statuses. */
+  runBoard(projectId: string, request: RunRequest): Promise<RunResult>
+  /** Cancels the identified run; an unknown or already-finished id is a no-op. */
+  stopRun(runId: string): Promise<void>
+  /** Subscribes to the run event stream (plan 11 D13); returns the unsubscribe. */
+  onRunEvent(handler: (event: RunEvent) => void): () => void
 }
+
+/** The run stream, split out so it can be selected independently of the store. */
+export type RunApi = Pick<CascadeApi, 'runBoard' | 'stopRun' | 'onRunEvent'>
+
+/** Everything but the run stream. */
+export type StoreApi = Omit<CascadeApi, keyof RunApi>
 
 // The generated bindings type results as wailsjs model classes; they are the
 // same JSON shapes as our interfaces (modulo string unions), so casts are safe.
-const wailsApi: CascadeApi = {
+const wailsApi: StoreApi = {
   listProjects: () => GoApp.ListProjects(),
   createProject: (name) => GoApp.CreateProject(name),
   renameProject: (id, name) => GoApp.RenameProject(id, name),
@@ -80,6 +93,13 @@ const wailsApi: CascadeApi = {
     GoApp.SendTestRequest(projectId, request as unknown as goMain.TestRequest) as unknown as Promise<TestResponse>,
 }
 
+const wailsRunApi: RunApi = {
+  runBoard: (projectId, request) =>
+    GoApp.RunBoard(projectId, request as unknown as goMain.RunRequest) as unknown as Promise<RunResult>,
+  stopRun: (runId) => GoApp.StopRun(runId),
+  onRunEvent: subscribeRunEvents,
+}
+
 declare global {
   interface Window {
     /** Injected by the Wails runtime before the app bundle loads. */
@@ -87,5 +107,17 @@ declare global {
   }
 }
 
-export const api: CascadeApi =
-  typeof window !== 'undefined' && window.go !== undefined ? wailsApi : createInMemoryApi()
+const insideWails = typeof window !== 'undefined' && window.go !== undefined
+
+/**
+ * Runs still go through the simulator in both modes; flipping this selects the
+ * Go engine, and with it real HTTP calls. The Wails implementations above are
+ * written and unused on purpose: the switch is then one line rather than an
+ * integration.
+ */
+const ENGINE_RUNS: boolean = false
+
+export const api: CascadeApi = {
+  ...(insideWails ? wailsApi : createInMemoryApi()),
+  ...(ENGINE_RUNS && insideWails ? wailsRunApi : createInMemoryRunApi()),
+}

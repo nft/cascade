@@ -194,6 +194,16 @@ describe('validateFieldRefs (edit-time, mirrors core/binding)', () => {
     expect(validateFieldRefs(orgField('{{ghost.body.id}}'), 'create-org-1', nodes, edges)).toMatch(/unknown node/)
   })
 
+  // core/binding rejects both at run time while the resolver's regex treats
+  // an unterminated {{ as literal text — so the editor has to say so first.
+  it('flags template syntax core/binding will reject', () => {
+    expect(validateFieldRefs(orgField('a-{{create-user-1.body.id'), 'create-org-1', nodes, edges)).toMatch(
+      /unterminated/,
+    )
+    expect(validateFieldRefs(orgField('a-{{  }}-b'), 'create-org-1', nodes, edges)).toMatch(/empty reference/)
+    expect(validateFieldRefs(orgField('{{create-user-1.body.id}} and }} alone'), 'create-org-1', nodes, edges)).toBeNull()
+  })
+
   it('extracts refs from templates and bindings alike', () => {
     expect(fieldRefs(orgField('a-{{create-user-1.body.id}}-b-{{i}}-{{res.name}}'))).toEqual([
       { nodeId: 'create-user-1', path: 'body.id' },
