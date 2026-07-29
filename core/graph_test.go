@@ -1,6 +1,10 @@
 package core
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
 	"slices"
 	"testing"
 )
@@ -156,5 +160,72 @@ func TestExecutionOrderRejectsUnknownParent(t *testing.T) {
 
 	if _, err := g.ExecutionOrder(); err == nil {
 		t.Error("ExecutionOrder() expected unknown-parent error, got nil")
+	}
+}
+
+// closureVectors is the fixture shared with frontend/src/lib/graph.test.ts, so
+// the engine's run set and the canvas pre-flight cannot drift apart unnoticed.
+type closureVectors struct {
+	Graphs map[string]struct {
+		Nodes []Node `json:"nodes"`
+		Edges []Edge `json:"edges"`
+	} `json:"graphs"`
+	Cases []struct {
+		Note   string   `json:"note"`
+		Graph  string   `json:"graph"`
+		Target NodeID   `json:"target"`
+		Scope  Scope    `json:"scope"`
+		Expect []NodeID `json:"expect"`
+	} `json:"cases"`
+}
+
+func TestClosureVectors(t *testing.T) {
+	raw, err := os.ReadFile("testdata/closure_vectors.json")
+	if err != nil {
+		t.Fatalf("read vectors: %v", err)
+	}
+	var vectors closureVectors
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		t.Fatalf("parse vectors: %v", err)
+	}
+	if len(vectors.Cases) == 0 {
+		t.Fatal("no cases in the fixture")
+	}
+	for _, tc := range vectors.Cases {
+		name := fmt.Sprintf("%s/%s/%s", tc.Graph, tc.Target, tc.Scope)
+		t.Run(name, func(t *testing.T) {
+			src, ok := vectors.Graphs[tc.Graph]
+			if !ok {
+				t.Fatalf("unknown graph %q", tc.Graph)
+			}
+			g := &Graph{Nodes: src.Nodes, Edges: src.Edges}
+			// Every fixture graph is one a user could build, so the closure is
+			// never asked about a shape the editor would have rejected.
+			if err := g.Validate(); err != nil {
+				t.Fatalf("fixture graph %q is invalid: %v", tc.Graph, err)
+			}
+			set, err := g.Closure(tc.Target, tc.Scope)
+			if err != nil {
+				t.Fatalf("Closure: %v", err)
+			}
+			got := make([]NodeID, 0, len(set))
+			for id := range set {
+				got = append(got, id)
+			}
+			slices.Sort(got)
+			if !reflect.DeepEqual(got, tc.Expect) {
+				t.Errorf("got %v, want %v", got, tc.Expect)
+			}
+		})
+	}
+}
+
+func TestClosureRejects(t *testing.T) {
+	g := &Graph{Nodes: []Node{{ID: "a"}, {ID: "b"}}, Edges: []Edge{{From: "a", To: "b"}}}
+	if _, err := g.Closure("a", "sideways"); err == nil {
+		t.Error("Closure() = nil, want an unknown-scope error")
+	}
+	if _, err := g.Closure("ghost", ScopeUpstream); err == nil {
+		t.Error("Closure() = nil, want an unknown-target error")
 	}
 }

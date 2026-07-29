@@ -2,14 +2,13 @@ package exec
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"testing"
 	"time"
 
 	"cascade/core"
-	"cascade/core/binding"
-	"cascade/core/transform"
+	"cascade/core/httpcall"
+	"cascade/core/nodespec"
 )
 
 // The plan's done-when chain, engine-side: Create Org → [transform: active
@@ -32,34 +31,22 @@ func TestTransformBetweenTwoHTTPNodes(t *testing.T) {
 		map[string]any{"email": "a@x.io", "active": true},
 		map[string]any{"email": "b@x.io", "active": false},
 	}}
-	// The http runner is injected (M1 WP4); "invite" resolves its binding
-	// against the transform's output the way the request builder will.
-	var inviteGot any
-	httpRunner := func(_ context.Context, node core.Node, env *binding.Env) (*binding.Output, error) {
-		switch node.ID {
-		case "create-org":
-			return &binding.Output{Status: 201, Body: orgBody}, nil
-		case "invite":
-			// Stored templates reference node IDs; the UI renders this one
-			// as {{activeMembers.emails}} (the node's key).
-			v, err := binding.Template("{{actives.emails}}").Resolve(env)
-			if err != nil {
-				return nil, err
-			}
-			inviteGot = v
-			return &binding.Output{Status: 200, Body: map[string]any{"ok": true}}, nil
-		}
-		return nil, errors.New("unexpected node")
-	}
+	transport := transportOf(map[string]httpcall.Response{
+		"/orgs":   jsonResponse(201, orgBody),
+		"/invite": jsonResponse(200, map[string]any{"ok": true}),
+	})
 
 	res, err := Run(context.Background(), g, Options{
-		HTTP: httpRunner,
-		Transforms: map[core.NodeID]transform.Spec{
-			"actives": {Mode: transform.ModeScript, Script: `
+		Transport: transport.do,
+		Specs: map[core.NodeID]nodespec.Spec{
+			"create-org": httpSpec("createOrg", "POST", "/orgs"),
+			"actives": transformScript("activeMembers", `
 				const members = nodes.createOrg.body.members.filter(m => m.active)
-				return { count: members.length, emails: members.map(m => m.email) }`},
+				return { count: members.length, emails: members.map(m => m.email) }`),
+			// Stored templates reference node IDs; the UI renders this one as
+			// {{activeMembers.emails}} (the node's key).
+			"invite": httpSpec("invite", "POST", "/invite", templateField("body.emails", "{{actives.emails}}")),
 		},
-		Keys: map[core.NodeID]string{"create-org": "createOrg", "actives": "activeMembers"},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -69,8 +56,11 @@ func TestTransformBetweenTwoHTTPNodes(t *testing.T) {
 			t.Fatalf("node %s: status %s, want %s", id, res.Statuses[id], want)
 		}
 	}
-	if !reflect.DeepEqual(inviteGot, []any{"a@x.io"}) {
-		t.Fatalf("invite bound %#v through the transform, want [a@x.io]", inviteGot)
+	// A field whose whole value is one {{…}} keeps the referenced JSON type, so
+	// the array arrives as an array rather than as interpolated text.
+	inviteBody, _ := transport.sent[1].Body.(map[string]any)
+	if !reflect.DeepEqual(inviteBody["emails"], []any{"a@x.io"}) {
+		t.Fatalf("invite bound %#v through the transform, want [a@x.io]", inviteBody["emails"])
 	}
 	if res.Outputs["actives"].Status != 0 {
 		t.Fatalf("transform output must be synthetic (status 0), got %d", res.Outputs["actives"].Status)
@@ -83,6 +73,9 @@ func TestTransformBetweenTwoHTTPNodes(t *testing.T) {
 	tr := res.Records[1]
 	if tr.Type != core.NodeTypeTransform || tr.Status != 0 || tr.Output == nil {
 		t.Fatalf("transform record wrong shape: %+v", tr)
+	}
+	if tr.HTTP != nil {
+		t.Fatalf("transform record carries a call detail: %+v", tr.HTTP)
 	}
 	if !reflect.DeepEqual(tr.InputNodes, []string{"createOrg"}) {
 		t.Fatalf("transform record inputs %v", tr.InputNodes)
@@ -102,17 +95,18 @@ func TestPickScriptParity(t *testing.T) {
 		},
 		Edges: []core.Edge{{From: "create-org", To: "actives"}},
 	}
-	httpRunner := func(context.Context, core.Node, *binding.Env) (*binding.Output, error) {
-		return &binding.Output{Status: 201, Body: map[string]any{"members": []any{
-			map[string]any{"email": "a@x.io"},
-			map[string]any{"email": "c@x.io"},
-		}}}, nil
-	}
-	run := func(spec transform.Spec) any {
+	orgBody := map[string]any{"members": []any{
+		map[string]any{"email": "a@x.io"},
+		map[string]any{"email": "c@x.io"},
+	}}
+	run := func(spec nodespec.Spec) any {
 		t.Helper()
 		res, err := Run(context.Background(), g, Options{
-			HTTP:       httpRunner,
-			Transforms: map[core.NodeID]transform.Spec{"actives": spec},
+			Transport: transportOf(map[string]httpcall.Response{"/orgs": jsonResponse(201, orgBody)}).do,
+			Specs: map[core.NodeID]nodespec.Spec{
+				"create-org": httpSpec("createOrg", "POST", "/orgs"),
+				"actives":    spec,
+			},
 		})
 		if err != nil {
 			t.Fatalf("Run: %v", err)
@@ -122,11 +116,8 @@ func TestPickScriptParity(t *testing.T) {
 		}
 		return res.Outputs["actives"].Body
 	}
-	pick := run(transform.Spec{Mode: transform.ModePick, Pick: []transform.PickRow{
-		{Key: "emails", Source: binding.NewRef("", "body.members[*].email")},
-	}})
-	script := run(transform.Spec{Mode: transform.ModeScript,
-		Script: `return { emails: res.body.members.map(m => m.email) }`})
+	pick := run(transformPick("actives", refField("emails", "", "body.members[*].email")))
+	script := run(transformScript("actives", `return { emails: res.body.members.map(m => m.email) }`))
 	if !reflect.DeepEqual(pick, script) {
 		t.Fatalf("pick %#v != script %#v", pick, script)
 	}
@@ -140,21 +131,16 @@ func TestNoteNodesNeverScheduled(t *testing.T) {
 			{ID: "sticky", Type: core.NodeTypeNote},
 		},
 	}
-	called := 0
+	transport := transportOf(nil)
 	res, err := Run(context.Background(), g, Options{
-		HTTP: func(_ context.Context, node core.Node, _ *binding.Env) (*binding.Output, error) {
-			called++
-			if node.ID == "sticky" {
-				t.Fatal("note node reached the HTTP runner")
-			}
-			return &binding.Output{Status: 200}, nil
-		},
+		Transport: transport.do,
+		Specs:     map[core.NodeID]nodespec.Spec{"a": httpSpec("a", "GET", "/a")},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if called != 1 {
-		t.Fatalf("want exactly one executed node, got %d", called)
+	if len(transport.sent) != 1 {
+		t.Fatalf("want exactly one executed node, got %d", len(transport.sent))
 	}
 	if _, ok := res.Statuses["sticky"]; ok {
 		t.Fatal("note node got a run status")
@@ -175,11 +161,11 @@ func TestFailureSkipsDownstream(t *testing.T) {
 		Edges: []core.Edge{{From: "a", To: "t"}, {From: "t", To: "b"}},
 	}
 	res, err := Run(context.Background(), g, Options{
-		HTTP: func(context.Context, core.Node, *binding.Env) (*binding.Output, error) {
-			return &binding.Output{Status: 200, Body: map[string]any{}}, nil
-		},
-		Transforms: map[core.NodeID]transform.Spec{
-			"t": {Mode: transform.ModeScript, Script: `throw new Error("boom")`},
+		Transport: transportOf(map[string]httpcall.Response{"/a": jsonResponse(200, map[string]any{})}).do,
+		Specs: map[core.NodeID]nodespec.Spec{
+			"a": httpSpec("a", "GET", "/a"),
+			"t": transformScript("t", `throw new Error("boom")`),
+			"b": httpSpec("b", "GET", "/b"),
 		},
 	})
 	if err != nil {
@@ -204,20 +190,14 @@ func TestMockNodeFeedsDownstreamBinding(t *testing.T) {
 		},
 		Edges: []core.Edge{{From: "fixture", To: "create"}},
 	}
-	var boundName any
-	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
-		v, err := binding.Template("{{fixture.body.users[0].name}}").Resolve(env)
-		if err != nil {
-			return nil, err
-		}
-		boundName = v
-		return &binding.Output{Status: 201, Body: map[string]any{"ok": true}}, nil
-	}
+	transport := transportOf(map[string]httpcall.Response{"/create": jsonResponse(201, map[string]any{"ok": true})})
 
 	res, err := Run(context.Background(), g, Options{
-		HTTP: httpRunner,
-		Mocks: map[core.NodeID]MockSpec{
-			"fixture": {Status: 207, Body: []byte(`{"users":[{"name":"ada"}]}`)},
+		Transport: transport.do,
+		Specs: map[core.NodeID]nodespec.Spec{
+			"fixture": mockSpec("fixture", 207, `{"users":[{"name":"ada"}]}`),
+			"create": httpSpec("create", "POST", "/create",
+				templateField("body.name", "{{fixture.body.users[0].name}}")),
 		},
 	})
 	if err != nil {
@@ -226,8 +206,9 @@ func TestMockNodeFeedsDownstreamBinding(t *testing.T) {
 	if res.Statuses["fixture"] != StatusSuccess || res.Statuses["create"] != StatusSuccess {
 		t.Fatalf("statuses = %+v", res.Statuses)
 	}
-	if boundName != "ada" {
-		t.Fatalf("bound %#v through the mock, want ada", boundName)
+	body, _ := transport.sent[0].Body.(map[string]any)
+	if body["name"] != "ada" {
+		t.Fatalf("bound %#v through the mock, want ada", body["name"])
 	}
 	if res.Outputs["fixture"].Status != 207 {
 		t.Fatalf("mock output status = %d, want the configured 207", res.Outputs["fixture"].Status)
@@ -242,7 +223,7 @@ func TestMockNodeDefaultsStatus(t *testing.T) {
 	g := &core.Graph{Nodes: []core.Node{{ID: "fixture", Type: core.NodeTypeMock}}}
 
 	res, err := Run(context.Background(), g, Options{
-		Mocks: map[core.NodeID]MockSpec{"fixture": {Body: []byte(`{}`)}},
+		Specs: map[core.NodeID]nodespec.Spec{"fixture": mockSpec("fixture", 0, `{}`)},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -267,20 +248,15 @@ func TestDelayNodePassesThroughSingleUpstream(t *testing.T) {
 			{From: "wait", To: "create"},
 		},
 	}
-	var boundID any
-	httpRunner := func(_ context.Context, _ core.Node, env *binding.Env) (*binding.Output, error) {
-		v, err := binding.Template("{{wait.body.id}}").Resolve(env)
-		if err != nil {
-			return nil, err
-		}
-		boundID = v
-		return &binding.Output{Status: 201, Body: nil}, nil
-	}
+	transport := transportOf(map[string]httpcall.Response{"/create": jsonResponse(201, nil)})
 
 	res, err := Run(context.Background(), g, Options{
-		HTTP:   httpRunner,
-		Mocks:  map[core.NodeID]MockSpec{"fixture": {Status: 200, Body: []byte(`{"id":"u1"}`)}},
-		Delays: map[core.NodeID]time.Duration{"wait": time.Millisecond},
+		Transport: transport.do,
+		Specs: map[core.NodeID]nodespec.Spec{
+			"fixture": mockSpec("fixture", 200, `{"id":"u1"}`),
+			"wait":    delaySpec("wait", 1),
+			"create":  httpSpec("create", "POST", "/create", templateField("body.id", "{{wait.body.id}}")),
+		},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -288,8 +264,9 @@ func TestDelayNodePassesThroughSingleUpstream(t *testing.T) {
 	if res.Statuses["wait"] != StatusSuccess || res.Statuses["create"] != StatusSuccess {
 		t.Fatalf("statuses = %+v", res.Statuses)
 	}
-	if boundID != "u1" {
-		t.Fatalf("bound %#v through the delay, want u1", boundID)
+	body, _ := transport.sent[0].Body.(map[string]any)
+	if body["id"] != "u1" {
+		t.Fatalf("bound %#v through the delay, want u1", body["id"])
 	}
 	if res.Outputs["wait"] != res.Outputs["fixture"] {
 		t.Fatalf("delay output is not the upstream output pointer")
@@ -305,7 +282,7 @@ func TestDelayNodeWithoutUpstreamOutputsNull(t *testing.T) {
 	g := &core.Graph{Nodes: []core.Node{{ID: "wait", Type: core.NodeTypeDelay}}}
 
 	res, err := Run(context.Background(), g, Options{
-		Delays: map[core.NodeID]time.Duration{"wait": time.Millisecond},
+		Specs: map[core.NodeID]nodespec.Spec{"wait": delaySpec("wait", 1)},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -316,16 +293,19 @@ func TestDelayNodeWithoutUpstreamOutputsNull(t *testing.T) {
 	}
 }
 
-// Cancelling the run interrupts a sleeping delay immediately — an M7 stop
+// Cancelling mid-wait interrupts a sleeping delay immediately — an M7 stop
 // must never wait a delay out.
 func TestDelayNodeCancelInterruptsWait(t *testing.T) {
 	g := &core.Graph{Nodes: []core.Node{{ID: "wait", Type: core.NodeTypeDelay}}}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	// The context is live when Run's loop checks it, so the delay is dispatched
+	// and then interrupted — the pre-cancelled case is a different rule, tested
+	// in TestCancelStopsBeforeTheNextNode.
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
 
 	start := time.Now()
 	res, err := Run(ctx, g, Options{
-		Delays: map[core.NodeID]time.Duration{"wait": MaxDelay},
+		Specs: map[core.NodeID]nodespec.Spec{"wait": delaySpec("wait", int(nodespec.MaxDelay/time.Millisecond))},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -354,11 +334,11 @@ func TestDelayNodeOutOfRangeDurationFailsOnlyItsChain(t *testing.T) {
 	}
 
 	res, err := Run(context.Background(), g, Options{
-		Mocks: map[core.NodeID]MockSpec{
-			"dependent": {Body: []byte(`{}`)},
-			"unrelated": {Body: []byte(`{}`)},
+		Specs: map[core.NodeID]nodespec.Spec{
+			"wait":      delaySpec("wait", int(nodespec.MaxDelay/time.Millisecond)+1),
+			"dependent": mockSpec("dependent", 0, `{}`),
+			"unrelated": mockSpec("unrelated", 0, `{}`),
 		},
-		Delays: map[core.NodeID]time.Duration{"wait": MaxDelay + time.Millisecond},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -388,10 +368,10 @@ func TestMockNodeInvalidJSONFailsOnlyItsChain(t *testing.T) {
 	}
 
 	res, err := Run(context.Background(), g, Options{
-		Mocks: map[core.NodeID]MockSpec{
-			"fixture":   {Body: []byte(`{"broken`)},
-			"dependent": {Body: []byte(`{}`)},
-			"unrelated": {Body: []byte(`{}`)},
+		Specs: map[core.NodeID]nodespec.Spec{
+			"fixture":   mockSpec("fixture", 0, `{"broken`),
+			"dependent": mockSpec("dependent", 0, `{}`),
+			"unrelated": mockSpec("unrelated", 0, `{}`),
 		},
 	})
 	if err != nil {
@@ -409,5 +389,83 @@ func TestMockNodeInvalidJSONFailsOnlyItsChain(t *testing.T) {
 	}
 	if rec := res.Records[0]; rec.Err == "" {
 		t.Fatalf("failed mock record must carry the parse error: %+v", rec)
+	}
+}
+
+// A transform with nothing upstream is node config, not graph shape: the
+// canvas creates one in a single click, so the graph stays valid and only the
+// node fails. Before this moved, SaveBoard rejected the whole board.
+func TestUnconnectedTransformValidatesButFailsAtDispatch(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "t", Type: core.NodeTypeTransform},
+			{ID: "unrelated", Type: core.NodeTypeMock},
+		},
+	}
+	if err := g.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	res, err := Run(context.Background(), g, Options{
+		Specs: map[core.NodeID]nodespec.Spec{
+			"t":         transformScript("t", `return 1`),
+			"unrelated": mockSpec("unrelated", 0, `{}`),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["t"] != StatusFailed {
+		t.Fatalf("status = %s, want failed", res.Statuses["t"])
+	}
+	if res.Statuses["unrelated"] != StatusSuccess {
+		t.Fatalf("an unrelated node was affected: %+v", res.Statuses)
+	}
+	if rec := res.Records[0]; rec.Err == "" {
+		t.Fatalf("record carries no error: %+v", rec)
+	}
+}
+
+func TestMissingSpecFailsOnlyItsNode(t *testing.T) {
+	cases := []struct {
+		name string
+		node core.Node
+	}{
+		{"http", core.Node{ID: "n", Type: core.NodeTypeHTTP}},
+		{"mock", core.Node{ID: "n", Type: core.NodeTypeMock}},
+		{"delay", core.Node{ID: "n", Type: core.NodeTypeDelay}},
+		{"for", core.Node{ID: "n", Type: core.NodeTypeFor}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := &core.Graph{Nodes: []core.Node{tc.node}}
+			res, err := Run(context.Background(), g, Options{Transport: transportOf(nil).do})
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if res.Statuses["n"] != StatusFailed {
+				t.Fatalf("status = %s, want failed", res.Statuses["n"])
+			}
+		})
+	}
+}
+
+// An http graph with no transport is a caller mistake, but it must still fail
+// per node rather than taking the run down.
+func TestMissingTransportFailsOnlyItsNode(t *testing.T) {
+	g := &core.Graph{Nodes: []core.Node{
+		{ID: "call", Type: core.NodeTypeHTTP},
+		{ID: "fixture", Type: core.NodeTypeMock},
+	}}
+	res, err := Run(context.Background(), g, Options{
+		Specs: map[core.NodeID]nodespec.Spec{
+			"call":    httpSpec("call", "GET", "/x"),
+			"fixture": mockSpec("fixture", 0, `{}`),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Statuses["call"] != StatusFailed || res.Statuses["fixture"] != StatusSuccess {
+		t.Fatalf("statuses = %+v", res.Statuses)
 	}
 }

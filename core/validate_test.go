@@ -53,12 +53,15 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "transform without an upstream is rejected",
+			// An unconnected transform is node config, not graph shape: the
+			// canvas creates one in a single click, so rejecting the graph made
+			// every save fail silently until the user drew an edge. Dispatch
+			// fails the node instead.
+			name: "transform without an upstream is valid graph shape",
 			graph: Graph{
 				Nodes: []Node{{ID: "t", Type: NodeTypeTransform}, {ID: "b", Type: NodeTypeHTTP}},
 				Edges: []Edge{{From: "t", To: "b"}},
 			},
-			wantErr: "at least one upstream",
 		},
 		{
 			// Loop scope ({{item}}, {{i}}, loop ancestors) feeds a child

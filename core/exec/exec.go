@@ -1,9 +1,9 @@
 // Package exec runs a graph node by node in ExecutionOrder, dispatching per
-// node type (plan 06 T2): http nodes call the injected HTTP runner, transform
-// nodes run in-process via core/transform, and note nodes are never
-// scheduled. The HTTP pipeline itself lives in core/httpcall and reaches this
-// package only through the injected runner, so exec stays independent of the
-// transport and tests run network-free.
+// node type (plan 06 T2): http nodes are built from their spec and sent
+// through the injected Transport, transform nodes run in-process via
+// core/transform, and note nodes are never scheduled. The HTTP pipeline lives
+// in core/httpcall and reaches this package only through Transport, so exec
+// stays independent of the transport and tests run network- and keychain-free.
 package exec
 
 import (
@@ -14,6 +14,7 @@ import (
 
 	"cascade/core"
 	"cascade/core/binding"
+	"cascade/core/nodespec"
 	"cascade/core/transform"
 )
 
@@ -26,67 +27,53 @@ const (
 	StatusSkipped Status = "skipped"
 )
 
-// HTTPFunc performs one http node call and returns its captured output.
-type HTTPFunc func(ctx context.Context, node core.Node, env *binding.Env) (*binding.Output, error)
-
 // DefaultMockStatus is the output status a mock node reports when its spec
 // leaves Status zero, so downstream `status` bindings behave like a real call.
 const DefaultMockStatus = 200
 
-// Delay duration bounds (plan 09). Out-of-range is a config-tier failure at
-// dispatch: the UI clamps, but a hand-edited board must not wedge a run for
-// hours on a typo'd huge delay.
-const (
-	MinDelay = time.Millisecond
-	MaxDelay = 5 * time.Minute
-)
-
-// MockSpec is a mock node's authored output (plan 09): a JSON document
-// emitted verbatim as the body — strictly literal, no template resolution —
-// under the configured status.
-type MockSpec struct {
-	Status int
-	// Body is the authored JSON text; parsing it is deferred to dispatch so
-	// a typo fails only that node at run time (config tier), never the run.
-	Body json.RawMessage
-}
-
 // Options configures one run.
 type Options struct {
-	// HTTP is the http-node runner; a graph with http nodes requires it.
-	HTTP HTTPFunc
-	// Transforms holds each transform node's spec.
-	Transforms map[core.NodeID]transform.Spec
-	// Mocks holds each mock node's spec.
-	Mocks map[core.NodeID]MockSpec
-	// Delays holds each delay node's wait duration.
-	Delays map[core.NodeID]time.Duration
-	// Loops holds each for node's spec.
-	Loops map[core.NodeID]LoopSpec
-	// Exports holds declared output aliases by node ID.
-	Exports map[core.NodeID][]binding.Export
-	// Keys maps node IDs to board-unique keys; scripts read ancestors as
-	// `nodes.<key>`. Nodes absent here fall back to their ID.
-	Keys map[core.NodeID]string
+	// RunID identifies this run in every emitted event and log row.
+	RunID string
+	// Specs holds each node's typed configuration, keyed by node ID.
+	Specs map[core.NodeID]nodespec.Spec
+	// Transport performs http calls; a graph with http nodes requires it.
+	Transport Transport
+	// EnvBase resolves environment names to base URLs.
+	EnvBase EnvBaseFunc
+	// Seed pre-loads outputs produced by earlier runs, so a targeted run can
+	// resolve bindings against nodes outside its set. Entries for nodes inside
+	// the run set are ignored — a re-run never reads its own stale capture.
+	Seed map[core.NodeID]*binding.Output
+	// Target restricts the run to a subgraph; nil runs everything.
+	Target *Target
+	// Events receives the live stream; nil disables streaming.
+	Events chan<- Event
 	// TransformTimeout bounds each script's wall time; zero means
 	// transform.DefaultTimeout.
 	TransformTimeout time.Duration
 }
 
 // Record is one run-log entry. Type selects the variant: http records carry
-// the response status; transform records carry the upstream keys consumed
-// and the produced body; mock records carry the produced body only (no
-// URL/status — LogsPanel renders a variant row); delay records carry the
-// duration only (their output is a pass-through duplicate, or null); for
-// records are whole-loop summaries (iteration count and duration — the
-// aggregate body lives in Outputs, per-iteration detail in child records).
+// the response status and the full call detail; transform records carry the
+// upstream keys consumed and the produced body; mock records carry the
+// produced body only (no URL/status — LogsPanel renders a variant row); delay
+// records carry the duration only (their output is a pass-through duplicate,
+// or null); for records are whole-loop summaries (iteration count and duration
+// — the aggregate body lives in Outputs, per-iteration detail in child
+// records).
 type Record struct {
-	Node     core.NodeID
-	Type     core.NodeType
+	Node core.NodeID
+	Type core.NodeType
+	// Time is when the node started, for the run log's wall-clock column.
+	Time     time.Time
 	Duration time.Duration
 	Err      string
 	// Status is the HTTP response status (http records only).
 	Status int
+	// HTTP carries the call detail for http records — set on failure records
+	// too, so a 422 row still shows its URL and response body.
+	HTTP *CallDetail
 	// InputNodes are the direct upstream keys consumed (transform records only).
 	InputNodes []string
 	// Output is the produced body (transform and mock records only; M8
@@ -100,11 +87,15 @@ type Record struct {
 	Iterations int
 }
 
-// Result is one run's outcome. Note nodes appear in none of the maps.
+// Result is one run's outcome. Note nodes appear in none of the maps, and
+// neither do nodes a Target excluded — the canvas leaves their previous state
+// alone rather than repainting them.
 type Result struct {
 	Statuses map[core.NodeID]Status
 	Outputs  map[core.NodeID]*binding.Output
 	Records  []Record
+	// Cancelled reports that the run stopped early on a cancelled context.
+	Cancelled bool
 }
 
 // topLevelIteration marks records emitted outside any loop.
@@ -119,7 +110,10 @@ type runner struct {
 	upstreams map[core.NodeID][]core.NodeID
 	exports   map[string][]binding.Export
 	opts      Options
-	result    *Result
+	// runSet is the subgraph a Target restricted the run to; nil means the
+	// whole graph.
+	runSet map[core.NodeID]bool
+	result *Result
 	// loopRuns records each for node's completed iteration count for its
 	// summary record (runFor's return value is the aggregate output).
 	loopRuns map[core.NodeID]int
@@ -139,14 +133,34 @@ type scope struct {
 	rewrap func(error) error
 }
 
-// Run executes the whole graph. Graph-shape errors (cycle, bad edge, type
-// rules) fail the run up front; a node error fails that node and skips its
-// descendants, like the UI does.
+// Run executes the graph, or the subgraph Options.Target selects. Graph-shape
+// errors (cycle, bad edge, containment rules) fail the run up front; a node
+// error fails that node and skips its descendants, like the UI does.
+//
+// run.finished is emitted on every exit path, including the shape-error abort
+// and cancellation, so a listener always sees the run end.
 func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
+	result, err := execute(ctx, g, opts)
+	finished := Event{Kind: EventRunFinished, RunID: opts.RunID}
+	if err != nil {
+		finished.Err = err.Error()
+	}
+	if result != nil {
+		finished.Cancelled = result.Cancelled
+	}
+	emit(opts.Events, finished)
+	return result, err
+}
+
+func execute(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 	if err := g.Validate(); err != nil {
 		return nil, err
 	}
 	order, err := g.ExecutionOrder()
+	if err != nil {
+		return nil, err
+	}
+	runSet, err := resolveRunSet(g, opts.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -159,9 +173,11 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 	for _, e := range g.Edges {
 		upstreams[e.To] = append(upstreams[e.To], e.From)
 	}
-	exports := make(map[string][]binding.Export, len(opts.Exports))
-	for id, ex := range opts.Exports {
-		exports[string(id)] = ex
+	exports := make(map[string][]binding.Export, len(opts.Specs))
+	for id, spec := range opts.Specs {
+		if len(spec.Exports) > 0 {
+			exports[string(id)] = spec.Exports
+		}
 	}
 
 	r := &runner{
@@ -170,6 +186,7 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 		upstreams: upstreams,
 		exports:   exports,
 		opts:      opts,
+		runSet:    runSet,
 		result: &Result{
 			Statuses: make(map[core.NodeID]Status),
 			Outputs:  make(map[core.NodeID]*binding.Output),
@@ -181,14 +198,57 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 		outputs:   make(map[string]*binding.Output),
 		statuses:  r.result.Statuses,
 	}
+	// Only nodes this run will NOT produce are seeded: a re-run reading its own
+	// previous capture would resolve bindings against data it is replacing.
+	if runSet != nil {
+		for id, out := range opts.Seed {
+			if out != nil && !runSet[id] {
+				top.outputs[string(id)] = out
+			}
+		}
+	}
+
+	r.emit(Event{Kind: EventRunStarted, Nodes: runNodes(g, runSet)})
 	for _, id := range order {
+		if ctx.Err() != nil {
+			// Nodes never reached carry no status at all, so the canvas leaves
+			// their previous state alone instead of painting a wall of colour.
+			r.result.Cancelled = true
+			break
+		}
 		node := nodesByID[id]
 		if node.EffectiveType() == core.NodeTypeNote {
 			continue // annotations are never scheduled
 		}
+		if runSet != nil && !runSet[id] {
+			continue
+		}
 		r.runNode(ctx, node, top)
 	}
 	return r.result, nil
+}
+
+// spec returns a node's typed configuration.
+func (r *runner) spec(id core.NodeID) (nodespec.Spec, bool) {
+	spec, ok := r.opts.Specs[id]
+	return spec, ok
+}
+
+// key is a node's board-unique key, which scripts read ancestors by
+// (`nodes.<key>`); nodes without one fall back to their ID.
+func (r *runner) key(id core.NodeID) string {
+	if spec, ok := r.opts.Specs[id]; ok && spec.Key != "" {
+		return spec.Key
+	}
+	return string(id)
+}
+
+func (r *runner) keys(ids []core.NodeID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = r.key(id)
+	}
+	return out
 }
 
 // runNode executes one node in the given scope: skip cascade, env build,
@@ -196,10 +256,14 @@ func Run(ctx context.Context, g *core.Graph, opts Options) (*Result, error) {
 func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
 	id := node.ID
 	ups := r.upstreams[id]
-	if skipped(sc.statuses, ups) {
+	if r.skipped(sc.statuses, ups) {
 		r.setStatus(id, sc, StatusSkipped)
+		// A skip produces a status but no record, which is exactly why status
+		// transitions have to be first-class events.
+		r.emit(Event{Kind: EventNodeFinished, Node: id, Iteration: sc.iteration, Status: StatusSkipped})
 		return
 	}
+	r.emit(Event{Kind: EventNodeStarted, Node: id, Iteration: sc.iteration})
 
 	env := &binding.Env{
 		Outputs:   sc.outputs,
@@ -210,15 +274,17 @@ func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
 		HasItem:   sc.hasItem,
 	}
 	start := time.Now()
-	out, runErr := r.dispatch(ctx, node, env, ups, sc)
+	out, detail, runErr := r.dispatch(ctx, node, env, ups, sc)
 	record := Record{
 		Node:      id,
 		Type:      node.EffectiveType(),
+		Time:      start,
 		Duration:  time.Since(start),
+		HTTP:      detail,
 		Iteration: sc.iteration,
 	}
 	if record.Type == core.NodeTypeTransform {
-		record.InputNodes = nodeKeys(ups, r.opts.Keys)
+		record.InputNodes = r.keys(ups)
 	}
 	if runErr != nil {
 		if sc.rewrap != nil {
@@ -230,6 +296,7 @@ func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
 		}
 		r.setStatus(id, sc, StatusFailed)
 		r.result.Records = append(r.result.Records, record)
+		r.emit(Event{Kind: EventNodeFinished, Node: id, Iteration: sc.iteration, Status: StatusFailed, Record: &record})
 		return
 	}
 	switch record.Type {
@@ -246,6 +313,7 @@ func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
 	r.result.Outputs[id] = out
 	sc.outputs[string(id)] = out
 	r.result.Records = append(r.result.Records, record)
+	r.emit(Event{Kind: EventNodeFinished, Node: id, Iteration: sc.iteration, Status: StatusSuccess, Record: &record})
 }
 
 // setStatus writes a status into the scope (skip cascade) and the result
@@ -261,53 +329,76 @@ func (r *runner) dispatch(
 	env *binding.Env,
 	ups []core.NodeID,
 	sc *scope,
-) (*binding.Output, error) {
+) (*binding.Output, *CallDetail, error) {
 	switch node.EffectiveType() {
 	case core.NodeTypeHTTP:
-		if r.opts.HTTP == nil {
-			return nil, fmt.Errorf("exec: no HTTP runner configured for node %q", node.ID)
-		}
-		return r.opts.HTTP(ctx, node, env)
+		return r.runHTTP(ctx, node, env)
 	case core.NodeTypeMock:
-		spec, ok := r.opts.Mocks[node.ID]
-		if !ok {
-			return nil, fmt.Errorf("exec: mock node %q has no spec", node.ID)
+		spec, ok := r.spec(node.ID)
+		if !ok || spec.Mock == nil {
+			return nil, nil, fmt.Errorf("exec: mock node %q has no spec", node.ID)
 		}
-		return mockOutput(node.ID, spec)
+		out, err := mockOutput(node.ID, *spec.Mock)
+		return out, nil, err
 	case core.NodeTypeDelay:
-		d, ok := r.opts.Delays[node.ID]
-		if !ok {
-			return nil, fmt.Errorf("exec: delay node %q has no duration", node.ID)
+		spec, ok := r.spec(node.ID)
+		if !ok || spec.Delay == nil {
+			return nil, nil, fmt.Errorf("exec: delay node %q has no duration", node.ID)
 		}
-		return delayOutput(ctx, node.ID, d, ups, sc.outputs)
+		out, err := delayOutput(ctx, node.ID, spec.Delay.Duration(), ups, sc.outputs)
+		return out, nil, err
 	case core.NodeTypeFor:
-		return r.runFor(ctx, node, sc)
+		out, err := r.runFor(ctx, node, sc)
+		return out, nil, err
 	case core.NodeTypeTransform:
-		spec, ok := r.opts.Transforms[node.ID]
-		if !ok {
-			return nil, fmt.Errorf("exec: transform node %q has no spec", node.ID)
-		}
-		in := transform.Input{
-			Env:     env,
-			Nodes:   keyedOutputs(sc.outputs, r.opts.Keys),
-			Index:   env.Index,
-			Item:    env.Item,
-			HasItem: env.HasItem,
-			Timeout: r.opts.TransformTimeout,
-		}
-		if len(ups) == 1 {
-			in.Res = sc.outputs[string(ups[0])]
-		}
-		return transform.Execute(spec, in)
+		out, err := r.runTransform(node, env, ups, sc)
+		return out, nil, err
 	}
-	return nil, fmt.Errorf("exec: node %q has non-executable type %q", node.ID, node.Type)
+	return nil, nil, fmt.Errorf("exec: node %q has non-executable type %q", node.ID, node.Type)
+}
+
+func (r *runner) runTransform(
+	node core.Node,
+	env *binding.Env,
+	ups []core.NodeID,
+	sc *scope,
+) (*binding.Output, error) {
+	spec, ok := r.spec(node.ID)
+	if !ok || spec.Transform == nil {
+		return nil, fmt.Errorf("exec: transform node %q has no spec", node.ID)
+	}
+	// A transform only reshapes upstream data, so one with nothing upstream
+	// cannot produce anything. Inside a for node the loop scope ({{item}},
+	// {{i}}, loop ancestors) feeds it without an edge. This is a config-tier
+	// rule and not a graph-shape one: the canvas creates an unconnected
+	// transform in a single click, and failing the whole graph for it made
+	// every save silently fail until the user drew an edge.
+	if len(ups) == 0 && node.Parent == "" {
+		return nil, fmt.Errorf("exec: transform node %q has no upstream node to reshape", node.ID)
+	}
+	engine, err := spec.Transform.Engine()
+	if err != nil {
+		return nil, fmt.Errorf("exec: transform node %q: %w", node.ID, err)
+	}
+	in := transform.Input{
+		Env:     env,
+		Nodes:   r.keyedOutputs(sc.outputs),
+		Index:   env.Index,
+		Item:    env.Item,
+		HasItem: env.HasItem,
+		Timeout: r.opts.TransformTimeout,
+	}
+	if len(ups) == 1 {
+		in.Res = sc.outputs[string(ups[0])]
+	}
+	return transform.Execute(engine, in)
 }
 
 // mockOutput parses a mock node's authored body and wraps it as the node's
 // output. Unparseable JSON is a config-tier failure: it fails only this node.
-func mockOutput(id core.NodeID, spec MockSpec) (*binding.Output, error) {
+func mockOutput(id core.NodeID, spec nodespec.MockSpec) (*binding.Output, error) {
 	var body any
-	if err := json.Unmarshal(spec.Body, &body); err != nil {
+	if err := json.Unmarshal([]byte(spec.Body), &body); err != nil {
 		return nil, fmt.Errorf("exec: mock node %q: body is not valid JSON: %v", id, err)
 	}
 	status := spec.Status
@@ -329,8 +420,8 @@ func delayOutput(
 	ups []core.NodeID,
 	outputs map[string]*binding.Output,
 ) (*binding.Output, error) {
-	if d < MinDelay || d > MaxDelay {
-		return nil, fmt.Errorf("exec: delay node %q: duration %v is outside %v..%v", id, d, MinDelay, MaxDelay)
+	if d < nodespec.MinDelay || d > nodespec.MaxDelay {
+		return nil, fmt.Errorf("exec: delay node %q: duration %v is outside %v..%v", id, d, nodespec.MinDelay, nodespec.MaxDelay)
 	}
 	timer := time.NewTimer(d)
 	defer timer.Stop()
@@ -347,8 +438,17 @@ func delayOutput(
 
 // skipped reports whether any direct upstream did not succeed; skips cascade
 // because a skipped upstream is itself not success.
-func skipped(statuses map[core.NodeID]Status, ups []core.NodeID) bool {
+//
+// An upstream outside the run set is exempt: a targeted run deliberately does
+// not execute it, so its absence from this run's statuses proves nothing. Its
+// output, if the caller supplied one, came through Seed. Without the
+// exemption a downstream-scope run would mark the very node the user clicked
+// Play on as skipped and cascade from there.
+func (r *runner) skipped(statuses map[core.NodeID]Status, ups []core.NodeID) bool {
 	for _, up := range ups {
+		if r.runSet != nil && !r.runSet[up] {
+			continue
+		}
 		if statuses[up] != StatusSuccess {
 			return true
 		}
@@ -358,27 +458,12 @@ func skipped(statuses map[core.NodeID]Status, ups []core.NodeID) bool {
 
 // keyedOutputs re-keys already-produced outputs by node key for script
 // access (`nodes.<key>`).
-func keyedOutputs(outputs map[string]*binding.Output, keys map[core.NodeID]string) map[string]*binding.Output {
+func (r *runner) keyedOutputs(outputs map[string]*binding.Output) map[string]*binding.Output {
 	keyed := make(map[string]*binding.Output, len(outputs))
 	for id, out := range outputs {
-		keyed[nodeKey(core.NodeID(id), keys)] = out
+		keyed[r.key(core.NodeID(id))] = out
 	}
 	return keyed
-}
-
-func nodeKey(id core.NodeID, keys map[core.NodeID]string) string {
-	if key, ok := keys[id]; ok && key != "" {
-		return key
-	}
-	return string(id)
-}
-
-func nodeKeys(ids []core.NodeID, keys map[core.NodeID]string) []string {
-	out := make([]string, len(ids))
-	for i, id := range ids {
-		out[i] = nodeKey(id, keys)
-	}
-	return out
 }
 
 func idStrings(ids []core.NodeID) []string {

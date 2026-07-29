@@ -8,16 +8,16 @@ import "fmt"
 //
 //   - note nodes take no edges in either direction — they are annotations,
 //     not steps, and have no output to bind;
-//   - transform nodes require at least one upstream, since they only reshape
-//     upstream data — except inside a for node, where the loop scope
-//     ({{item}}, {{i}}, loop ancestors) feeds them without an edge;
 //   - containment (plan 09): a parent must be a for node; only http,
 //     transform, mock, and delay nodes may be children; no edge may cross a
 //     For boundary — the For node is the loop's single interface.
 //
 // Node config (mock body parses, delay/count in range, non-empty loop) is
 // deliberately not checked here: config problems fail only that node at
-// dispatch, never the whole run.
+// dispatch, never the whole run. A top-level transform with no upstream is
+// config by that definition and moved to dispatch for it — the canvas creates
+// exactly that node in one click, and rejecting the whole graph meant every
+// save silently failed until the user connected it.
 func (g *Graph) Validate() error {
 	if _, err := g.ExecutionOrder(); err != nil {
 		return err
@@ -51,7 +51,6 @@ func (g *Graph) Validate() error {
 		}
 	}
 
-	indegree := make(map[NodeID]int, len(g.Nodes))
 	for _, e := range g.Edges {
 		if types[e.To] == NodeTypeNote {
 			return fmt.Errorf("edge %q -> %q: note nodes cannot have incoming edges", e.From, e.To)
@@ -65,13 +64,6 @@ func (g *Graph) Validate() error {
 		// child ↔ its own For node) is scope leakage.
 		if parents[e.From] != parents[e.To] {
 			return fmt.Errorf("edge %q -> %q: edges may not cross a for-node boundary", e.From, e.To)
-		}
-		indegree[e.To]++
-	}
-
-	for _, n := range g.Nodes {
-		if types[n.ID] == NodeTypeTransform && indegree[n.ID] == 0 && n.Parent == "" {
-			return fmt.Errorf("transform node %q requires at least one upstream node", n.ID)
 		}
 	}
 	return nil

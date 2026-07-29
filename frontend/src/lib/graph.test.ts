@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import vectorsSource from '../../../core/testdata/closure_vectors.json?raw'
 import {
   assertKnownNodeTypes,
   componentIds,
@@ -172,4 +173,35 @@ describe('slice geometry (plan 03 §5 v2)', () => {
     expect(polylinesIntersect(crossingTrace, edge)).toBe(true)
     expect(polylinesIntersect(missingTrace, edge)).toBe(false)
   })
+})
+
+describe('run target sets against the shared engine fixture (plan 11 D11)', () => {
+  const vectors = JSON.parse(vectorsSource) as {
+    graphs: Record<string, { edges: { from: string; to: string }[] }>
+    cases: {
+      note?: string
+      graph: string
+      target: string
+      scope: 'upstream' | 'downstream' | 'component'
+      expect: string[]
+      expectPreflight?: string[]
+    }[]
+  }
+  const helpers = { upstream: upstreamIds, downstream: downstreamIds, component: componentIds }
+
+  it('covers every case in core/testdata/closure_vectors.json', () => {
+    expect(vectors.cases.length).toBeGreaterThan(0)
+  })
+
+  for (const c of vectors.cases) {
+    // expectPreflight is present exactly where the engine's containment rule
+    // makes the two answers differ: these helpers walk edges alone and never
+    // see node.parent. The engine's set is authoritative — run.started
+    // replaces this one — so the divergence is pinned, not fixed here.
+    const expected = c.expectPreflight ?? c.expect
+    it(`${c.graph}/${c.target}/${c.scope}${c.expectPreflight ? ' (containment differs)' : ''}`, () => {
+      const edges = vectors.graphs[c.graph].edges.map((e) => mkEdge(e.from, e.to))
+      expect(helpers[c.scope](edges, c.target)).toEqual(new Set(expected))
+    })
+  }
 })

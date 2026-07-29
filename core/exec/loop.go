@@ -11,31 +11,8 @@ import (
 
 	"cascade/core"
 	"cascade/core/binding"
+	"cascade/core/nodespec"
 )
-
-// Loop modes (plan 09).
-const (
-	LoopModeCount = "count"
-	LoopModeEach  = "each"
-)
-
-// Loop iteration bounds, enforced at dispatch (config tier): the UI clamps,
-// but a hand-edited board must not spin a run for hours.
-const (
-	MinLoopCount      = 1
-	MaxLoopIterations = 10_000
-)
-
-// LoopSpec is a for node's configuration: run the body Count times, or
-// (each mode) once per element of the array Source resolves to. Source may
-// only reference the for node's ancestors.
-type LoopSpec struct {
-	Mode  string
-	Count int
-	// Source is the each-mode array reference; an empty Node means the for
-	// node's single direct upstream (res sugar).
-	Source binding.Ref
-}
 
 // runFor executes a for node: per iteration it pushes a fresh loop scope —
 // ancestor outputs plus {{i}}/{{item}} — runs the children in sub-order
@@ -45,8 +22,8 @@ type LoopSpec struct {
 // source) fail only this node.
 func (r *runner) runFor(ctx context.Context, node core.Node, sc *scope) (*binding.Output, error) {
 	id := node.ID
-	spec, ok := r.opts.Loops[id]
-	if !ok {
+	spec, ok := r.spec(id)
+	if !ok || spec.Loop == nil {
 		return nil, fmt.Errorf("exec: for node %q has no spec", id)
 	}
 	children, err := r.g.ChildExecutionOrder(id)
@@ -71,10 +48,13 @@ func (r *runner) runFor(ctx context.Context, node core.Node, sc *scope) (*bindin
 	rewrap := func(err error) error { return r.loopRefError(err, id, ancestors) }
 
 	srcEnv := &binding.Env{Outputs: base, Exports: r.exports, Upstreams: idStrings(r.upstreams[id])}
-	iterations, items, err := loopIterations(id, spec, srcEnv)
+	iterations, items, err := loopIterations(id, *spec.Loop, srcEnv)
 	if err != nil {
 		return nil, rewrap(err)
 	}
+	// The total is known only here, and the header shows "0/N" until the first
+	// iteration lands — so it is emitted before any child runs.
+	r.emit(Event{Kind: EventLoopProgress, Node: id, Iteration: sc.iteration, Done: 0, Total: iterations})
 
 	// Aggregate keyed by child key — stable under appending body steps;
 	// delay children are excluded (pass-through duplicates, or null).
@@ -85,7 +65,7 @@ func (r *runner) runFor(ctx context.Context, node core.Node, sc *scope) (*bindin
 			continue
 		}
 		aggregated = append(aggregated, cid)
-		bodies[nodeKey(cid, r.opts.Keys)] = []any{}
+		bodies[r.key(cid)] = []any{}
 	}
 
 	for k := range iterations {
@@ -114,9 +94,10 @@ func (r *runner) runFor(ctx context.Context, node core.Node, sc *scope) (*bindin
 			return nil, fmt.Errorf("exec: for node %q: iteration %d failed", id, k)
 		}
 		for _, cid := range aggregated {
-			key := nodeKey(cid, r.opts.Keys)
+			key := r.key(cid)
 			bodies[key] = append(bodies[key], iter.outputs[string(cid)].Body)
 		}
+		r.emit(Event{Kind: EventLoopProgress, Node: id, Iteration: sc.iteration, Done: k + 1, Total: iterations})
 	}
 	r.loopRuns[id] = iterations
 
@@ -129,15 +110,15 @@ func (r *runner) runFor(ctx context.Context, node core.Node, sc *scope) (*bindin
 
 // loopIterations validates the spec (config tier) and returns the iteration
 // count, plus the resolved elements in each mode (nil in count mode).
-func loopIterations(id core.NodeID, spec LoopSpec, env *binding.Env) (int, []any, error) {
+func loopIterations(id core.NodeID, spec nodespec.LoopSpec, env *binding.Env) (int, []any, error) {
 	switch spec.Mode {
-	case LoopModeCount:
-		if spec.Count < MinLoopCount || spec.Count > MaxLoopIterations {
-			return 0, nil, fmt.Errorf("exec: for node %q: count %d is outside %d..%d", id, spec.Count, MinLoopCount, MaxLoopIterations)
+	case nodespec.LoopModeCount:
+		if spec.Count < nodespec.MinLoopCount || spec.Count > nodespec.MaxLoopIterations {
+			return 0, nil, fmt.Errorf("exec: for node %q: count %d is outside %d..%d", id, spec.Count, nodespec.MinLoopCount, nodespec.MaxLoopIterations)
 		}
 		return spec.Count, nil, nil
-	case LoopModeEach:
-		v, err := binding.Source{Kind: binding.KindRef, Ref: spec.Source}.Resolve(env)
+	case nodespec.LoopModeEach:
+		v, err := binding.Source{Kind: binding.KindRef, Ref: spec.SourceRef()}.Resolve(env)
 		if err != nil {
 			return 0, nil, fmt.Errorf("exec: for node %q: each source: %w", id, err)
 		}
@@ -145,8 +126,8 @@ func loopIterations(id core.NodeID, spec LoopSpec, env *binding.Env) (int, []any
 		if !ok {
 			return 0, nil, fmt.Errorf("exec: for node %q: each source must resolve to an array, got a JSON %s", id, jsonTypeName(v))
 		}
-		if len(items) > MaxLoopIterations {
-			return 0, nil, fmt.Errorf("exec: for node %q: each source has %d elements, above the %d iteration cap", id, len(items), MaxLoopIterations)
+		if len(items) > nodespec.MaxLoopIterations {
+			return 0, nil, fmt.Errorf("exec: for node %q: each source has %d elements, above the %d iteration cap", id, len(items), nodespec.MaxLoopIterations)
 		}
 		return len(items), items, nil
 	}

@@ -1,0 +1,127 @@
+{
+  "_comment": [
+    "Run-target closures, shared by core/graph_test.go (Graph.Closure) and",
+    "frontend/src/lib/graph.test.ts (upstreamIds/downstreamIds/componentIds).",
+    "`expect` is the engine's answer and is authoritative: the frontend replaces",
+    "its pre-flight set with the engine's on run.started. `expectPreflight` is",
+    "given only where the two legitimately differ — the frontend helpers walk",
+    "edges alone, and a For container's containment is carried by node.parent,",
+    "which they never see. Every such divergence is spelled out here rather than",
+    "left for someone to rediscover."
+  ],
+  "graphs": {
+    "chain": {
+      "nodes": [{ "id": "a" }, { "id": "b" }, { "id": "c" }],
+      "edges": [
+        { "from": "a", "to": "b" },
+        { "from": "b", "to": "c" }
+      ]
+    },
+    "diamond": {
+      "nodes": [{ "id": "a" }, { "id": "b" }, { "id": "c" }, { "id": "d" }],
+      "edges": [
+        { "from": "a", "to": "b" },
+        { "from": "a", "to": "c" },
+        { "from": "b", "to": "d" },
+        { "from": "c", "to": "d" }
+      ]
+    },
+    "split": {
+      "nodes": [{ "id": "a" }, { "id": "b" }, { "id": "x" }, { "id": "y" }],
+      "edges": [
+        { "from": "a", "to": "b" },
+        { "from": "x", "to": "y" }
+      ]
+    },
+    "loop": {
+      "nodes": [
+        { "id": "seed", "type": "mock" },
+        { "id": "loop", "type": "for" },
+        { "id": "c1", "parent": "loop" },
+        { "id": "c2", "parent": "loop" },
+        { "id": "after" }
+      ],
+      "edges": [
+        { "from": "seed", "to": "loop" },
+        { "from": "c1", "to": "c2" },
+        { "from": "loop", "to": "after" }
+      ]
+    }
+  },
+  "cases": [
+    { "graph": "chain", "target": "b", "scope": "upstream", "expect": ["a", "b"] },
+    { "graph": "chain", "target": "b", "scope": "downstream", "expect": ["b", "c"] },
+    { "graph": "chain", "target": "b", "scope": "component", "expect": ["a", "b", "c"] },
+    { "graph": "chain", "target": "a", "scope": "upstream", "expect": ["a"] },
+    { "graph": "chain", "target": "c", "scope": "downstream", "expect": ["c"] },
+
+    { "graph": "diamond", "target": "d", "scope": "upstream", "expect": ["a", "b", "c", "d"] },
+    { "graph": "diamond", "target": "a", "scope": "downstream", "expect": ["a", "b", "c", "d"] },
+    { "graph": "diamond", "target": "b", "scope": "upstream", "expect": ["a", "b"] },
+    { "graph": "diamond", "target": "b", "scope": "downstream", "expect": ["b", "d"] },
+    { "graph": "diamond", "target": "b", "scope": "component", "expect": ["a", "b", "c", "d"] },
+
+    { "graph": "split", "target": "a", "scope": "component", "expect": ["a", "b"] },
+    { "graph": "split", "target": "x", "scope": "upstream", "expect": ["x"] },
+    { "graph": "split", "target": "y", "scope": "component", "expect": ["x", "y"] },
+
+    {
+      "note": "including a for pulls in its body — a loop runs as a unit",
+      "graph": "loop",
+      "target": "loop",
+      "scope": "upstream",
+      "expect": ["c1", "c2", "loop", "seed"],
+      "expectPreflight": ["loop", "seed"]
+    },
+    {
+      "graph": "loop",
+      "target": "loop",
+      "scope": "downstream",
+      "expect": ["after", "c1", "c2", "loop"],
+      "expectPreflight": ["after", "loop"]
+    },
+    {
+      "note": "targeting a child promotes to its container: a loop child has no meaning outside its iteration",
+      "graph": "loop",
+      "target": "c1",
+      "scope": "downstream",
+      "expect": ["after", "c1", "c2", "loop"],
+      "expectPreflight": ["c1", "c2"]
+    },
+    {
+      "graph": "loop",
+      "target": "c2",
+      "scope": "upstream",
+      "expect": ["c1", "c2", "loop", "seed"],
+      "expectPreflight": ["c1", "c2"]
+    },
+    {
+      "graph": "loop",
+      "target": "c2",
+      "scope": "component",
+      "expect": ["after", "c1", "c2", "loop", "seed"],
+      "expectPreflight": ["c1", "c2"]
+    },
+    {
+      "graph": "loop",
+      "target": "after",
+      "scope": "upstream",
+      "expect": ["after", "c1", "c2", "loop", "seed"],
+      "expectPreflight": ["after", "loop", "seed"]
+    },
+    {
+      "graph": "loop",
+      "target": "seed",
+      "scope": "downstream",
+      "expect": ["after", "c1", "c2", "loop", "seed"],
+      "expectPreflight": ["after", "loop", "seed"]
+    },
+    {
+      "note": "a node outside the loop is unaffected by containment",
+      "graph": "loop",
+      "target": "seed",
+      "scope": "upstream",
+      "expect": ["seed"]
+    }
+  ]
+}

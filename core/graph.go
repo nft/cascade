@@ -104,6 +104,104 @@ func (g *Graph) ChildExecutionOrder(parent NodeID) ([]NodeID, error) {
 	return g.scopeOrder(parent)
 }
 
+// Scope selects which nodes a targeted run covers, mirroring the canvas
+// affordances: a node's Play button runs the downstream chain, the context
+// menu offers upstream ("run what this needs") and component ("run everything
+// connected"). Ported from frontend/src/lib/graph.ts so a headless runner can
+// target subgraphs without the UI.
+type Scope string
+
+const (
+	ScopeUpstream   Scope = "upstream"
+	ScopeDownstream Scope = "downstream"
+	ScopeComponent  Scope = "component"
+)
+
+// Closure returns the node set a targeted run covers: target plus its
+// transitive ancestors (upstream), target plus its transitive descendants
+// (downstream), or target's whole weakly-connected component. The target is
+// always included. Edge direction is ignored for ScopeComponent.
+//
+// Containment is transitive in both directions, and both halves are load
+// bearing:
+//
+//   - Including a for node includes its children — a loop runs as a unit.
+//   - Targeting a CHILD promotes the target to its for container (and that
+//     container's container, if nested). A loop child has no meaning outside
+//     its iteration: runFor owns the body's ordering, output cloning and
+//     {{i}} binding, so a run set containing the child alone would dispatch a
+//     node whose loop-scoped bindings cannot resolve.
+func (g *Graph) Closure(target NodeID, scope Scope) (map[NodeID]bool, error) {
+	switch scope {
+	case ScopeUpstream, ScopeDownstream, ScopeComponent:
+	default:
+		return nil, fmt.Errorf("unknown run scope %q", scope)
+	}
+	if err := g.checkRefs(); err != nil {
+		return nil, err
+	}
+	parent := make(map[NodeID]NodeID, len(g.Nodes))
+	children := make(map[NodeID][]NodeID)
+	known := make(map[NodeID]bool, len(g.Nodes))
+	for _, n := range g.Nodes {
+		known[n.ID] = true
+		parent[n.ID] = n.Parent
+		if n.Parent != "" {
+			children[n.Parent] = append(children[n.Parent], n.ID)
+		}
+	}
+	if !known[target] {
+		return nil, fmt.Errorf("run target %q is not a node in this graph", target)
+	}
+
+	// Promote before walking edges, not after: the edges that matter are the
+	// container's, and a child's own edges never leave the loop body.
+	root := target
+	for parent[root] != "" {
+		root = parent[root]
+	}
+
+	set := map[NodeID]bool{root: true}
+	queue := []NodeID{root}
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		for _, e := range g.Edges {
+			if (scope == ScopeUpstream || scope == ScopeComponent) && e.To == id && !set[e.From] {
+				set[e.From] = true
+				queue = append(queue, e.From)
+			}
+			if (scope == ScopeDownstream || scope == ScopeComponent) && e.From == id && !set[e.To] {
+				set[e.To] = true
+				queue = append(queue, e.To)
+			}
+		}
+	}
+
+	// Close under containment in both directions. Running to a fixpoint rather
+	// than expanding once keeps the answer right for a graph Validate would
+	// reject, where an edge crossed a for boundary and pulled a child in.
+	work := make([]NodeID, 0, len(set))
+	for id := range set {
+		work = append(work, id)
+	}
+	add := func(id NodeID) {
+		if id != "" && !set[id] {
+			set[id] = true
+			work = append(work, id)
+		}
+	}
+	for len(work) > 0 {
+		id := work[len(work)-1]
+		work = work[:len(work)-1]
+		for _, child := range children[id] {
+			add(child)
+		}
+		add(parent[id])
+	}
+	return set, nil
+}
+
 // checkRefs verifies the graph's global structural invariants: unique node
 // IDs, edge endpoints that exist, and parents that exist. These checks stay
 // global — scopes only partition ordering, not identity.
