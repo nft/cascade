@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"net/http"
 
 	"cascade/core/httpcall"
 )
@@ -26,6 +26,7 @@ type TestRequest struct {
 // TestResponse is the captured outcome handed back to the Test tab.
 type TestResponse struct {
 	Status      int               `json:"status"`
+	StatusText  string            `json:"statusText,omitempty"`
 	Headers     map[string]string `json:"headers,omitempty"`
 	Body        any               `json:"body,omitempty"`
 	BodyText    string            `json:"bodyText"`
@@ -43,11 +44,7 @@ func (a *App) SendTestRequest(projectID string, req TestRequest) (TestResponse, 
 	if err != nil {
 		return TestResponse{}, err
 	}
-	ctx := a.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	resp, err := httpcall.Do(ctx, nil, httpcall.Request{
+	resp, err := httpcall.Do(a.baseContext(), a.client, httpcall.Request{
 		Protocol:   req.Protocol,
 		Method:     req.Method,
 		Origin:     req.Origin,
@@ -64,6 +61,7 @@ func (a *App) SendTestRequest(projectID string, req TestRequest) (TestResponse, 
 	}
 	return TestResponse{
 		Status:      resp.Status,
+		StatusText:  http.StatusText(resp.Status),
 		Headers:     resp.Headers,
 		Body:        resp.Body,
 		BodyText:    resp.BodyText,

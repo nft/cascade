@@ -50,6 +50,10 @@ export function RenameProject(arg1, arg2) {
   return window['go']['main']['App']['RenameProject'](arg1, arg2);
 }
 
+export function RunBoard(arg1, arg2) {
+  return window['go']['main']['App']['RunBoard'](arg1, arg2);
+}
+
 export function RunTransformScript(arg1) {
   return window['go']['main']['App']['RunTransformScript'](arg1);
 }
@@ -76,4 +80,8 @@ export function SendTestRequest(arg1, arg2) {
 
 export function SetCredentialSecret(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetCredentialSecret'](arg1, arg2, arg3);
+}
+
+export function StopRun(arg1) {
+  return window['go']['main']['App']['StopRun'](arg1);
 }

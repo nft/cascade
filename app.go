@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sync"
 
 	"cascade/core/binding"
+	"cascade/core/httpcall"
 	"cascade/core/transform"
 	"cascade/store"
 )
@@ -16,11 +18,26 @@ import (
 type App struct {
 	ctx   context.Context
 	store *store.Manager
+	// client is shared by every outbound call: httpcall.Do allocates one per
+	// call when handed nil, which throws away connection reuse across the
+	// dozens of requests a single board run makes.
+	client *http.Client
+
+	// One run at a time, guarded server-side because the frontend's own
+	// isRunning flag does not survive a reload.
+	runMu     sync.Mutex
+	runID     string
+	runCancel context.CancelFunc
+	// emitRunEvent publishes one run event to the frontend; tests replace it
+	// to capture the DTOs without a Wails runtime.
+	emitRunEvent func(runEvent)
 }
 
 // NewApp creates the application shell over the given project store.
 func NewApp(manager *store.Manager) *App {
-	return &App{store: manager}
+	a := &App{store: manager, client: &http.Client{Timeout: httpcall.DefaultTimeout}}
+	a.emitRunEvent = a.emitToRuntime
+	return a
 }
 
 // startup is called when the app starts. The context is saved so we can call

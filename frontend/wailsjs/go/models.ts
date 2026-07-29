@@ -127,6 +127,101 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class RunCapture {
+	    status: number;
+	    headers?: Record<string, string>;
+	    body: any;
+	    at: string;
+	    truncated?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunCapture(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.headers = source["headers"];
+	        this.body = source["body"];
+	        this.at = source["at"];
+	        this.truncated = source["truncated"];
+	    }
+	}
+	export class RunTarget {
+	    node: string;
+	    scope: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunTarget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.node = source["node"];
+	        this.scope = source["scope"];
+	    }
+	}
+	export class RunRequest {
+	    runId: string;
+	    boardId: string;
+	    board: store.Board;
+	    target?: RunTarget;
+	    seed?: Record<string, RunCapture>;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.runId = source["runId"];
+	        this.boardId = source["boardId"];
+	        this.board = this.convertValues(source["board"], store.Board);
+	        this.target = this.convertValues(source["target"], RunTarget);
+	        this.seed = this.convertValues(source["seed"], RunCapture, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RunResult {
+	    runId: string;
+	    projectId: string;
+	    boardId: string;
+	    statuses: Record<string, string>;
+	    notes?: Record<string, string>;
+	    cancelled?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.runId = source["runId"];
+	        this.projectId = source["projectId"];
+	        this.boardId = source["boardId"];
+	        this.statuses = source["statuses"];
+	        this.notes = source["notes"];
+	        this.cancelled = source["cancelled"];
+	    }
+	}
+	
 	export class ScriptUpstream {
 	    status: number;
 	    headers?: Record<string, string>;
@@ -236,6 +331,7 @@ export namespace main {
 	}
 	export class TestResponse {
 	    status: number;
+	    statusText?: string;
 	    headers?: Record<string, string>;
 	    body?: any;
 	    bodyText: string;
@@ -251,6 +347,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.status = source["status"];
+	        this.statusText = source["statusText"];
 	        this.headers = source["headers"];
 	        this.body = source["body"];
 	        this.bodyText = source["bodyText"];

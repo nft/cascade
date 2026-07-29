@@ -27,6 +27,8 @@ export function ReadClipboardEnvelope():Promise<main.ClipboardEnvelope>;
 
 export function RenameProject(arg1:string,arg2:string):Promise<store.ProjectInfo>;
 
+export function RunBoard(arg1:string,arg2:main.RunRequest):Promise<main.RunResult>;
+
 export function RunTransformScript(arg1:main.ScriptRunRequest):Promise<any>;
 
 export function SaveBoard(arg1:string,arg2:store.Board):Promise<void>;
@@ -40,3 +42,5 @@ export function SaveEnvironments(arg1:string,arg2:Array<store.Environment>):Prom
 export function SendTestRequest(arg1:string,arg2:main.TestRequest):Promise<main.TestResponse>;
 
 export function SetCredentialSecret(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function StopRun(arg1:string):Promise<void>;

@@ -1,6 +1,9 @@
 package exec
 
-import "cascade/core"
+import (
+	"cascade/core"
+	"cascade/core/binding"
+)
 
 // Live run events (plan 11 D12). M1's "drop everything except state
 // transitions under backpressure" is amended here: skipped nodes emit a status
@@ -32,6 +35,12 @@ type Event struct {
 	// which produce a status but no record.
 	Status Status
 	Record *Record
+	// Output is the node's produced output, set on a successful node.finished
+	// only. Record carries what a log ROW needs, which for an http node is the
+	// response text — not the parsed body or the response headers a downstream
+	// binding reads. A listener that persists captures live needs those, and
+	// the run's Outputs map only exists once the run is over.
+	Output *binding.Output
 	// Done and Total are set on loop.progress.
 	Done, Total int
 	// Nodes is the run set, set on run.started.

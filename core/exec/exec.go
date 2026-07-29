@@ -213,7 +213,6 @@ func execute(ctx context.Context, g *core.Graph, opts Options) (*Result, error) 
 		if ctx.Err() != nil {
 			// Nodes never reached carry no status at all, so the canvas leaves
 			// their previous state alone instead of painting a wall of colour.
-			r.result.Cancelled = true
 			break
 		}
 		node := nodesByID[id]
@@ -225,6 +224,10 @@ func execute(ctx context.Context, g *core.Graph, opts Options) (*Result, error) 
 		}
 		r.runNode(ctx, node, top)
 	}
+	// Read from the context, not from the break above: a run stopped while its
+	// LAST node was in flight never re-enters the loop, and reporting that as
+	// an uncancelled run tells the user their Stop did nothing.
+	r.result.Cancelled = ctx.Err() != nil
 	return r.result, nil
 }
 
@@ -313,7 +316,7 @@ func (r *runner) runNode(ctx context.Context, node core.Node, sc *scope) {
 	r.result.Outputs[id] = out
 	sc.outputs[string(id)] = out
 	r.result.Records = append(r.result.Records, record)
-	r.emit(Event{Kind: EventNodeFinished, Node: id, Iteration: sc.iteration, Status: StatusSuccess, Record: &record})
+	r.emit(Event{Kind: EventNodeFinished, Node: id, Iteration: sc.iteration, Status: StatusSuccess, Record: &record, Output: out})
 }
 
 // setStatus writes a status into the scope (skip cascade) and the result

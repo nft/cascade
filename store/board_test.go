@@ -108,7 +108,7 @@ func TestBoardJSONOmitsAbsentLayoutSizes(t *testing.T) {
 }
 
 func TestBoardGraphCarriesParent(t *testing.T) {
-	g := loopBoard("b1").graph()
+	g := loopBoard("b1").Graph()
 	parents := map[core.NodeID]core.NodeID{}
 	for _, n := range g.Nodes {
 		parents[n.ID] = n.Parent

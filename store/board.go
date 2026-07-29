@@ -98,8 +98,10 @@ func (b *Board) normalize() {
 	}
 }
 
-// graph converts the board to the engine's graph model.
-func (b Board) graph() core.Graph {
+// Graph converts the board to the engine's graph model. Exported because the
+// app layer runs a board the frontend just handed it, which never reached
+// disk.
+func (b Board) Graph() core.Graph {
 	g := core.Graph{
 		Nodes: make([]core.Node, len(b.Nodes)),
 		Edges: make([]core.Edge, len(b.Edges)),
@@ -128,7 +130,7 @@ func (b Board) validate() error {
 		return fmt.Errorf("board %q: format version %d is newer than supported version %d",
 			b.ID, b.FormatVersion, BoardFormatVersion)
 	}
-	g := b.graph()
+	g := b.Graph()
 	if err := g.Validate(); err != nil {
 		return fmt.Errorf("board %q: %w", b.ID, err)
 	}

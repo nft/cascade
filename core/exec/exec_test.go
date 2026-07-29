@@ -319,6 +319,12 @@ func TestDelayNodeCancelInterruptsWait(t *testing.T) {
 	if rec := res.Records[0]; rec.Err == "" {
 		t.Fatalf("cancelled delay record must carry the ctx error: %+v", rec)
 	}
+	// The delay is the ONLY node, so the loop never runs again after it: a
+	// Cancelled flag set at the loop's break would read false here and tell the
+	// user their Stop did nothing.
+	if !res.Cancelled {
+		t.Error("Cancelled is false for a run stopped during its last node")
+	}
 }
 
 // An out-of-range duration is a config-tier failure: it fails only that
