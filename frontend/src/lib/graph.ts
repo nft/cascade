@@ -1,5 +1,6 @@
 // Pure graph helpers over the canvas node/edge arrays (plan 03 §3–4).
 import type { AppEdge, AppNode } from './model'
+import { formatEdgeLabel, nodeSendKeys } from './nodeIO'
 
 /**
  * Map edges to display edges: an edge animates iff its target node is running
@@ -13,6 +14,10 @@ import type { AppEdge, AppNode } from './model'
  * incoming fed the call, outgoing consumed it; together they pin the node.
  * Precedence: a live run wins over the hover highlight, the hover highlight
  * wins over failed (the panel already shows the red; the canvas shows where).
+ *
+ * Edges also get a label naming what the source hands over — the names
+ * downstream nodes can reference off it — so the payload is readable on the
+ * wire rather than only inside the two cards it runs between.
  */
 export function decorateEdges(
   nodes: AppNode[],
@@ -23,8 +28,10 @@ export function decorateEdges(
   // Note nodes carry no status; their edges (which validation rejects anyway)
   // simply get no decoration.
   const statusById = new Map(nodes.map((n) => [n.id, 'status' in n.data ? n.data.status : undefined]))
+  const sendsById = new Map(nodes.map((n) => [n.id, nodeSendKeys(n)]))
   return edges.map((edge) => {
     const targetStatus = statusById.get(edge.target)
+    const sends = sendsById.get(edge.source) ?? []
     const animated =
       targetStatus === 'running' && (activeRunIds === null || activeRunIds.has(edge.source))
     const highlighted =
@@ -32,6 +39,7 @@ export function decorateEdges(
     return {
       ...edge,
       animated,
+      label: sends.length > 0 ? formatEdgeLabel(sends) : undefined,
       class: animated
         ? 'edge-active'
         : highlighted

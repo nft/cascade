@@ -96,6 +96,9 @@ export function mergeSchemas(a: SchemaJSON, b: SchemaJSON): SchemaJSON {
 // --- picker tree -------------------------------------------------------------
 
 /** One row of the binding picker's response tree. */
+/** Row label standing in for an array's elements in the tree and in paths. */
+export const ARRAY_ITEM_LABEL = '[0]'
+
 export interface SchemaTreeNode {
   /** Display label (a key name or `[0]` for array items). */
   label: string
@@ -106,7 +109,8 @@ export interface SchemaTreeNode {
   children: SchemaTreeNode[]
 }
 
-function typeLabel(schema: SchemaJSON): string {
+/** Short type annotation for one schema row (`string · uuid`, `object`). */
+export function typeLabel(schema: SchemaJSON): string {
   const types = [...typeSet(schema.type)]
   const base = types.length > 0 ? types.join(' | ') : 'any'
   return schema.format ? `${base} · ${schema.format}` : base
@@ -124,9 +128,9 @@ function childTree(schema: SchemaJSON, basePath: string): SchemaTreeNode[] {
   }
   if (schema.items) {
     // A sample first element stands in for the whole array in insert paths.
-    const path = `${basePath}[0]`
+    const path = `${basePath}${ARRAY_ITEM_LABEL}`
     children.push({
-      label: '[0]',
+      label: ARRAY_ITEM_LABEL,
       path,
       type: typeLabel(schema.items),
       children: childTree(schema.items, path),

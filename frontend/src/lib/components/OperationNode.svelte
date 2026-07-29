@@ -2,12 +2,19 @@
   import { Handle, Position } from '@xyflow/svelte'
   import { isDanglingCredential } from '../credentials'
   import type { OperationNodeData } from '../model'
+  import { httpBodyShape, httpInputRefs } from '../nodeIO'
+  import { keyByNodeId } from '../refs'
   import { urlHost } from '../request'
   import { app } from '../state.svelte'
   import { methodBadge, statusDot, statusLabel } from '../ui'
   import Icon from './Icon.svelte'
+  import NodeBodyShape from './NodeBodyShape.svelte'
+  import NodeUsesRow from './NodeUsesRow.svelte'
 
   let { id, data, selected = false }: { id: string; data: OperationNodeData; selected?: boolean } = $props()
+
+  const uses = $derived(httpInputRefs(data, keyByNodeId(app.nodes)))
+  const shape = $derived(httpBodyShape(data, app.responses[id]))
 
   // Dangling reference (plan 04 K5): the credential was deleted after this
   // node was pointed at it. The run fails loudly Go-side; the badge makes the
@@ -74,6 +81,8 @@
         </span>
       {/if}
     </div>
+    <NodeUsesRow refs={uses} />
+    <NodeBodyShape {shape} />
     <div class="flex items-center gap-1.5 pt-0.5">
       <span class="h-2 w-2 rounded-full {statusDot[data.status]}"></span>
       <span class="text-[10px] text-zinc-400">{statusLabel[data.status]}</span>

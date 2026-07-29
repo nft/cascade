@@ -1,11 +1,19 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
   import type { TransformNodeData } from '../model'
+  import { CARD_ROW_CAP, pickRowSummaries, withOverflow } from '../nodeIO'
+  import { keyByNodeId } from '../refs'
   import { app } from '../state.svelte'
   import { statusDot, statusLabel } from '../ui'
   import Icon from './Icon.svelte'
 
   let { id, data, selected = false }: { id: string; data: TransformNodeData; selected?: boolean } = $props()
+
+  const keys = $derived(keyByNodeId(app.nodes))
+  // The pick rows are both what the node reads and what it produces, so they
+  // stand in for the "uses" row other cards carry.
+  const rows = $derived(withOverflow(pickRowSummaries(data.pick, keys), CARD_ROW_CAP))
+  const scriptLines = $derived(data.script.trim() === '' ? 0 : data.script.trim().split('\n').length)
 </script>
 
 <!-- Transform card (plan 06 T5): function icon, no method badge and no
@@ -43,7 +51,29 @@
   </div>
 
   <div class="space-y-1.5 px-3 py-2">
-    <p class="font-mono text-[11px] text-zinc-500">{data.mode === 'pick' ? 'pick rows' : 'script'}</p>
+    {#if data.mode === 'script'}
+      <p class="font-mono text-[11px] text-zinc-500">
+        script · {scriptLines}
+        {scriptLines === 1 ? 'line' : 'lines'}
+      </p>
+    {:else if rows.shown.length === 0}
+      <p class="font-mono text-[11px] text-zinc-600">pick · no rows yet</p>
+    {:else}
+      <div class="space-y-0.5">
+        {#each rows.shown as row}
+          <div class="flex min-w-0 items-center gap-1">
+            <span class="max-w-24 truncate font-mono text-[11px] text-violet-300">{row.key}</span>
+            <Icon name="arrow_left_alt" size={11} class="shrink-0 text-zinc-600" />
+            <span class="min-w-0 flex-1 truncate font-mono text-[10px] text-zinc-500" title={row.expr}>
+              {row.expr}
+            </span>
+          </div>
+        {/each}
+        {#if rows.more > 0}
+          <p class="text-[10px] text-zinc-600">+{rows.more} more</p>
+        {/if}
+      </div>
+    {/if}
     <div class="flex items-center gap-1.5 pt-0.5">
       <span class="h-2 w-2 rounded-full {statusDot[data.status]}"></span>
       <span class="text-[10px] text-zinc-400">{statusLabel[data.status]}</span>

@@ -72,6 +72,22 @@ describe('decorateEdges (plan 03 §3)', () => {
   })
 })
 
+describe('decorateEdges value labels', () => {
+  it('names what the source hands downstream, on every edge out of it', () => {
+    const source = mkNode('a', 'success')
+    source.data = { ...source.data, exports: [{ key: 'userId', path: 'body.data.id' }] }
+    const nodes = [source, mkNode('b', 'idle'), mkNode('c', 'idle')]
+    const [toB, toC] = decorateEdges(nodes, [mkEdge('a', 'b'), mkEdge('a', 'c')])
+    expect(toB.label).toBe('userId')
+    expect(toC.label).toBe('userId')
+  })
+
+  it('leaves an edge out of a node that names nothing unlabelled', () => {
+    const [edge] = decorateEdges([mkNode('a', 'success'), mkNode('b', 'idle')], [mkEdge('a', 'b')])
+    expect(edge.label).toBeUndefined()
+  })
+})
+
 describe('decorateEdges log-hover highlight (plan 10 §2)', () => {
   it('marks exactly the incident edges of the highlighted node, both directions', () => {
     const nodes = [mkNode('a', 'success'), mkNode('b', 'success'), mkNode('c', 'success'), mkNode('d', 'success')]

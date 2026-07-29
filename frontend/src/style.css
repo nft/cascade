@@ -44,6 +44,23 @@
     --xy-edge-stroke: var(--color-sky-400);
     --xy-edge-stroke-width: 2.5;
   }
+  /* Edge labels name what the source node hands downstream (decorateEdges).
+     xyflow renders them into its own portal layer, out of reach of utilities. */
+  .svelte-flow__edge-label {
+    background-color: var(--color-zinc-900);
+    border: 1px solid var(--color-zinc-800);
+    border-radius: var(--radius-sm);
+    color: var(--color-violet-300);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1.4;
+    padding: 0 4px;
+  }
+  /* xyflow sets pointer-events inline on the label, so only !important keeps it
+     from shielding the edge underneath from a scissors click. */
+  .cursor-scissors .svelte-flow__edge-label {
+    pointer-events: none !important;
+  }
   /* Scissors mode disables elementsSelectable; keep edges clickable for click-to-cut. */
   .cursor-scissors .svelte-flow__edge {
     pointer-events: visibleStroke;
