@@ -1,11 +1,19 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
   import type { TransformNodeData } from '../model'
-  import { CARD_ROW_CAP, pickRowSummaries, withOverflow } from '../nodeIO'
+  import {
+    CARD_ROW_CAP,
+    capturedBodyShape,
+    isResultStale,
+    pickRowSummaries,
+    scriptSummary,
+    withOverflow,
+  } from '../nodeIO'
   import { keyByNodeId } from '../refs'
   import { app } from '../state.svelte'
   import { statusDot, statusLabel } from '../ui'
   import Icon from './Icon.svelte'
+  import NodeBodyShape from './NodeBodyShape.svelte'
 
   let { id, data, selected = false }: { id: string; data: TransformNodeData; selected?: boolean } = $props()
 
@@ -13,7 +21,13 @@
   // The pick rows are both what the node reads and what it produces, so they
   // stand in for the "uses" row other cards carry.
   const rows = $derived(withOverflow(pickRowSummaries(data.pick, keys), CARD_ROW_CAP))
-  const scriptLines = $derived(data.script.trim() === '' ? 0 : data.script.trim().split('\n').length)
+  const script = $derived(scriptSummary(data.script))
+  // Script mode says nothing about its output on its own, so the card shows the
+  // shape of what the script last returned, titled by the key downstream nodes
+  // reference it under.
+  const captured = $derived(app.responses[id])
+  const result = $derived(capturedBodyShape(captured))
+  const resultStale = $derived(isResultStale(captured, data.transformEditedAt))
 </script>
 
 <!-- Transform card (plan 06 T5): function icon, no method badge and no
@@ -52,10 +66,13 @@
 
   <div class="space-y-1.5 px-3 py-2">
     {#if data.mode === 'script'}
-      <p class="font-mono text-[11px] text-zinc-500">
-        script · {scriptLines}
-        {scriptLines === 1 ? 'line' : 'lines'}
+      <p
+        class="truncate font-mono text-[11px] {script.empty ? 'text-zinc-600' : 'text-zinc-400'}"
+        title={script.empty ? undefined : data.script}
+      >
+        {script.line}
       </p>
+      <NodeBodyShape shape={result} label={data.key} stale={resultStale} />
     {:else if rows.shown.length === 0}
       <p class="font-mono text-[11px] text-zinc-600">pick · no rows yet</p>
     {:else}

@@ -222,6 +222,13 @@ export type TransformNodeData = RunnableNodeData & {
    */
   pick: NodeField[]
   script: string
+  /**
+   * When what this transform computes (its mode or script) was last edited,
+   * ISO. Compared against the last capture's time so the card can tell a
+   * result shape that still describes this code from one an earlier version
+   * produced (nodeIO `isResultStale`).
+   */
+  transformEditedAt?: string
 }
 
 /** Free-text sticky; not executable, no handles (plan 06 T6). */

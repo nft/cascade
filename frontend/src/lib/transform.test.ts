@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppEdge, AppNode, CapturedResponse, NodeField, TransformNode } from './model'
-import { executeTransform, runPick, setKeyPath } from './transform'
+import { executeTransform, runPick, setKeyPath, transformEdit } from './transform'
 import type { ResolveContext } from './refs'
 
 const orgResponse: CapturedResponse = {
@@ -56,6 +56,19 @@ describe('setKeyPath', () => {
     setKeyPath(target, 'a.c', 2)
     setKeyPath(target, 'a.b', 3)
     expect(target).toEqual({ a: { b: 3, c: 2 } })
+  })
+})
+
+describe('transformEdit', () => {
+  it('stamps the edit time alongside the patch, so a stale result shape is detectable', () => {
+    expect(transformEdit({ script: 'return 5' }, new Date('2026-07-06T14:03:00.000Z'))).toEqual({
+      script: 'return 5',
+      transformEditedAt: '2026-07-06T14:03:00.000Z',
+    })
+  })
+
+  it('stamps a mode switch too: the other mode computes a different result', () => {
+    expect(transformEdit({ mode: 'script' }, new Date('2026-07-06T14:03:00.000Z')).mode).toBe('script')
   })
 })
 

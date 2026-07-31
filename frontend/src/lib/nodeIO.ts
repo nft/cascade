@@ -132,6 +132,49 @@ function sendKeys(
   return [...new Set([...keys, ...sendKeys(upstream, nodes, edges, seen)])]
 }
 
+// --- what a script transform does --------------------------------------------
+
+/** Card text for a script that holds no statement yet: nothing would run. */
+export const EMPTY_SCRIPT_LABEL = 'script · not written yet'
+
+/** A line is dropped as a comment only when it opens with one of these. */
+const COMMENT_STARTS = ['//', '/*', '*']
+
+/** The statement whose value the sandbox hands downstream. */
+const RETURN_STATEMENT = /^return\b/
+
+export interface ScriptSummary {
+  /** The single line the card shows, or EMPTY_SCRIPT_LABEL. */
+  line: string
+  /** True when the script holds no statement at all. */
+  empty: boolean
+}
+
+/**
+ * Line-level filtering, not JS parsing: only a line that *starts* with a
+ * comment marker goes, so a `//` inside a string survives — `return 'http://x'`
+ * is code, not a comment.
+ */
+function codeLines(script: string): string[] {
+  return script
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !COMMENT_STARTS.some((start) => line.startsWith(start)))
+}
+
+/**
+ * What a script transform's card says it does. A line count cannot tell the
+ * untouched seed script from an authored one (both are three lines), and the
+ * `return` is the payload, so the card shows that line — or says the script is
+ * still empty, as pick mode says it has no rows.
+ */
+export function scriptSummary(script: string): ScriptSummary {
+  const lines = codeLines(script)
+  if (lines.length === 0) return { line: EMPTY_SCRIPT_LABEL, empty: true }
+  const returned = lines.findLast((line) => RETURN_STATEMENT.test(line))
+  return { line: returned ?? lines[lines.length - 1], empty: false }
+}
+
 /** One edge's label: the first names the source sends, then "+N" for the rest. */
 export function formatEdgeLabel(keys: readonly string[]): string {
   const { shown, more } = withOverflow(keys, EDGE_LABEL_CAP)
@@ -180,22 +223,51 @@ export function bodyShape(schema: SchemaJSON): BodyShape {
 const shapeByCapture = new WeakMap<CapturedResponse, BodyShape>()
 
 /**
- * The schema a request card draws its body from: the pinned one first, then
- * whatever the last response inferred. Mirrors the binding picker's
- * precedence (picker.ts `nodeSchemaSource`), minus the spec source it has no
- * room to distinguish.
+ * The shape of a node's last captured output — for a transform, the value its
+ * script returned or its pick rows assembled. Null until a run (or a test) has
+ * captured something readable.
  */
-export function httpBodyShape(
-  data: OperationNodeData,
-  captured: CapturedResponse | undefined,
-): BodyShape | null {
-  if (data.responseSchema) return bodyShape(data.responseSchema)
+export function capturedBodyShape(captured: CapturedResponse | undefined): BodyShape | null {
   if (!captured || captured.truncated) return null
   const cached = shapeByCapture.get(captured)
   if (cached) return cached
   const shape = bodyShape(inferSchema(captured.body))
   shapeByCapture.set(captured, shape)
   return shape
+}
+
+/**
+ * The schema a request card draws its body from: the pinned one first, then
+ * whatever the last response inferred. Mirrors the binding picker's
+ * precedence (picker.ts `nodeSchemaSource`), minus the spec source it has no
+ * room to distinguish. Transforms never pin, so their cards read the capture
+ * directly.
+ */
+export function httpBodyShape(
+  data: OperationNodeData,
+  captured: CapturedResponse | undefined,
+): BodyShape | null {
+  if (data.responseSchema) return bodyShape(data.responseSchema)
+  return capturedBodyShape(captured)
+}
+
+/**
+ * True when the capture predates the node's last edit: its shape was produced
+ * by code that no longer exists, so a card must not present it as current. An
+ * edit made *during* a run counts as well — over-reporting a stale shape is
+ * the safe direction, since the alternative is a confident lie.
+ */
+export function isResultStale(
+  captured: CapturedResponse | undefined,
+  editedAt: string | undefined,
+): boolean {
+  if (!captured || editedAt === undefined) return false
+  // Both sides write fixed-precision ISO UTC (runlog.go captureTimeLayout), but
+  // an imported or hand-edited board need not, so compare instants, not text.
+  const capturedMs = Date.parse(captured.at)
+  const editedMs = Date.parse(editedAt)
+  if (Number.isNaN(capturedMs) || Number.isNaN(editedMs)) return false
+  return editedMs > capturedMs
 }
 
 // --- transform pick rows ------------------------------------------------------

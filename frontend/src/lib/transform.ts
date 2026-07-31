@@ -11,6 +11,7 @@ import type {
   NodeField,
   ScriptUpstream,
   TransformNode,
+  TransformNodeData,
 } from './model'
 import { directUpstreams, keyByNodeId, resolveField, type ResolveContext } from './refs'
 
@@ -19,6 +20,18 @@ export const DEFAULT_TRANSFORM_SCRIPT = `// Inputs: res (single upstream), nodes
 // item (each-mode loops). _ has pick/omit/groupBy/uniq/chunk/sum… — return a JSON-serializable value.
 return res.body
 `
+
+/**
+ * Node-data patch for an edit to what a transform computes, stamped with the
+ * edit time so the card can spot a result shape left over from earlier code
+ * (nodeIO `isResultStale`). Every write to `mode` or `script` goes through it.
+ */
+export function transformEdit(
+  patch: Pick<Partial<TransformNodeData>, 'mode' | 'script'>,
+  at = new Date(),
+): Partial<TransformNodeData> {
+  return { ...patch, transformEditedAt: at.toISOString() }
+}
 
 /** Loop-scope inputs a transform executes under (top level: index 0, no item). */
 export interface TransformScope {

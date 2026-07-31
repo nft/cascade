@@ -1,7 +1,7 @@
 <script lang="ts">
   import { TRANSFORM_MODES, type TransformNode } from '../../model'
   import { app } from '../../state.svelte'
-  import { executeTransform } from '../../transform'
+  import { executeTransform, transformEdit } from '../../transform'
   import Icon from '../Icon.svelte'
   import Button from '../ui/Button.svelte'
   import { FIELD_LABEL } from '../ui/classes'
@@ -52,7 +52,7 @@
           class="rounded px-2 py-0.5 text-[10px] {node.data.mode === mode
             ? 'bg-violet-500/20 text-violet-200'
             : 'text-zinc-500 hover:text-zinc-300'}"
-          onclick={() => app.updateNodeData(node.id, { mode })}
+          onclick={() => app.updateNodeData(node.id, transformEdit({ mode }))}
         >
           {mode}
         </button>
@@ -64,7 +64,10 @@
     {#if node.data.mode === 'pick'}
       <PickRowsSection {node} />
     {:else}
-      <CodeEditor value={node.data.script} onChange={(script) => app.updateNodeData(node.id, { script })} />
+      <CodeEditor
+        value={node.data.script}
+        onChange={(script) => app.updateNodeData(node.id, transformEdit({ script }))}
+      />
       <p class="mt-1 text-[10px] text-zinc-600">
         res · nodes.&lt;key&gt; · i · _ helpers — return a JSON value
       </p>
