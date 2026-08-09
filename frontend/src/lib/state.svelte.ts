@@ -486,7 +486,7 @@ export class AppState {
   }
 
   /** Node data across saved boards (minus the open one) plus the live canvas. */
-  private allNodeData() {
+  allNodeData() {
     if (!this.project) return []
     const saved = this.project.boards.filter((b) => b.id !== this.boardId).flatMap((b) => b.nodes)
     return [...saved, ...this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))]

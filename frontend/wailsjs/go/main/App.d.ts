@@ -43,4 +43,6 @@ export function SendTestRequest(arg1:string,arg2:main.TestRequest):Promise<main.
 
 export function SetCredentialSecret(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function SetProjectDefaults(arg1:string,arg2:store.Defaults):Promise<void>;
+
 export function StopRun(arg1:string):Promise<void>;
