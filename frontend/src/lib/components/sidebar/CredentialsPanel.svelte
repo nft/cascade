@@ -4,6 +4,7 @@
   // uses a two-step confirm that warns about nodes referencing the name.
   import { injectionPreview, SECRET_MASK } from '../../credentials'
   import { dialogs } from '../../dialogs.svelte'
+  import { deleteConfirmLabel } from '../../format'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
   import Button from '../ui/Button.svelte'
@@ -58,8 +59,7 @@
         >
           <Icon name="delete" size={12} />
           {#if confirmingDelete === cred.name}
-            {@const refs = app.credentialNodeRefCount(cred.name)}
-            {refs > 0 ? `Really? ${refs === 1 ? '1 node uses' : `${refs} nodes use`} it` : 'Really delete?'}
+            {deleteConfirmLabel(app.credentialNodeRefCount(cred.name))}
           {:else}
             Delete
           {/if}

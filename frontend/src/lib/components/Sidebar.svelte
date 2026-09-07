@@ -3,8 +3,8 @@
   import Icon from './Icon.svelte'
   import CollectionsTree from './sidebar/CollectionsTree.svelte'
   import CredentialsPanel from './sidebar/CredentialsPanel.svelte'
+  import EnvironmentsPanel from './sidebar/EnvironmentsPanel.svelte'
   import OperationsList from './sidebar/OperationsList.svelte'
-  import Button from './ui/Button.svelte'
   import Input from './ui/Input.svelte'
 
   let query = $state('')
@@ -40,22 +40,7 @@
       <CollectionsTree {query} />
     </div>
   {:else if app.sidebarTab === 'environments'}
-    <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-      {#each app.environments as env (env.name)}
-        <div class="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
-          <p class="text-xs font-medium text-zinc-200">{env.name}</p>
-          <p class="truncate font-mono text-[11px] text-zinc-500">{env.baseUrl}</p>
-        </div>
-      {:else}
-        <p class="p-1 text-center text-[11px] leading-relaxed text-zinc-600">
-          No environments in <em>{app.projectName}</em> yet.
-        </p>
-      {/each}
-      <Button variant="dashed" class="w-full">
-        <Icon name="add" size={14} />
-        Add environment
-      </Button>
-    </div>
+    <EnvironmentsPanel />
   {:else}
     <CredentialsPanel />
   {/if}

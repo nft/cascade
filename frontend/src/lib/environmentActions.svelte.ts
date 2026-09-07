@@ -38,34 +38,45 @@ export function environmentNodeRefCount(app: AppState, name: string): number {
 }
 
 /**
- * Write the list and the defaults it implies, rolling both back together when
- * either write fails.
+ * Write the list and the defaults it implies, rolling back whatever did not
+ * land.
  *
  * Two round trips, in this order deliberately. If the second fails, disk holds
  * the new list beside a default that may name an environment no longer in it —
  * which the environment select renders as an explicit "(deleted)" row. The
  * other order would leave a default naming an environment the list never
  * gained, which nothing surfaces at all.
+ *
+ * The bundle is captured before the awaits rather than re-read after them: the
+ * user can switch or close the project inside a two-round-trip window, and a
+ * rollback onto `app.project` would then restore this project's environments
+ * over a different one's — or throw on a project that was closed.
  */
 async function persist(
   app: AppState,
   environments: EnvironmentDef[],
   preferred?: string,
 ): Promise<string | null> {
-  const projectId = app.projectId
-  if (!app.project || !projectId) return NO_PROJECT
-  const previousEnvironments = app.project.environments
-  const previousDefaults = app.project.project.defaults
+  const bundle = app.project
+  if (!bundle) return NO_PROJECT
+  const projectId = bundle.project.id
+  const previousEnvironments = bundle.environments
+  const previousDefaults = bundle.project.defaults
   const defaults = nextDefaults(previousDefaults, environments, preferred)
-  app.project.environments = environments
-  app.project.project.defaults = defaults
+  bundle.environments = environments
+  bundle.project.defaults = defaults
+  let listWritten = false
   try {
     await api.saveEnvironments(projectId, $state.snapshot(environments) as EnvironmentDef[])
+    listWritten = true
     await api.setProjectDefaults(projectId, $state.snapshot(defaults) as ProjectDefaults)
     return null
   } catch (err) {
-    app.project.environments = previousEnvironments
-    app.project.project.defaults = previousDefaults
+    // Only the half that failed is rolled back. Undoing a list the store
+    // accepted would leave the sidebar showing a row that is already gone
+    // from disk, and gone again the next time the project is opened.
+    if (!listWritten) bundle.environments = previousEnvironments
+    bundle.project.defaults = previousDefaults
     return String(err)
   }
 }

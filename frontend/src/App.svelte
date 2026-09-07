@@ -7,6 +7,7 @@
   import RequestEditorDialog from './lib/components/library/RequestEditorDialog.svelte'
   import SaveToCollectionDialog from './lib/components/library/SaveToCollectionDialog.svelte'
   import CredentialDialog from './lib/components/sidebar/CredentialDialog.svelte'
+  import EnvironmentDialog from './lib/components/sidebar/EnvironmentDialog.svelte'
   import ImportMappingDialog from './lib/components/ImportMappingDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import NoticeDialog from './lib/components/NoticeDialog.svelte'
@@ -45,6 +46,9 @@
 {/if}
 {#if dialogs.credential}
   <CredentialDialog context={dialogs.credential} />
+{/if}
+{#if dialogs.environment}
+  <EnvironmentDialog context={dialogs.environment} />
 {/if}
 {#if dialogs.notice}
   <NoticeDialog title={dialogs.notice.title} message={dialogs.notice.message} />

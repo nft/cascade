@@ -101,13 +101,46 @@ describe('environment flows (plan 11 W7)', () => {
     expect(app.project?.project.defaults).toEqual({ environment: 'staging' })
   })
 
-  it('rolls the list and the default back together when a write fails', async () => {
+  it('rolls both back when the list write fails — neither landed', async () => {
     project([local], 'local')
-    defaulted.mockRejectedValue(new Error('disk full'))
+    saved.mockRejectedValue(new Error('disk full'))
     const error = await saveEnvironment(app, staging)
     expect(error).toContain('disk full')
     expect(app.environments).toEqual([local])
     expect(app.project?.project.defaults).toEqual({ environment: 'local' })
+  })
+
+  it('keeps a list the store accepted when only the defaults write fails', async () => {
+    project([local, staging], 'local')
+    defaulted.mockRejectedValue(new Error('disk full'))
+    const error = await deleteEnvironment(app, 'local')
+    expect(error).toContain('disk full')
+    // Undoing this half would show a row that is already gone from disk, and
+    // gone again on the next open. Memory matches what actually landed.
+    expect(app.environments).toEqual([staging])
+    expect(saved).toHaveBeenCalledWith('p1', [staging])
+    expect(app.project?.project.defaults).toEqual({ environment: 'local' })
+  })
+
+  it('rolls back onto the project it wrote, not whichever is open when it fails', async () => {
+    project([local, staging], 'local')
+    const opened = app.project
+    defaulted.mockRejectedValue(new Error('disk full'))
+    const pending = setDefaultEnvironment(app, 'staging')
+    // The user switches projects inside the two-round-trip window.
+    project([{ name: 'prod', baseUrl: 'https://prod.example.com' }], 'prod')
+    await pending
+    expect(app.environments).toEqual([{ name: 'prod', baseUrl: 'https://prod.example.com' }])
+    expect(app.project?.project.defaults).toEqual({ environment: 'prod' })
+    expect(opened?.project.defaults).toEqual({ environment: 'local' })
+  })
+
+  it('does not throw when the project is closed mid-write', async () => {
+    project([local], 'local')
+    defaulted.mockRejectedValue(new Error('disk full'))
+    const pending = saveEnvironment(app, staging)
+    app.project = null
+    await expect(pending).resolves.toContain('disk full')
   })
 
   it('refuses to write with no project open', async () => {

@@ -1,10 +1,12 @@
 <script lang="ts">
   import { isDanglingCredential } from '../credentials'
+  import { targetProblem } from '../environments'
   import { isDelayNode, isForNode, isHttpNode, isMockNode, isRunnableNode, isTransformNode } from '../model'
   import { nodeTarget } from '../requestEditor'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import CredentialOptions from './CredentialOptions.svelte'
+  import EnvironmentOptions from './EnvironmentOptions.svelte'
   import Icon from './Icon.svelte'
   import DelaySection from './inspector/DelaySection.svelte'
   import ForSection from './inspector/ForSection.svelte'
@@ -28,6 +30,11 @@
     !!node &&
       isHttpNode(node) &&
       isDanglingCredential(app.credentials, node.data.credential),
+  )
+  // Said at edit time so the node is not left to fail at run time for a
+  // reason only the log explains; W2's engine error remains the backstop.
+  const noTarget = $derived(
+    node && isHttpNode(node) ? targetProblem(app.environments, node.data) : null,
   )
 </script>
 
@@ -74,9 +81,7 @@
               aria-label="Environment"
               onchange={(e) => app.updateNodeData(node.id, { environment: e.currentTarget.value })}
             >
-              {#each app.environments as env (env.name)}
-                <option value={env.name}>{env.name}</option>
-              {/each}
+              <EnvironmentOptions current={node.data.environment} />
             </Select>
           </Field>
           <Field label="Credential">
@@ -91,6 +96,13 @@
             </Select>
           </Field>
         </div>
+
+        {#if noTarget}
+          <p class="flex items-start gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-amber-300">
+            <Icon name="warning" size={12} />
+            <span>{noTarget}</span>
+          </p>
+        {/if}
 
         {#if danglingCredential}
           <p class="flex items-start gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-amber-300">

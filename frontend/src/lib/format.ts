@@ -15,6 +15,16 @@ function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
 
+/**
+ * Label for the armed second click of a delete confirm, naming how many nodes
+ * reference the thing being deleted. Shared so the credential and environment
+ * panels warn in the same words.
+ */
+export function deleteConfirmLabel(refs: number): string {
+  if (refs === 0) return 'Really delete?'
+  return `Really? ${refs === 1 ? '1 node uses' : `${refs} nodes use`} it`
+}
+
 /** Formats a millisecond duration for display in the logs section. */
 export function formatDuration(ms: number): string {
   if (ms < 0 || !Number.isFinite(ms)) return '–'

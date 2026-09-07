@@ -1,7 +1,8 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { api } from '../api'
-import type { AppNode, CredentialDef } from '../model'
+import { NO_TARGET_MESSAGE, unknownEnvironmentMessage } from '../environments'
+import type { AppNode, CredentialDef, EnvironmentDef } from '../model'
 import { app } from '../state.svelte'
 import Inspector from './Inspector.svelte'
 
@@ -107,5 +108,77 @@ describe('Inspector close vs delete (plan 03 §1)', () => {
     expect(app.nodes).toHaveLength(0)
     expect(app.selectedNodeId).toBeNull()
     expect(document.querySelector('aside')).toBeNull()
+  })
+})
+
+describe('Inspector environment picker (plan 11 W7)', () => {
+  const staging: EnvironmentDef = { name: 'staging', baseUrl: 'https://staging.example.com' }
+
+  async function openProject(environments: EnvironmentDef[]) {
+    const [info] = await api.listProjects()
+    app.project = {
+      project: { id: info.id, name: info.name, defaults: {} },
+      sources: [],
+      environments,
+      credentials: [],
+      boards: [],
+      collections: [],
+    }
+    flushSync()
+  }
+
+  afterEach(() => {
+    app.project = null
+  })
+
+  const environmentSelect = () =>
+    document.querySelector('select[aria-label="Environment"]') as HTMLSelectElement
+
+  it('offers None first, then the project environments', async () => {
+    await openProject([staging, { name: 'local', baseUrl: 'http://localhost:8080' }])
+    const select = environmentSelect()
+    expect(select.options[0].value).toBe('')
+    expect(select.options[0].textContent).toBe('None')
+    expect([...select.options].map((o) => o.value)).toEqual(['', 'staging', 'local'])
+    expect(select.value).toBe('staging')
+    expect(document.body.textContent).not.toContain('pick an environment')
+  })
+
+  it('says the project has none instead of rendering an empty dropdown', async () => {
+    await openProject([])
+    app.updateNodeData('n1', { environment: '' })
+    flushSync()
+    // The dead end W7 exists to fix: nothing to pick, and no hint why.
+    const hint = [...environmentSelect().options].find((o) => o.disabled)
+    expect(hint?.textContent).toContain('No environments')
+    expect(document.body.textContent).toContain(NO_TARGET_MESSAGE)
+  })
+
+  it('keeps a deleted environment visible as a disabled entry and warns', async () => {
+    await openProject([])
+    const select = environmentSelect()
+    expect(select.value).toBe('staging')
+    const dangling = [...select.options].find((o) => o.value === 'staging')
+    expect(dangling?.disabled).toBe(true)
+    expect(dangling?.textContent).toContain('(deleted)')
+    expect(document.body.textContent).toContain(unknownEnvironmentMessage('staging'))
+  })
+
+  it('warns when an environment resolves to no base URL', async () => {
+    await openProject([{ name: 'staging', baseUrl: '' }])
+    expect(document.body.textContent).toContain(unknownEnvironmentMessage('staging'))
+  })
+
+  it('stays quiet for the two ways a node carries its own origin', async () => {
+    await openProject([])
+    // An origin override beats the environment (BuildRequest resolution order).
+    app.updateNodeData('n1', { environment: '', origin: 'https://api.other.io' })
+    flushSync()
+    expect(document.body.textContent).not.toContain('pick an environment')
+
+    // …and so does an absolute URL typed into the path.
+    app.updateNodeData('n1', { origin: '', path: 'https://api.other.io/v1/x' })
+    flushSync()
+    expect(document.body.textContent).not.toContain('pick an environment')
   })
 })
