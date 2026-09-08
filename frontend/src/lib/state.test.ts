@@ -65,6 +65,20 @@ describe('addNode placement (plan 03 §2)', () => {
   })
 })
 
+describe('node id allocation', () => {
+  it('skips ids a loaded board already contains (counter restarts on relaunch)', () => {
+    // Simulate a persisted board holding the id the counter would mint next.
+    const first = app.addTransformNode()
+    const counter = Number(first.slice(first.lastIndexOf('-') + 1))
+    const clash = `transform-${counter + 1}`
+    app.nodes = [...app.nodes, mkNode(clash)]
+    const second = app.addTransformNode()
+    expect(second).not.toBe(clash)
+    const ids = app.nodes.map((n) => n.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
 describe('duplicateNode', () => {
   it('copies data and field values to a new id offset by +40/+40', () => {
     app.nodes = [mkNode('a1')]

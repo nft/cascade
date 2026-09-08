@@ -283,49 +283,58 @@ export class AppState {
     if (Object.keys(patch).some((key) => !TRANSIENT_NODE_KEYS.has(key))) this.scheduleBoardSave()
   }
 
+  /**
+   * Mints a board-unique node id. The counter alone is not enough: it lives in
+   * memory while boards persist, so after a relaunch it restarts at zero and
+   * would re-mint ids the loaded board already contains — duplicate ids crash
+   * Svelte Flow's keyed each blocks.
+   */
+  private allocateId(prefix: string): string {
+    const used = new Set(this.nodes.map((n) => n.id))
+    let id: string
+    do {
+      this.addCounter += 1
+      id = `${prefix}-${this.addCounter}`
+    } while (used.has(id))
+    return id
+  }
+
   /** Adds the node and returns its id — callers wire the fresh node up (edge insert). */
   addNode(op: Operation, position?: { x: number; y: number }): string {
-    this.addCounter += 1
     const defaults = this.project?.project.defaults
     return this.insertNode(
-      makeHttpNode(op, `${op.ref}-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
+      makeHttpNode(op, this.allocateId(op.ref), this.nodes, defaults, position ?? this.autoPosition()),
     )
   }
 
   /** Ad-hoc request node (plan 08 A3) — hand-configured, credential none. */
   addCustomHttpNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
     const defaults = this.project?.project.defaults
     return this.insertNode(
-      makeCustomHttpNode(`custom-${this.addCounter}`, this.nodes, defaults, position ?? this.autoPosition()),
+      makeCustomHttpNode(this.allocateId('custom'), this.nodes, defaults, position ?? this.autoPosition()),
     )
   }
 
   addTransformNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
     return this.insertNode(
-      makeTransformNode(`transform-${this.addCounter}`, this.nodes, position ?? this.autoPosition()),
+      makeTransformNode(this.allocateId('transform'), this.nodes, position ?? this.autoPosition()),
     )
   }
 
   addMockNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
-    return this.insertNode(makeMockNode(`mock-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeMockNode(this.allocateId('mock'), this.nodes, position ?? this.autoPosition()))
   }
 
   addDelayNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
-    return this.insertNode(makeDelayNode(`delay-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeDelayNode(this.allocateId('delay'), this.nodes, position ?? this.autoPosition()))
   }
 
   addForNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
-    return this.insertNode(makeForNode(`for-${this.addCounter}`, this.nodes, position ?? this.autoPosition()))
+    return this.insertNode(makeForNode(this.allocateId('for'), this.nodes, position ?? this.autoPosition()))
   }
 
   addNoteNode(position?: { x: number; y: number }): string {
-    this.addCounter += 1
-    return this.insertNode(makeNoteNode(`note-${this.addCounter}`, position ?? this.autoPosition()))
+    return this.insertNode(makeNoteNode(this.allocateId('note'), position ?? this.autoPosition()))
   }
 
   private insertNode(node: AppNode): string {
@@ -375,8 +384,7 @@ export class AppState {
   duplicateNode(id: string) {
     const src = this.nodes.find((n) => n.id === id)
     if (!src) return
-    this.addCounter += 1
-    const copy = duplicateAppNode(src, `${src.id}-copy-${this.addCounter}`, this.nodes)
+    const copy = duplicateAppNode(src, this.allocateId(`${src.id}-copy`), this.nodes)
     this.nodes = [...this.nodes, copy]
     this.selectedNodeId = copy.id
     this.scheduleBoardSave()
@@ -580,13 +588,12 @@ export class AppState {
   /** Instantiate a collection request as a canvas node (plan 08 B3). */
   addNodeFromRequest(collectionId: string, request: RequestDef, position?: { x: number; y: number }) {
     if (request.protocol !== 'http') return
-    this.addCounter += 1
     const defaults = this.project?.project.defaults
     this.insertNode(
       makeHttpNodeFromRequest(
         collectionId,
         $state.snapshot(request) as RequestDef,
-        `req-${this.addCounter}`,
+        this.allocateId('req'),
         this.nodes,
         defaults,
         position ?? this.autoPosition(),

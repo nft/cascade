@@ -89,6 +89,25 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(loaded.data.requestRef).toEqual({ collectionId: 'col1', requestId: 'req1' })
   })
 
+  it('renames duplicate node ids so keyed each blocks never see two of one', () => {
+    const board: BoardJSON = {
+      formatVersion: 1,
+      id: 'b1',
+      name: 'Main',
+      nodes: [
+        { id: 'transform-1', type: 'transform', name: 'First', data: {} },
+        { id: 'transform-1', type: 'transform', name: 'Second', data: {} },
+        { id: 'transform-1-2', type: 'transform', name: 'Third', data: {} },
+      ],
+      edges: [],
+      layout: { positions: {} },
+    }
+    const { nodes } = deserializeBoard(board)
+    const ids = nodes.map((n) => n.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids[0]).toBe('transform-1')
+  })
+
   it('drops malformed plan-08 fields instead of loading garbage', () => {
     const board: BoardJSON = {
       formatVersion: 1,

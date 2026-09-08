@@ -241,6 +241,7 @@ export function deserializeBoard(board: BoardJSON): {
   // array; a stable partition (top-level nodes first, then children) keeps
   // that true regardless of how the file interleaves them.
   const ordered = [...nodes.filter((n) => !n.parentId), ...nodes.filter((n) => n.parentId)]
+  dedupeIds(ordered)
   assignKeys(ordered)
   migrateLegacyFields(ordered)
   const edges: AppEdge[] = board.edges.map((e, i) => ({
@@ -272,6 +273,24 @@ export function isRequestRef(value: unknown): value is RequestRef {
   if (!value || typeof value !== 'object') return false
   const ref = value as Partial<RequestRef>
   return typeof ref.collectionId === 'string' && typeof ref.requestId === 'string'
+}
+
+/**
+ * Boards written while the id counter could restart (it lived only in memory)
+ * may contain duplicate node ids, which crash Svelte Flow's keyed each blocks.
+ * Rename later occurrences; edges and refs already resolved to the first
+ * occurrence when the id was ambiguous, so they are left alone.
+ */
+function dedupeIds(nodes: AppNode[]): void {
+  const seen = new Set<string>()
+  for (const node of nodes) {
+    if (seen.has(node.id)) {
+      let id = `${node.id}-2`
+      while (seen.has(id)) id = `${id}-2`
+      node.id = id
+    }
+    seen.add(node.id)
+  }
 }
 
 /**
