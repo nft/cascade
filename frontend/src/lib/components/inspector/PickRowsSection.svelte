@@ -23,7 +23,16 @@
   let newKey = $state('')
   /** Row key whose expression input shows the binding picker; null = closed. */
   let pickingFor = $state<string | null>(null)
-  let inputEls: Record<string, HTMLInputElement | null> = {}
+  /** Per-row input refs, keyed by row key; rows come and go with the each block. */
+  let inputEls: Record<string, HTMLInputElement | null> = $state({})
+
+  function inputEl(key: string) {
+    return inputEls[key] ?? null
+  }
+
+  function setInputEl(key: string, el: HTMLInputElement | null) {
+    inputEls[key] = el
+  }
 
   const newKeyTaken = $derived(rows.some((r) => r.key === newKey.trim()))
 
@@ -90,7 +99,7 @@
         />
       </div>
       <Input
-        bind:el={inputEls[row.key]}
+        bind:el={() => inputEl(row.key), (el) => setInputEl(row.key, el)}
         size="xs"
         mono
         class="mt-1 w-full"
