@@ -1,0 +1,91 @@
+{
+  "cascade": {
+    "kind": "selection",
+    "formatVersion": 1,
+    "app": "cascade/0.1",
+    "board": {
+      "formatVersion": 1,
+      "id": "",
+      "name": "",
+      "nodes": [
+        {
+          "id": "n2",
+          "type": "http",
+          "name": "Create Invoice",
+          "data": {
+            "environment": "local",
+            "fields": [
+              {
+                "dangling": {
+                  "originalKey": "createUser",
+                  "path": "body.id"
+                },
+                "key": "body.padded",
+                "source": "template",
+                "value": "a{{createUser.body.id}}b{{ i }}c"
+              },
+              {
+                "key": "body.loop",
+                "source": "template",
+                "value": "{{item}}/{{item.name}}/{{i}}"
+              },
+              {
+                "dangling": {
+                  "originalKey": "createUser",
+                  "path": "body.id"
+                },
+                "key": "body.res",
+                "source": "template",
+                "value": "{{createUser.body.id}} {{createUser[0].id}}"
+              },
+              {
+                "key": "body.foreign",
+                "source": "template",
+                "value": "{{ghost.body.id}}"
+              },
+              {
+                "dangling": {
+                  "originalKey": "createUser",
+                  "path": "body.items[0].id"
+                },
+                "key": "body.indexed",
+                "source": "template",
+                "value": "{{createUser.body.items[0].id}}"
+              },
+              {
+                "dangling": {
+                  "originalKey": "createUser",
+                  "path": "body.id"
+                },
+                "key": "body.userId",
+                "source": "literal",
+                "value": ""
+              }
+            ],
+            "key": "createInvoice",
+            "method": "POST",
+            "name": "Create Invoice",
+            "path": "/v1/invoices",
+            "repeat": 1
+          }
+        }
+      ],
+      "edges": [],
+      "layout": {
+        "positions": {
+          "n2": {
+            "x": 300,
+            "y": 40
+          }
+        }
+      }
+    },
+    "requires": {
+      "environments": [
+        "local"
+      ],
+      "credentials": [],
+      "sources": []
+    }
+  }
+}

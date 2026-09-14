@@ -12,7 +12,12 @@ export interface PastedGraph {
   edges: AppEdge[]
 }
 
-/** Matches {{…}} interpolation tokens in template fields (mirrors share/nodedata.go). */
+/**
+ * Matches {{…}} interpolation tokens in template fields. The format's Go
+ * parser is `core/binding`'s (`TemplateSpans`), which `share` now rewrites
+ * through; this stays a regex because paste only swaps node keys and never
+ * has to agree on what a malformed token means.
+ */
 const TEMPLATE_TOKEN_RE = /\{\{\s*([^{}]+?)\s*\}\}/g
 
 /** Node id prefix marking pasted nodes; the suffix makes ids board-unique. */

@@ -313,6 +313,51 @@ func TestExportSelectionResSugarDangles(t *testing.T) {
 	}
 }
 
+func TestExportSelectionResSugarDanglesThroughAnIndex(t *testing.T) {
+	p := newTestProject(t)
+	b := testBoard()
+	// {{res[0].id}}: the res sugar with a bracket accessor, which the old
+	// regex missed because it split the token on '.' and read "res[0]" as the
+	// node name. On the receiving board res means whatever single upstream
+	// the node ends up with, so missing it bound the field to the wrong node.
+	fields := b.Nodes[2].Data["fields"].([]any)
+	b.Nodes[2].Data["fields"] = append(fields, map[string]any{
+		"key": "query.first", "source": "template", "value": "{{res[0].id}}",
+	})
+	raw, err := ExportSelection(p, b, []string{"n3"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	n3 := nodeByID(t, exportedBoard(t, raw).Board.Nodes, "n3")
+	row := n3.Data["fields"].([]any)[1].(map[string]any)
+	if row["value"] != "{{createInvoice[0].id}}" {
+		t.Errorf("value = %v; want the upstream named by key, with its index path intact", row["value"])
+	}
+	dangling, _ := row["dangling"].(map[string]any)
+	if dangling["originalKey"] != "createInvoice" || dangling["path"] != "[0].id" {
+		t.Errorf("dangling marker = %v", dangling)
+	}
+}
+
+func TestExportSelectionKeepsTemplateSpacing(t *testing.T) {
+	p := newTestProject(t)
+	b := testBoard()
+	b.Nodes[1].Data["fields"].([]any)[1] = map[string]any{
+		"key": "body.email", "source": "template", "value": "{{ i }}-{{ n1.body.id }}-{{ i }}",
+	}
+	raw, err := ExportSelection(p, b, []string{"n2"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	n2 := nodeByID(t, exportedBoard(t, raw).Board.Nodes, "n2")
+	row := n2.Data["fields"].([]any)[1].(map[string]any)
+	// Only the cut reference is re-rendered; the tokens around it are spliced
+	// past untouched, padding and all.
+	if row["value"] != "{{ i }}-{{createUser.body.id}}-{{ i }}" {
+		t.Errorf("value = %v; want the {{ i }} tokens byte-identical", row["value"])
+	}
+}
+
 // loopBoard is a For container with two children, the shape a selection can
 // cut through: containment travels only when the container travels with it.
 func loopBoard() store.Board {

@@ -6,6 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	"cascade/core"
+	"cascade/core/binding"
+	"cascade/core/nodespec"
 	"cascade/store"
 )
 
@@ -40,9 +43,18 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 		keep[id] = true
 	}
 	upstream := singleUpstreams(b.Edges)
+	// Decode every node, not just the kept ones: a cut binding is named by
+	// its upstream's KEY, and that upstream is by definition outside the
+	// selection.
+	specs := make(map[string]nodespec.Spec, len(b.Nodes))
 	idToKey := make(map[string]string, len(b.Nodes))
 	for _, n := range b.Nodes {
-		idToKey[n.ID] = dataString(n.Data, dataKeyKey)
+		spec, err := nodespec.Decode(core.NodeType(n.Type), n.Data)
+		if err != nil {
+			return nil, fmt.Errorf("node %q: %w", n.ID, err)
+		}
+		specs[n.ID] = spec
+		idToKey[n.ID] = spec.Key
 	}
 
 	out := store.Board{
@@ -68,7 +80,7 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 			return nil, fmt.Errorf("node %q: %w", n.ID, err)
 		}
 		sanitizeRunState(data)
-		rewriteDanglingBindings(data, n.ID, keep, upstream, idToKey)
+		rewriteDanglingBindings(data, specs[n.ID], n.ID, keep, upstream, idToKey)
 		// Containment travels only when the container is in the selection: a
 		// parent naming an absent node is rejected by core.Graph.Validate on
 		// import, so a cut child exports as top level — the same treatment
@@ -107,11 +119,11 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 		}
 	}
 
-	requires, err := deriveRequires(p, out.Nodes)
+	requires, err := deriveRequires(p, out.Nodes, specs)
 	if err != nil {
 		return nil, err
 	}
-	collections, err := embedCollections(p, out.Nodes)
+	collections, err := embedCollections(p, out.Nodes, specs)
 	if err != nil {
 		return nil, err
 	}
@@ -141,109 +153,171 @@ func sanitizeRunState(data map[string]any) {
 // set. The row keeps a dangling marker naming the upstream by KEY (IDs are
 // meaningless to the receiver), so the importer can show "was bound to
 // createUser.body.id" and the user re-binds — never a silent wrong value.
+// The decoded fields and the rows they came from are walked in lockstep:
+// reading is nodespec's job, but the marker has to be written back into the
+// opaque map, and nodespec.Rows is the very function Decode read them with.
+// The rows here belong to the exported COPY, which is a JSON round-trip of
+// the map the spec was decoded from, so the two line up index for index.
 func rewriteDanglingBindings(
 	data map[string]any,
+	spec nodespec.Spec,
 	nodeID string,
 	keep map[string]bool,
 	upstream map[string]string,
 	idToKey map[string]string,
 ) {
-	for _, listKey := range []string{dataKeyFields, dataKeyPick} {
-		for _, row := range fieldRows(data, listKey) {
-			switch dataString(row, fieldKeySource) {
-			case sourceBinding:
-				rewriteDanglingRef(row, nodeID, keep, upstream, idToKey)
-			case sourceTemplate:
-				rewriteDanglingTemplate(row, nodeID, keep, upstream, idToKey)
+	var lists []struct {
+		key    string
+		fields []nodespec.Field
+	}
+	if spec.HTTP != nil {
+		lists = append(lists, struct {
+			key    string
+			fields []nodespec.Field
+		}{nodespec.DataKeyFields, spec.HTTP.Fields})
+	}
+	if spec.Transform != nil {
+		lists = append(lists, struct {
+			key    string
+			fields []nodespec.Field
+		}{nodespec.DataKeyPick, spec.Transform.Pick})
+	}
+	for _, list := range lists {
+		rows := nodespec.Rows(data, list.key)
+		for i, field := range list.fields {
+			if i >= len(rows) {
+				break
+			}
+			switch field.Source {
+			case nodespec.FieldBinding:
+				rewriteDanglingRef(rows[i], field, nodeID, keep, upstream, idToKey)
+			case nodespec.FieldTemplate:
+				rewriteDanglingTemplate(rows[i], field, nodeID, keep, upstream, idToKey)
 			}
 		}
 	}
 }
 
+// danglingTarget resolves what a reference points at, or "" when there is
+// nothing to dangle against: no upstream at all, a target still in the kept
+// set, or an id foreign to the source board — the graph validator owns that
+// last case.
+func danglingTarget(
+	ref binding.Ref,
+	nodeID string,
+	keep map[string]bool,
+	upstream map[string]string,
+	idToKey map[string]string,
+) string {
+	target := ref.Node
+	if target == "" { // res sugar: the single direct upstream via the edge
+		target = upstream[nodeID]
+	}
+	if target == "" || keep[target] || idToKey[target] == "" {
+		return ""
+	}
+	return idToKey[target]
+}
+
 func rewriteDanglingRef(
 	row map[string]any,
+	field nodespec.Field,
 	nodeID string,
 	keep map[string]bool,
 	upstream map[string]string,
 	idToKey map[string]string,
 ) {
-	target, path, ok := refTarget(row)
-	if !ok {
+	if field.Ref == nil {
 		return
 	}
-	if target == "" { // res sugar: the single direct upstream via the edge
-		target = upstream[nodeID]
-	}
-	// No upstream at all, or an id foreign to the source board: nothing to
-	// dangle against; the graph validator owns that case.
-	if target == "" || keep[target] || idToKey[target] == "" {
+	key := danglingTarget(field.Ref.Binding(), nodeID, keep, upstream, idToKey)
+	if key == "" {
 		return
 	}
-	row[fieldKeyDangling] = map[string]any{
-		danglingKeyOriginal: idToKey[target],
-		danglingKeyPath:     path,
+	row[nodespec.FieldKeyDangling] = map[string]any{
+		nodespec.DanglingKeyOriginal: key,
+		nodespec.DanglingKeyPath:     field.Ref.Path,
 	}
-	row[fieldKeySource] = sourceLiteral
-	row[fieldKeyValue] = ""
-	delete(row, fieldKeyRef)
+	row[nodespec.FieldKeySource] = string(nodespec.FieldLiteral)
+	row[nodespec.FieldKeyValue] = ""
+	delete(row, nodespec.FieldKeyRef)
 }
 
 // rewriteDanglingTemplate rewrites a template's external {{id.path}} tokens
 // to {{key.path}} — human-readable, and unresolvable on the target board, so
 // the reference surfaces as invalid instead of silently binding to whatever
-// node happens to share the id or position.
+// node happens to share the id or position. Tokens that stay are spliced
+// around, not re-rendered, so their spacing survives the trip.
 func rewriteDanglingTemplate(
 	row map[string]any,
+	field nodespec.Field,
 	nodeID string,
 	keep map[string]bool,
 	upstream map[string]string,
 	idToKey map[string]string,
 ) {
-	value := dataString(row, fieldKeyValue)
+	value := field.Value
 	if value == "" {
 		return
 	}
+	spans, err := binding.TemplateSpans(value)
+	if err != nil {
+		// A template Go cannot parse has no well-formed reference to dangle,
+		// and refusing the export would be a new failure for input every
+		// previous build accepted. §7 leaves Go's strictness to a later plan.
+		return
+	}
+	var rewritten strings.Builder
+	pos := 0
 	dangled := false
-	rewritten := templateRefPattern.ReplaceAllStringFunc(value, func(token string) string {
-		inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(token, "{{"), "}}"))
-		head, rest, hasPath := strings.Cut(inner, ".")
-		target := head
-		if head == resToken {
-			target = upstream[nodeID]
+	for _, span := range spans {
+		if !span.IsRef {
+			continue
 		}
-		if head == fanOutIndexToken || target == "" || keep[target] || idToKey[target] == "" {
-			return token
+		key := danglingTarget(span.Ref, nodeID, keep, upstream, idToKey)
+		if key == "" {
+			continue
 		}
+		// The marker names the FIRST cut reference; a field with two is rare
+		// and the importer shows one line either way.
 		if !dangled {
 			dangled = true
-			row[fieldKeyDangling] = map[string]any{
-				danglingKeyOriginal: idToKey[target],
-				danglingKeyPath:     rest,
+			row[nodespec.FieldKeyDangling] = map[string]any{
+				nodespec.DanglingKeyOriginal: key,
+				nodespec.DanglingKeyPath:     span.Ref.Path,
 			}
 		}
-		key := idToKey[target]
-		if hasPath {
-			return "{{" + key + "." + rest + "}}"
-		}
-		return "{{" + key + "}}"
-	})
-	if dangled {
-		row[fieldKeyValue] = rewritten
+		rewritten.WriteString(value[pos:span.Start])
+		rewritten.WriteString(binding.RefToken(key, span.Ref.Path))
+		pos = span.End
 	}
+	if !dangled {
+		return
+	}
+	rewritten.WriteString(value[pos:])
+	row[nodespec.FieldKeyValue] = rewritten.String()
 }
 
 // deriveRequires collects the environment and credential names the exported
 // nodes reference. Credentials carry their kind as a mapping hint when the
 // project still knows the name; a dangling reference exports with no kind.
-func deriveRequires(p *store.Project, nodes []store.BoardNode) (Requires, error) {
+func deriveRequires(
+	p *store.Project,
+	nodes []store.BoardNode,
+	specs map[string]nodespec.Spec,
+) (Requires, error) {
 	envs := map[string]bool{}
 	creds := map[string]bool{}
 	for _, n := range nodes {
-		if env := dataString(n.Data, dataKeyEnvironment); env != "" {
-			envs[env] = true
+		http := specs[n.ID].HTTP
+		if http == nil {
+			continue
 		}
-		if cred := dataString(n.Data, dataKeyCredential); cred != "" {
-			creds[cred] = true
+		if http.Environment != "" {
+			envs[http.Environment] = true
+		}
+		if http.Credential != "" {
+			creds[http.Credential] = true
 		}
 	}
 	requires := Requires{
@@ -272,17 +346,21 @@ func deriveRequires(p *store.Project, nodes []store.BoardNode) (Requires, error)
 // requestRef provenance links (plan 08's requirement on this plan), trimmed
 // to the referenced requests and flattened into each collection's root — the
 // link is by request id, so folder placement need not survive the trip.
-func embedCollections(p *store.Project, nodes []store.BoardNode) ([]store.Collection, error) {
+func embedCollections(
+	p *store.Project,
+	nodes []store.BoardNode,
+	specs map[string]nodespec.Spec,
+) ([]store.Collection, error) {
 	wanted := map[string]map[string]bool{} // collectionID -> requestIDs
 	for _, n := range nodes {
-		collectionID, requestID, ok := requestRef(n.Data)
-		if !ok || collectionID == "" || requestID == "" {
+		ref := specs[n.ID].RequestRef
+		if ref == nil || ref.CollectionID == "" || ref.RequestID == "" {
 			continue
 		}
-		if wanted[collectionID] == nil {
-			wanted[collectionID] = map[string]bool{}
+		if wanted[ref.CollectionID] == nil {
+			wanted[ref.CollectionID] = map[string]bool{}
 		}
-		wanted[collectionID][requestID] = true
+		wanted[ref.CollectionID][ref.RequestID] = true
 	}
 	if len(wanted) == 0 {
 		return nil, nil

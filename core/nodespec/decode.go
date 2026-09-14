@@ -24,11 +24,9 @@ const (
 	dataKeyOrigin      = "origin"
 	dataKeyEnvironment = "environment"
 	dataKeyCredential  = "credential"
-	dataKeyFields      = "fields"
 	dataKeyRawBody     = "rawBody"
 
 	dataKeyMode   = "mode"
-	dataKeyPick   = "pick"
 	dataKeyScript = "script"
 
 	dataKeyBody       = "body"
@@ -40,19 +38,29 @@ const (
 	dataKeySource = "source"
 )
 
+// The exported keys are the ones a WRITER of the format needs. Decode is the
+// only reader Go has, so everything else stays unexported; share/export.go
+// rewrites bindings the selection cut and has to spell these back into the
+// opaque map, and spelling them twice is how the two sides drift.
+const (
+	DataKeyFields = "fields"
+	DataKeyPick   = "pick"
+
+	FieldKeySource   = "source"
+	FieldKeyValue    = "value"
+	FieldKeyRef      = "ref"
+	FieldKeyDangling = "dangling"
+
+	DanglingKeyOriginal = "originalKey"
+	DanglingKeyPath     = "path"
+)
+
 // Row keys of the nested objects node data carries.
 const (
-	fieldKeyKey      = "key"
-	fieldKeySource   = "source"
-	fieldKeyValue    = "value"
-	fieldKeyRef      = "ref"
-	fieldKeyDangling = "dangling"
+	fieldKeyKey = "key"
 
 	refKeyNodeID = "nodeId"
 	refKeyPath   = "path"
-
-	danglingKeyOriginal = "originalKey"
-	danglingKeyPath     = "path"
 
 	exportKeyKey  = "key"
 	exportKeyPath = "path"
@@ -101,13 +109,13 @@ func Decode(t core.NodeType, data map[string]any) (Spec, error) {
 			Origin:      stringAt(data, dataKeyOrigin),
 			Environment: stringAt(data, dataKeyEnvironment),
 			Credential:  stringAt(data, dataKeyCredential),
-			Fields:      decodeFields(data, dataKeyFields),
+			Fields:      decodeFields(data, DataKeyFields),
 			RawBody:     decodeRawBody(data),
 		}
 	case core.NodeTypeTransform:
 		spec.Transform = &TransformSpec{
 			Mode:   stringAt(data, dataKeyMode),
-			Pick:   decodeFields(data, dataKeyPick),
+			Pick:   decodeFields(data, DataKeyPick),
 			Script: stringAt(data, dataKeyScript),
 		}
 	case core.NodeTypeMock:
@@ -130,7 +138,7 @@ func Decode(t core.NodeType, data map[string]any) (Spec, error) {
 }
 
 func decodeFields(data map[string]any, key string) []Field {
-	rows := rowsAt(data, key)
+	rows := Rows(data, key)
 	if len(rows) == 0 {
 		return nil
 	}
@@ -138,14 +146,14 @@ func decodeFields(data map[string]any, key string) []Field {
 	for _, row := range rows {
 		field := Field{
 			Key:    stringAt(row, fieldKeyKey),
-			Source: FieldSource(stringAt(row, fieldKeySource)),
-			Value:  stringAt(row, fieldKeyValue),
-			Ref:    decodeRef(mapAt(row, fieldKeyRef)),
+			Source: FieldSource(stringAt(row, FieldKeySource)),
+			Value:  stringAt(row, FieldKeyValue),
+			Ref:    decodeRef(mapAt(row, FieldKeyRef)),
 		}
-		if d := mapAt(row, fieldKeyDangling); d != nil {
+		if d := mapAt(row, FieldKeyDangling); d != nil {
 			field.Dangling = &Dangling{
-				OriginalKey: stringAt(d, danglingKeyOriginal),
-				Path:        stringAt(d, danglingKeyPath),
+				OriginalKey: stringAt(d, DanglingKeyOriginal),
+				Path:        stringAt(d, DanglingKeyPath),
 			}
 		}
 		out = append(out, field)
@@ -161,7 +169,7 @@ func decodeRef(row map[string]any) *Ref {
 }
 
 func decodeExports(data map[string]any) []binding.Export {
-	rows := rowsAt(data, dataKeyExports)
+	rows := Rows(data, dataKeyExports)
 	if len(rows) == 0 {
 		return nil
 	}
@@ -237,9 +245,14 @@ func mapAt(data map[string]any, key string) map[string]any {
 	return m
 }
 
-// rowsAt returns the object entries of a list-valued key; non-object entries
-// are skipped rather than erroring, so one malformed row never costs the rest.
-func rowsAt(data map[string]any, key string) []map[string]any {
+// Rows returns the object entries of a list-valued key ("fields" on http
+// nodes, "pick" on transforms); non-object entries are skipped rather than
+// erroring, so one malformed row never costs the rest.
+//
+// Exported because Decode reads its fields through it: Rows(data, key)[i] is
+// the live map that produced Fields[i], so a caller holding a decoded Field
+// can mutate the row it came from without a parallel skip rule of its own.
+func Rows(data map[string]any, key string) []map[string]any {
 	list, _ := data[key].([]any)
 	rows := make([]map[string]any, 0, len(list))
 	for _, item := range list {

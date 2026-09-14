@@ -115,10 +115,13 @@ type Spec struct {
 	Loop      *LoopSpec
 }
 
-// Refs returns every node reference the spec makes, in order. The exporter's
-// dangling-binding rewrite reads it instead of running its own {{…}} regex,
-// so both sides agree on what counts as a reference — {{i}} and {{item}} are
-// loop-scope values, not node references, and never appear here.
+// Refs returns every node reference the spec makes, in order — {{i}} and
+// {{item}} are loop-scope values, not node references, and never appear here.
+//
+// It answers "what does this node depend on", not "where in this node". The
+// result is a flat concatenation across every field with no row or token
+// identity, so a caller that has to REWRITE a reference (share's export, for
+// one) cannot use it and reads Field.Ref and binding.TemplateSpans instead.
 func (s Spec) Refs() ([]binding.Ref, error) {
 	var refs []binding.Ref
 	collect := func(fields []Field) error {

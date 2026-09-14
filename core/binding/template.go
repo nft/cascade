@@ -21,33 +21,40 @@ type templatePart struct {
 	text  string
 	expr  string // trimmed {{…}} content when isRef
 	isRef bool
+	// start and end bound the whole {{…}} token in the source string, so a
+	// caller rewriting one reference can splice it and leave every other byte
+	// — the spacing inside the other braces included — as the author wrote it.
+	start, end int
 }
 
 func parseTemplate(tpl string) ([]templatePart, error) {
 	var parts []templatePart
-	rest := tpl
+	pos := 0
 	for {
-		open := strings.Index(rest, templateOpen)
+		open := strings.Index(tpl[pos:], templateOpen)
 		if open < 0 {
-			if rest != "" {
-				parts = append(parts, templatePart{text: rest})
+			if pos < len(tpl) {
+				parts = append(parts, templatePart{text: tpl[pos:]})
 			}
 			return parts, nil
 		}
-		if open > 0 {
-			parts = append(parts, templatePart{text: rest[:open]})
+		open += pos
+		if open > pos {
+			parts = append(parts, templatePart{text: tpl[pos:open]})
 		}
-		rest = rest[open+len(templateOpen):]
-		close := strings.Index(rest, templateClose)
+		inner := open + len(templateOpen)
+		close := strings.Index(tpl[inner:], templateClose)
 		if close < 0 {
 			return nil, fmt.Errorf("binding: unterminated %q in template %q", templateOpen, tpl)
 		}
-		expr := strings.TrimSpace(rest[:close])
+		close += inner
+		expr := strings.TrimSpace(tpl[inner:close])
 		if expr == "" {
 			return nil, fmt.Errorf("binding: empty reference in template %q", tpl)
 		}
-		parts = append(parts, templatePart{expr: expr, isRef: true})
-		rest = rest[close+len(templateClose):]
+		end := close + len(templateClose)
+		parts = append(parts, templatePart{expr: expr, isRef: true, start: open, end: end})
+		pos = end
 	}
 }
 
@@ -87,6 +94,51 @@ func TemplateRefs(tpl string) ([]Ref, error) {
 		}
 	}
 	return refs, nil
+}
+
+// TemplateSpan is one {{…}} token located in its source: Start and End bound
+// the whole token, braces included. Ref is meaningful only when IsRef — {{i}}
+// and {{item…}} are loop-scope values, not node references.
+type TemplateSpan struct {
+	Start, End int
+	Expr       string
+	Ref        Ref
+	IsRef      bool
+}
+
+// TemplateSpans returns every {{…}} token with its byte range, so a caller
+// that rewrites references in place has one parser to agree with rather than
+// a regex of its own. Malformed templates error exactly as TemplateRefs does.
+func TemplateSpans(tpl string) ([]TemplateSpan, error) {
+	parts, err := parseTemplate(tpl)
+	if err != nil {
+		return nil, err
+	}
+	var spans []TemplateSpan
+	for _, p := range parts {
+		if !p.isRef {
+			continue
+		}
+		ref, isRef := parseRefExpr(p.expr)
+		spans = append(spans, TemplateSpan{
+			Start: p.start, End: p.end, Expr: p.expr, Ref: ref, IsRef: isRef,
+		})
+	}
+	return spans, nil
+}
+
+// RefToken renders an owner and accessor path back into a {{…}} token — the
+// inverse of splitFirst, so an index path joins without a dot: ("n1",
+// "[0].id") is {{n1[0].id}}, never {{n1.[0].id}}.
+func RefToken(owner, path string) string {
+	switch {
+	case path == "":
+		return templateOpen + owner + templateClose
+	case strings.HasPrefix(path, "["):
+		return templateOpen + owner + path + templateClose
+	default:
+		return templateOpen + owner + "." + path + templateClose
+	}
 }
 
 func (e *Env) resolveTemplate(tpl string) (any, error) {
