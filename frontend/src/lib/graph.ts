@@ -76,7 +76,7 @@ export function assertKnownNodeTypes(
   }
 }
 
-/** The node plus its transitive ancestors — the engine's planned `Options.Target` subgraph. */
+/** The node plus its transitive ancestors — the `upstream` scope of a targeted run (`exec.Options.Target`). */
 export function upstreamIds(edges: AppEdge[], targetId: string): Set<string> {
   const result = new Set([targetId])
   const queue = [targetId]

@@ -95,6 +95,10 @@ class InMemoryRun {
    * The run set: the target's subgraph (or the whole board), minus notes —
    * annotations never run — and minus loop children, which their For executes
    * rather than the top level.
+   *
+   * The three scopes are the engine's (`exec.Options.Target`), with one
+   * difference: `Graph.Closure` promotes a target inside a For to its
+   * container, and this path does not.
    */
   private plan(): { order: string[]; all: string[] } {
     const { nodes, edges } = this.ctx
