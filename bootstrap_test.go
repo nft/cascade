@@ -31,7 +31,7 @@ func TestBootstrapDefaultProjectFirstLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Meta: %v", err)
 	}
-	if meta.Defaults.Environment != "staging" || meta.Defaults.Credential != "staging-admin" {
+	if meta.Defaults.Environment != "local" || meta.Defaults.Credential != "" {
 		t.Fatalf("defaults = %+v", meta.Defaults)
 	}
 

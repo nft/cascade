@@ -1,5 +1,5 @@
 {
-  "defaults": { "environment": "staging", "credential": "staging-admin" },
+  "defaults": { "environment": "local", "credential": "" },
   "source": {
     "title": "demo-api",
     "version": "v1.4.0",
@@ -78,8 +78,8 @@
           "key": "createUser",
           "method": "POST",
           "path": "/v1/users",
-          "environment": "staging",
-          "credential": "staging-admin",
+          "environment": "local",
+          "credential": "",
           "repeat": 1,
           "fields": [
             { "key": "body.email", "source": "literal", "value": "ada@example.com" },
@@ -95,8 +95,8 @@
           "key": "createOrg",
           "method": "POST",
           "path": "/v1/orgs",
-          "environment": "staging",
-          "credential": "staging-admin",
+          "environment": "local",
+          "credential": "",
           "repeat": 1,
           "fields": [
             { "key": "body.name", "source": "literal", "value": "Acme Inc" },
@@ -112,8 +112,8 @@
           "key": "inviteMember",
           "method": "POST",
           "path": "/v1/orgs/{id}/members",
-          "environment": "staging",
-          "credential": "staging-admin",
+          "environment": "local",
+          "credential": "",
           "repeat": 5,
           "fields": [
             { "key": "path.id", "source": "binding", "value": "create-org.body.id", "ref": { "nodeId": "create-org", "path": "body.id" } },
@@ -129,8 +129,8 @@
           "key": "createProject",
           "method": "POST",
           "path": "/v1/projects",
-          "environment": "staging",
-          "credential": "staging-admin",
+          "environment": "local",
+          "credential": "",
           "repeat": 1,
           "fields": [
             { "key": "body.name", "source": "literal", "value": "Apollo" },
@@ -146,8 +146,8 @@
           "key": "getProject",
           "method": "GET",
           "path": "/v1/projects/{id}",
-          "environment": "staging",
-          "credential": "staging-admin",
+          "environment": "local",
+          "credential": "",
           "repeat": 1,
           "fields": [
             { "key": "path.id", "source": "binding", "value": "create-project.body.id", "ref": { "nodeId": "create-project", "path": "body.id" } }

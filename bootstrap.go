@@ -13,9 +13,11 @@ import (
 const defaultProjectName = "Default"
 
 // seedJSON is the demo dataset the first-launch Default project is seeded
-// with. It mirrors frontend/src/lib/mock.ts, which still backs vitest and
-// plain-browser dev — keep the two in sync until the real engine data
-// replaces both.
+// with. frontend/src/lib/mock.ts is its near-twin for vitest and plain-browser
+// dev, and the two have deliberately diverged on one point: mock.ts still
+// targets a fictional host because the in-memory runner fabricates responses,
+// while this seed targets localhost so that pressing Run makes a real request
+// that fails in a way the user can act on. Keep the rest in sync.
 //
 //go:embed seed/default.json
 var seedJSON []byte
