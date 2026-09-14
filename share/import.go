@@ -32,6 +32,11 @@ func ImportBoard(p *store.Project, data []byte) (store.Board, Payload, error) {
 	board := env.Cascade.Board
 	board.ID = id
 	board.Name = importedBoardName(board.Name, boards)
+	// Export drops captured responses as run data that has no business leaving
+	// the machine; the same holds arriving. A Cascade-made envelope never
+	// carries them, but a hand-written or third-party one can, and importing
+	// it would write someone else's response bodies into this project.
+	board.Layout.Responses = nil
 	if err := p.SaveBoard(board); err != nil {
 		return store.Board{}, Payload{}, fmt.Errorf("save imported board: %w", err)
 	}

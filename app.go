@@ -190,6 +190,19 @@ func (a *App) SaveBoard(projectID string, board store.Board) error {
 	return p.SaveBoard(board)
 }
 
+// SetCaptureResponses stores whether response bodies may be written into this
+// project's board files. It gates only what reaches disk: a run's bodies still
+// travel to the frontend and stay in memory for the session either way, so
+// bindings, the For each-source and the transform Test button are unaffected
+// until the board is reopened.
+func (a *App) SetCaptureResponses(projectID string, capture bool) error {
+	p, err := a.store.Project(projectID)
+	if err != nil {
+		return err
+	}
+	return p.SetCaptureResponses(capture)
+}
+
 // SaveCollection persists one request collection of a project (plan 08 B5).
 func (a *App) SaveCollection(projectID string, collection store.Collection) error {
 	p, err := a.store.Project(projectID)

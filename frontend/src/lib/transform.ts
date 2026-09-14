@@ -106,10 +106,14 @@ export async function executeTransform(
   for (const n of nodes) {
     if (n.id === node.id || !ancestors.has(n.id)) continue
     const captured = responses[n.id]
-    if (!captured) continue
+    // A capture with no body is one the board persisted schema-only (response
+    // capture off). There is nothing for a script to read, so the upstream is
+    // absent rather than present-with-undefined.
+    if (!captured || captured.body === undefined) continue
     byKey[keys.get(n.id) ?? n.id] = toUpstream(captured)
   }
-  const res = upstreams.length === 1 ? responses[upstreams[0]] : undefined
+  const single = upstreams.length === 1 ? responses[upstreams[0]] : undefined
+  const res = single?.body === undefined ? undefined : single
   return api.runTransformScript({
     script: node.data.script,
     nodes: byKey,

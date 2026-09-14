@@ -495,7 +495,8 @@ export namespace store {
 	export class CapturedResponse {
 	    status: number;
 	    headers?: Record<string, string>;
-	    body: any;
+	    body?: any;
+	    schema?: any;
 	    at: string;
 	    truncated?: boolean;
 	
@@ -508,6 +509,7 @@ export namespace store {
 	        this.status = source["status"];
 	        this.headers = source["headers"];
 	        this.body = source["body"];
+	        this.schema = source["schema"];
 	        this.at = source["at"];
 	        this.truncated = source["truncated"];
 	    }
@@ -872,6 +874,7 @@ export namespace store {
 	    name: string;
 	    createdAt: string;
 	    defaults: Defaults;
+	    captureResponses?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProjectMeta(source);
@@ -884,6 +887,7 @@ export namespace store {
 	        this.name = source["name"];
 	        this.createdAt = source["createdAt"];
 	        this.defaults = this.convertValues(source["defaults"], Defaults);
+	        this.captureResponses = source["captureResponses"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

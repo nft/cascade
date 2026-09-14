@@ -38,7 +38,11 @@ func loopBoard(id string) Board {
 					Status:  201,
 					Headers: map[string]string{"Content-Type": "application/json"},
 					Body:    map[string]any{"id": "u1"},
-					At:      "2026-07-06T14:02:00Z",
+					Schema: map[string]any{
+						"type":       "object",
+						"properties": map[string]any{"id": map[string]any{"type": "string"}},
+					},
+					At: "2026-07-06T14:02:00Z",
 				},
 			},
 		},
@@ -63,7 +67,7 @@ func TestBoardJSONRoundTripKeepsContainmentAndSizes(t *testing.T) {
 	}
 	// Byte identity alone would also hold if both passes dropped the fields,
 	// so assert they are on the wire before comparing.
-	for _, want := range []string{`"parent":"each"`, `"sizes":{"each":{"width":720,"height":260}}`} {
+	for _, want := range []string{`"parent":"each"`, `"sizes":{"each":{"width":720,"height":260}}`, `"schema":{`} {
 		if !bytes.Contains(first, []byte(want)) {
 			t.Fatalf("serialized board is missing %s:\n%s", want, first)
 		}
@@ -121,5 +125,39 @@ func TestBoardGraphCarriesParent(t *testing.T) {
 	}
 	if err := g.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
+	}
+}
+
+// A capture written with response bodies turned off still has to survive the
+// store: the schema is what keeps the binding picker working, and a field the
+// struct does not declare is dropped silently on the first save.
+func TestBodylessCaptureKeepsItsSchema(t *testing.T) {
+	board := loopBoard("b1")
+	captured := board.Layout.Responses["create-user"]
+	captured.Body = nil
+	board.Layout.Responses["create-user"] = captured
+
+	data, err := json.Marshal(board)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if bytes.Contains(data, []byte(`"body"`)) {
+		t.Errorf("board file still carries a body key:\n%s", data)
+	}
+
+	var decoded Board
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := decoded.Layout.Responses["create-user"]
+	if got.Body != nil {
+		t.Errorf("decoded body = %v, want nil", got.Body)
+	}
+	schema, ok := got.Schema.(map[string]any)
+	if !ok {
+		t.Fatalf("decoded schema = %+v (%T), want an object", got.Schema, got.Schema)
+	}
+	if props, _ := schema["properties"].(map[string]any); props["id"] == nil {
+		t.Fatalf("decoded schema = %+v, want the id property preserved", schema)
 	}
 }

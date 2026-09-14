@@ -32,6 +32,19 @@ type ProjectMeta struct {
 	Name          string   `json:"name"`
 	CreatedAt     string   `json:"createdAt"`
 	Defaults      Defaults `json:"defaults"`
+	// CaptureResponses gates writing response bodies into board files, which
+	// are meant to live in git and now hold real API responses. A pointer
+	// because absent must mean on: every project written before this field
+	// existed omits it, and a plain bool could not tell that from an explicit
+	// off. Read it through CapturesResponses.
+	CaptureResponses *bool `json:"captureResponses,omitempty"`
+}
+
+// CapturesResponses reports whether response bodies may be written into this
+// project's board files. Unset means yes — the default is the permissive one,
+// so nothing a user already relies on changes when the setting arrives.
+func (m ProjectMeta) CapturesResponses() bool {
+	return m.CaptureResponses == nil || *m.CaptureResponses
 }
 
 // Environment is a named API target. Default headers land with M4.

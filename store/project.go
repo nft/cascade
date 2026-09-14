@@ -44,6 +44,19 @@ func (p *Project) SetDefaults(d Defaults) error {
 	return p.writeMeta(meta)
 }
 
+// SetCaptureResponses stores whether response bodies may be written into this
+// project's board files.
+func (p *Project) SetCaptureResponses(capture bool) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	meta, err := p.readMeta()
+	if err != nil {
+		return err
+	}
+	meta.CaptureResponses = &capture
+	return p.writeMeta(meta)
+}
+
 // setName is the project.json half of Manager.RenameProject.
 func (p *Project) setName(name string) error {
 	p.mu.Lock()

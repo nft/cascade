@@ -11,7 +11,7 @@ import {
   type RunnableNode,
   type SchemaJSON,
 } from './model'
-import { schemaTree, type SchemaTreeNode } from './schema'
+import { capturedSchema, schemaTree, type SchemaTreeNode } from './schema'
 
 /** Where a node's picker tree comes from, in precedence order (plan 05 §8). */
 export type SchemaOrigin = 'pinned' | 'spec' | 'inferred'
@@ -32,18 +32,18 @@ export interface NodeSchemaSource {
 export function nodeSchemaSource(
   node: RunnableNode,
   captured: CapturedResponse | undefined,
-  inferFromBody: (body: unknown) => SchemaJSON,
 ): NodeSchemaSource | null {
   // Pinned schemas exist on http nodes only; transforms always infer from
   // their last output.
   if (isHttpNode(node) && node.data.responseSchema) {
     return { schema: node.data.responseSchema, origin: 'pinned', label: 'pinned schema' }
   }
-  if (captured && !captured.truncated) {
+  const schema = captured && !captured.truncated ? capturedSchema(captured) : null
+  if (schema) {
     return {
-      schema: inferFromBody(captured.body),
+      schema,
       origin: 'inferred',
-      label: `inferred from last run · ${formatClock(captured.at)}`,
+      label: `inferred from last run · ${formatClock(captured!.at)}`,
     }
   }
   return null

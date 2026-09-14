@@ -148,6 +148,9 @@ export function createInMemoryApi(): StoreApi {
       const stored = get(projectId)
       stored.bundle.environments = structuredClone(environments)
     },
+    async setCaptureResponses(projectId, capture) {
+      get(projectId).bundle.project.captureResponses = capture
+    },
     async setProjectDefaults(projectId, defaults) {
       const stored = get(projectId)
       stored.bundle.project.defaults = structuredClone(defaults)

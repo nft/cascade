@@ -67,11 +67,18 @@ type Size struct {
 // frontend's CapturedResponse (frontend/src/lib/model.ts). At is the ISO
 // capture timestamp, kept as text so a save round trip is byte-stable.
 type CapturedResponse struct {
-	Status    int               `json:"status"`
-	Headers   map[string]string `json:"headers,omitempty"`
-	Body      any               `json:"body"`
-	At        string            `json:"at"`
-	Truncated bool              `json:"truncated,omitempty"`
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers,omitempty"`
+	// Body is absent when the project has response capture turned off (and,
+	// harmlessly, when the response body was JSON null); Schema is written
+	// either way, so a board whose bodies were never persisted still drives
+	// the binding picker. Both are untyped because nothing here reads them —
+	// the store's only obligation is to not drop them, and an undeclared
+	// field is dropped silently on every save.
+	Body      any    `json:"body,omitempty"`
+	Schema    any    `json:"schema,omitempty"`
+	At        string `json:"at"`
+	Truncated bool   `json:"truncated,omitempty"`
 }
 
 // Viewport is the canvas pan/zoom state.

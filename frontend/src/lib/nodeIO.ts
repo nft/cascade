@@ -17,7 +17,7 @@ import {
   type FieldRef,
 } from './model'
 import { fieldDisplayValue, fieldRefs, refToDisplay } from './refs'
-import { inferSchema, typeLabel } from './schema'
+import { capturedSchema, inferSchema, typeLabel } from './schema'
 
 /** Chips a card shows before collapsing the rest into "+N". */
 export const CARD_CHIP_CAP = 2
@@ -215,10 +215,9 @@ export function bodyShape(schema: SchemaJSON): BodyShape {
 }
 
 /**
- * Inference walks the whole captured body (256 KB at the cap) and every
- * capture during a run replaces `app.responses`, invalidating every card's
- * derived state at once. Keying on the capture object holds that to one walk
- * per response instead of one per render.
+ * Every capture during a run replaces `app.responses`, invalidating every
+ * card's derived state at once. Keying on the capture object holds the walk
+ * to one per response instead of one per render.
  */
 const shapeByCapture = new WeakMap<CapturedResponse, BodyShape>()
 
@@ -231,7 +230,9 @@ export function capturedBodyShape(captured: CapturedResponse | undefined): BodyS
   if (!captured || captured.truncated) return null
   const cached = shapeByCapture.get(captured)
   if (cached) return cached
-  const shape = bodyShape(inferSchema(captured.body))
+  const schema = capturedSchema(captured)
+  if (!schema) return null
+  const shape = bodyShape(schema)
   shapeByCapture.set(captured, shape)
   return shape
 }

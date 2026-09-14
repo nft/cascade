@@ -92,7 +92,14 @@ export interface SchemaJSON {
 export interface CapturedResponse {
   status: number
   headers?: Record<string, string>
-  body: unknown
+  /**
+   * Absent on a board saved with response capture off (plan 11 W8) — read it
+   * through `capturedSchema`/`capturedBodyShape` rather than directly, so a
+   * bodyless capture still answers what shape the response had.
+   */
+  body?: unknown
+  /** Inferred when the capture arrives, so it outlives a body that is never persisted. */
+  schema?: SchemaJSON
   /** ISO capture timestamp — shown as "inferred from last run · 14:02". */
   at: string
   /** True when the body exceeded the capture cap and was dropped. */
@@ -363,6 +370,11 @@ export interface ProjectMeta {
   name: string
   createdAt?: string
   defaults?: ProjectDefaults
+  /**
+   * Whether response bodies may be written into this project's board files
+   * (plan 11 W8). Absent means yes — read it through `capturesResponses`.
+   */
+  captureResponses?: boolean
 }
 
 /** An imported schema source and its parsed operation catalog (mirrors store.Source). */

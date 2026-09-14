@@ -4,7 +4,7 @@
 // nullable where absent/null), strict format guesses. The frontend infers
 // locally so the binding picker works in vitest and plain-browser dev where
 // the Go side is absent.
-import type { SchemaJSON } from './model'
+import type { CapturedResponse, SchemaJSON } from './model'
 
 /** Recursion cap — deeper values infer as an untyped schema. */
 export const MAX_INFER_DEPTH = 20
@@ -145,4 +145,25 @@ function childTree(schema: SchemaJSON, basePath: string): SchemaTreeNode[] {
  */
 export function schemaTree(schema: SchemaJSON, basePath = 'body'): SchemaTreeNode {
   return { label: basePath, path: basePath, type: typeLabel(schema), children: childTree(schema, basePath) }
+}
+
+/**
+ * A capture carrying its schema. Inference happens once, when the capture
+ * arrives, because the body may not reach disk: a project with response
+ * capture off persists the schema alone (plan 11 W8).
+ */
+export function withInferredSchema(captured: CapturedResponse): CapturedResponse {
+  if (captured.schema || captured.truncated || captured.body === undefined) return captured
+  return { ...captured, schema: inferSchema(captured.body) }
+}
+
+/**
+ * The schema of a captured response: the one stored beside it, else inferred
+ * from its body. The single answer to "what shape was this response", so that
+ * a board whose bodies were never persisted reads the same as one where they
+ * were — null only when neither is available.
+ */
+export function capturedSchema(captured: CapturedResponse): SchemaJSON | null {
+  if (captured.schema) return captured.schema
+  return captured.body === undefined ? null : inferSchema(captured.body)
 }

@@ -1,5 +1,11 @@
 import { api } from './api'
-import { deserializeBoard, serializeBoard, TRANSIENT_NODE_KEYS } from './board'
+import {
+  capturesResponses,
+  deserializeBoard,
+  serializeBoard,
+  TRANSIENT_NODE_KEYS,
+  withoutResponseData,
+} from './board'
 import { persistCollection } from './collectionActions.svelte'
 import type { ContextMenuKind } from './contextMenu'
 import { deleteCredential, saveCredential } from './credentialActions.svelte'
@@ -244,7 +250,9 @@ export class AppState {
       this.nodes,
       this.edges,
       this.viewport,
-      this.responses,
+      // The one place the capture policy applies: bodies reach the engine and
+      // the session either way, but only here do they reach a file in git.
+      capturesResponses(this.project?.project) ? this.responses : withoutResponseData(this.responses),
     )
     try {
       await api.saveBoard(projectId, board)

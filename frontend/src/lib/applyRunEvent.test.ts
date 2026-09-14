@@ -6,6 +6,7 @@ import { applyRunEvent, applyRunResult, RUN_FAILED_MESSAGE } from './applyRunEve
 import { dialogs } from './dialogs.svelte'
 import type { AppNode, CapturedResponse, HttpLogEntry, LogEntry, NodeStatus } from './model'
 import { RunEventKind, type RunEvent, type RunResult, type RunStatus } from './runEvents'
+import { inferSchema } from './schema'
 import { app } from './state.svelte'
 
 const PROJECT_ID = 'proj-1'
@@ -159,6 +160,12 @@ describe('applyRunEvent', () => {
 
     apply(finished('a', 'failed', { note: 'boom', log: mkLog('a', { status: 500 }) }))
     expect(app.responses.a?.body).toEqual({ id: 'u1' })
+  })
+
+  it('infers a capture schema on arrival, so it outlives a body that is never saved', () => {
+    app.nodes = [mkNode('a')]
+    apply(finished('a', 'success', { log: mkLog('a'), capture: mkCapture({ id: 'u1' }) }))
+    expect(app.responses.a?.schema).toEqual(inferSchema({ id: 'u1' }))
   })
 
   it('toasts a run-level failure', () => {

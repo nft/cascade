@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ancestorNodes, nodeSchemaSource } from '../../picker'
   import { app } from '../../state.svelte'
-  import { inferSchema, schemaTree } from '../../schema'
+  import { schemaTree } from '../../schema'
   import Icon from '../Icon.svelte'
   import IconButton from '../ui/IconButton.svelte'
   import Input from '../ui/Input.svelte'
@@ -37,7 +37,7 @@
     </p>
   {/if}
   {#each ancestors as { node, direct } (node.id)}
-    {@const source = nodeSchemaSource(node, app.responses[node.id], inferSchema)}
+    {@const source = nodeSchemaSource(node, app.responses[node.id])}
     <section>
       <header class="flex items-center gap-1.5 px-1 pb-1">
         <span class="font-mono text-[11px] font-semibold text-violet-300">{node.data.key}</span>

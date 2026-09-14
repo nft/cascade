@@ -8,8 +8,7 @@
     type ForNode,
   } from '../../model'
   import { ancestorNodes, arrayPaths, nodeSchemaSource } from '../../picker'
-  import { inferSchema } from '../../schema'
-  import { app } from '../../state.svelte'
+    import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
   import { FIELD_LABEL } from '../ui/classes'
   import Field from '../ui/Field.svelte'
@@ -126,7 +125,7 @@
           </p>
         {/if}
         {#each ancestors as { node: upstream } (upstream.id)}
-          {@const schemaSource = nodeSchemaSource(upstream, app.responses[upstream.id], inferSchema)}
+          {@const schemaSource = nodeSchemaSource(upstream, app.responses[upstream.id])}
           {@const options = schemaSource ? arrayPaths(schemaSource.schema) : null}
           <section>
             <header class="flex items-center gap-1.5 px-1 pb-1">

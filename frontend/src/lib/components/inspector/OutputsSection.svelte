@@ -2,7 +2,7 @@
   import type { NodeExport, RunnableNode } from '../../model'
   import { nodeSchemaSource } from '../../picker'
   import { isValidKey } from '../../refs'
-  import { inferSchema, schemaTree } from '../../schema'
+  import { schemaTree } from '../../schema'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
   import Button from '../ui/Button.svelte'
@@ -14,7 +14,7 @@
   let { node }: { node: RunnableNode } = $props()
 
   const exports = $derived(node.data.exports ?? [])
-  const schemaSource = $derived(nodeSchemaSource(node, app.responses[node.id], inferSchema))
+  const schemaSource = $derived(nodeSchemaSource(node, app.responses[node.id]))
 
   let newKey = $state('')
   let newPath = $state('')

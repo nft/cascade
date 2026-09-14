@@ -8,7 +8,7 @@ import { dialogs } from './dialogs.svelte'
 import { isHttpNode, type AppNode, type NodeField } from './model'
 import { isValidKey, takenKeys } from './refs'
 import { normalizeOrigin } from './request'
-import { inferSchema } from './schema'
+import { capturedSchema } from './schema'
 import type { AppState } from './state.svelte'
 
 export function removeNode(app: AppState, id: string) {
@@ -150,5 +150,6 @@ export function removeField(app: AppState, nodeId: string, fieldKey: string) {
 export function useLastResponseAsSchema(app: AppState, nodeId: string) {
   const captured = app.responses[nodeId]
   if (!captured) return
-  app.updateNodeData(nodeId, { responseSchema: inferSchema(captured.body) })
+  const schema = capturedSchema(captured)
+  if (schema) app.updateNodeData(nodeId, { responseSchema: schema })
 }

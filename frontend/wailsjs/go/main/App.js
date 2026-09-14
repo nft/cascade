@@ -78,6 +78,10 @@ export function SendTestRequest(arg1, arg2) {
   return window['go']['main']['App']['SendTestRequest'](arg1, arg2);
 }
 
+export function SetCaptureResponses(arg1, arg2) {
+  return window['go']['main']['App']['SetCaptureResponses'](arg1, arg2);
+}
+
 export function SetCredentialSecret(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetCredentialSecret'](arg1, arg2, arg3);
 }

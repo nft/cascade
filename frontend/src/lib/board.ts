@@ -22,12 +22,14 @@ import {
   type NodeExport,
   type NodeField,
   type OperationNodeData,
+  type ProjectMeta,
   type RawBody,
   type RequestRef,
   type SchemaJSON,
   type TransformNodeData,
 } from './model'
 import { isValidKey, slugifyKey, uniqueKey } from './refs'
+import { withInferredSchema } from './schema'
 import { BODY_KEY_PREFIX, sectionOfKey } from './request'
 
 export const BOARD_FORMAT_VERSION = 1
@@ -102,6 +104,41 @@ export function serializeBoard(
       ...(Object.keys(keptResponses).length > 0 ? { responses: keptResponses } : {}),
     },
   }
+}
+
+/**
+ * Whether this project's board files may carry response bodies (plan 11 W8).
+ * Absent means yes: every project written before the setting existed omits it,
+ * and the default is the permissive one so nothing changes silently.
+ */
+export function capturesResponses(meta: ProjectMeta | undefined): boolean {
+  return meta?.captureResponses !== false
+}
+
+/**
+ * The captures as they may be written to disk when response capture is off:
+ * schema, status and timestamp only. Headers go with the body — `Set-Cookie`
+ * is a token like any other, nothing at edit time reads a captured header
+ * (the picker's `headers` button inserts a path, it does not enumerate
+ * names), and a setting that keeps half the response data would not mean what
+ * its label says.
+ *
+ * Applied by the save path only. The run request carries the same captures
+ * over the Wails bridge and keeps everything: that is what a targeted run
+ * seeds its bindings from, and it never reaches a file.
+ */
+export function withoutResponseData(
+  responses: Record<string, CapturedResponse>,
+): Record<string, CapturedResponse> {
+  return Object.fromEntries(
+    Object.entries(responses).map(([nodeId, captured]) => {
+      // Infer here as well as on arrival: a board saved before schemas were
+      // persisted loads with a body and no schema, and dropping the body
+      // without this would leave the picker nothing to read.
+      const { body: _body, headers: _headers, ...rest } = withInferredSchema(captured)
+      return [nodeId, rest]
+    }),
+  )
 }
 
 export function deserializeBoard(board: BoardJSON): {

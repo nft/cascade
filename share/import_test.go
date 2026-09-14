@@ -1,9 +1,12 @@
 package share
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
+
+	"cascade/store"
 )
 
 func TestImportBoard(t *testing.T) {
@@ -95,5 +98,46 @@ func TestImportBoardRejectsBadInput(t *testing.T) {
 	newer := []byte(`{"cascade": {"kind": "board", "formatVersion": 99, "app": "cascade/9", "board": {}, "requires": {"environments": [], "credentials": [], "sources": []}}}`)
 	if _, _, err := ImportBoard(p, newer); err == nil || !strings.Contains(err.Error(), "newer") {
 		t.Errorf("importing a newer format should surface the version error, got %v", err)
+	}
+}
+
+// Export strips captured responses; import has to strip them too, or a
+// hand-written envelope writes someone else's response bodies into this
+// project's board file.
+func TestImportBoardDropsCapturedResponses(t *testing.T) {
+	p := newTestProject(t)
+	if err := p.SaveBoard(testBoard()); err != nil {
+		t.Fatalf("SaveBoard: %v", err)
+	}
+	exported, err := ExportBoard(p, "b1")
+	if err != nil {
+		t.Fatalf("ExportBoard: %v", err)
+	}
+	// Put them back the way a third-party envelope could.
+	envelope, err := Parse(exported)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	envelope.Cascade.Board.Layout.Responses = map[string]store.CapturedResponse{
+		"create-user": {Status: 200, Body: map[string]any{"token": "secret-value"}, At: "2026-07-06T14:02:00Z"},
+	}
+	raw, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	imported, _, err := ImportBoard(p, raw)
+	if err != nil {
+		t.Fatalf("ImportBoard: %v", err)
+	}
+	if len(imported.Layout.Responses) != 0 {
+		t.Errorf("imported responses = %v, want none", imported.Layout.Responses)
+	}
+	saved, err := p.Board(imported.ID)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	if len(saved.Layout.Responses) != 0 {
+		t.Errorf("persisted responses = %v, want none", saved.Layout.Responses)
 	}
 }

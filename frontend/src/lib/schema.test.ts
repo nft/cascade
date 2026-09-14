@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { inferSchema, schemaTree } from './schema'
+import type { CapturedResponse } from './model'
+import { capturedSchema, inferSchema, schemaTree, withInferredSchema } from './schema'
 
 describe('inferSchema (TS mirror of core/schema/infer, plan 05 §8)', () => {
   it('infers nested objects and arrays with sorted keys', () => {
@@ -72,5 +73,37 @@ describe('schemaTree (picker rows)', () => {
     expect(items.children[0].path).toBe('body.items[0]')
     expect(items.children[0].children[0].path).toBe('body.items[0].id')
     expect(tree.children.find((c) => c.label === 'name')!.type).toBe('string')
+  })
+})
+
+describe('capture schema helpers (plan 11 W8)', () => {
+  const captured = (over: Partial<CapturedResponse> = {}): CapturedResponse => ({
+    status: 200,
+    body: { id: 'u1', tags: ['a'] },
+    at: '2026-07-06T14:02:00Z',
+    ...over,
+  })
+
+  it('infers once, when the capture arrives', () => {
+    const withSchema = withInferredSchema(captured())
+    expect(withSchema.schema).toEqual(inferSchema({ id: 'u1', tags: ['a'] }))
+    // Idempotent: a capture that already carries one is returned untouched.
+    expect(withInferredSchema(withSchema)).toBe(withSchema)
+  })
+
+  it('infers nothing when there is no body to walk', () => {
+    expect(withInferredSchema(captured({ body: undefined })).schema).toBeUndefined()
+    expect(withInferredSchema(captured({ truncated: true })).schema).toBeUndefined()
+  })
+
+  it('prefers the stored schema, so a bodyless capture still has a shape', () => {
+    const stored = { type: 'object', properties: { id: { type: 'string' } } }
+    expect(capturedSchema(captured({ body: undefined, schema: stored }))).toBe(stored)
+    expect(capturedSchema(captured({ schema: stored }))).toBe(stored)
+  })
+
+  it('falls back to the body, and gives up when neither exists', () => {
+    expect(capturedSchema(captured())).toEqual(inferSchema({ id: 'u1', tags: ['a'] }))
+    expect(capturedSchema(captured({ body: undefined }))).toBeNull()
   })
 })

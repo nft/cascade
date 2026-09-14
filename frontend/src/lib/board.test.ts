@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { BOARD_FORMAT_VERSION, deserializeBoard, serializeBoard } from './board'
+import {
+  BOARD_FORMAT_VERSION,
+  capturesResponses,
+  deserializeBoard,
+  serializeBoard,
+  withoutResponseData,
+} from './board'
 import type { AppEdge, AppNode, BoardJSON, HttpNode } from './model'
+import { inferSchema } from './schema'
 
 const httpNode = (id: string, x = 10, y = 20): AppNode => ({
   id,
@@ -280,6 +287,52 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(board.layout.responses).toEqual({ a: responses.a })
     const loaded = deserializeBoard(board)
     expect(loaded.responses).toEqual({ a: responses.a })
+  })
+
+  it('keeps the schema and drops the response data when capture is off', () => {
+    const schema = { type: 'object', properties: { id: { type: 'string' } } }
+    const responses = {
+      a: {
+        status: 201,
+        headers: { 'set-cookie': 'session=secret-value' },
+        body: { id: 'u1' },
+        schema,
+        at: '2026-07-06T14:02:00Z',
+      },
+    }
+    const board = serializeBoard(
+      'b1',
+      'Main',
+      [httpNode('a')],
+      [],
+      undefined,
+      withoutResponseData(responses),
+    )
+    expect(board.layout.responses?.a).toEqual({
+      status: 201,
+      schema,
+      at: '2026-07-06T14:02:00Z',
+    })
+    // A Set-Cookie is a token like any other, so headers go with the body.
+    expect(JSON.stringify(board.layout.responses)).not.toContain('secret-value')
+    // The whole point: a reopened board still knows the response's shape.
+    expect(deserializeBoard(board).responses.a.schema).toEqual(schema)
+  })
+
+  it('infers a schema for a capture saved before schemas were persisted', () => {
+    // Reopened pre-W8 board: body, no schema. Turning capture off must not
+    // drop the body without leaving something behind to read.
+    const responses = { a: { status: 200, body: { id: 'u1' }, at: '2026-07-06T14:02:00Z' } }
+    const stripped = withoutResponseData(responses)
+    expect(stripped.a).not.toHaveProperty('body')
+    expect(stripped.a.schema).toEqual(inferSchema({ id: 'u1' }))
+  })
+
+  it('reads the setting as on unless a project says otherwise', () => {
+    expect(capturesResponses(undefined)).toBe(true)
+    expect(capturesResponses({ id: 'p1', name: 'P' })).toBe(true)
+    expect(capturesResponses({ id: 'p1', name: 'P', captureResponses: true })).toBe(true)
+    expect(capturesResponses({ id: 'p1', name: 'P', captureResponses: false })).toBe(false)
   })
 
   it('preserves exports and pinned response schemas across the round-trip', () => {

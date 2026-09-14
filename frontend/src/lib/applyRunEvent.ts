@@ -3,6 +3,7 @@
 // array of events, with no timers, no promises and no backend.
 import { dialogs } from './dialogs.svelte'
 import { RunEventKind, type RunEvent, type RunResult } from './runEvents'
+import { withInferredSchema } from './schema'
 import type { AppState } from './state.svelte'
 
 /** Prefix of the toast raised when the engine reports a run-level failure. */
@@ -55,7 +56,7 @@ function applyNodeFinished(app: AppState, e: RunEvent): void {
   // outlive the run.
   app.updateNodeData(e.node, { status: e.status, note: e.note, progress: undefined })
   if (e.log) app.logs = [...app.logs, e.log]
-  if (e.capture) app.responses = { ...app.responses, [e.node]: e.capture }
+  if (e.capture) app.responses = { ...app.responses, [e.node]: withInferredSchema(e.capture) }
 }
 
 /**

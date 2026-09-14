@@ -33,6 +33,9 @@ export interface CascadeApi {
   saveEnvironments(projectId: string, environments: EnvironmentDef[]): Promise<void>
   /** Replaces the environment/credential a newly added node is born with. */
   setProjectDefaults(projectId: string, defaults: ProjectDefaults): Promise<void>
+
+  /** Gates writing response bodies into this project's board files. */
+  setCaptureResponses(projectId: string, capture: boolean): Promise<void>
   /** Replaces the credential metadata list (plan 04 K2) — never carries values. */
   saveCredentials(projectId: string, credentials: CredentialDef[]): Promise<void>
   /** Removes one credential's metadata and its stored secret. */
@@ -83,6 +86,7 @@ const wailsApi: StoreApi = {
     GoApp.SaveEnvironments(projectId, environments as unknown as goStore.Environment[]),
   setProjectDefaults: (projectId, defaults) =>
     GoApp.SetProjectDefaults(projectId, defaults as unknown as goStore.Defaults),
+  setCaptureResponses: (projectId, capture) => GoApp.SetCaptureResponses(projectId, capture),
   saveCredentials: (projectId, credentials) =>
     GoApp.SaveCredentials(projectId, credentials as unknown as goStore.Credential[]),
   deleteCredential: (projectId, name) => GoApp.DeleteCredential(projectId, name),
