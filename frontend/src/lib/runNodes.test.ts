@@ -62,7 +62,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     ]
     app.edges = [mkEdge('u1', 'o1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -86,14 +86,14 @@ describe('response capture and schema pinning (plan 05)', () => {
     ]
     app.edges = [mkEdge('u1', 'o1')]
 
-    let run = app.simulateRun()
+    let run = app.run()
     await vi.runAllTimersAsync()
     await run
     const seededUserId = (app.responses['u1'].body as Record<string, unknown>).id
 
     // Re-run only o1: u1 is outside the run set, so its binding resolves from
     // the seed — and the target itself must not be marked skipped.
-    run = app.simulateRun('o1', 'downstream')
+    run = app.run('o1', 'downstream')
     await vi.runAllTimersAsync()
     await run
 
@@ -115,7 +115,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     ]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -134,7 +134,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     ]
     app.edges = [mkEdge('u1', 'o1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
     expect((app.responses['o1'].body as Record<string, unknown>).owner).toBe('Ada')
@@ -146,7 +146,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     app.nodes = [withFields('u1', [{ key: 'body.email', source: 'literal', value: 'ada@example.com' }])]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -184,7 +184,7 @@ describe('transform nodes in the sim (plan 06 T2)', () => {
     app.nodes = [upstream, mkTransform('shape', 'return { label: "org " + res.body.name }'), invite]
     app.edges = [mkEdge('create-org', 'shape'), mkEdge('shape', 'invite')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -207,7 +207,7 @@ describe('transform nodes in the sim (plan 06 T2)', () => {
     app.nodes = [mkNode('a'), mkTransform('t', 'throw new Error("boom")'), mkNode('b')]
     app.edges = [mkEdge('a', 't'), mkEdge('t', 'b')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -222,7 +222,7 @@ describe('transform nodes in the sim (plan 06 T2)', () => {
     app.nodes = [mkNode('a'), { id: 'sticky', type: 'note', position: { x: 0, y: 0 }, data: { text: 'hi' } }]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -249,7 +249,7 @@ describe('raw-body sim capture (plan 10 §3c)', () => {
     app.nodes = [upstream, raw]
     app.edges = [mkEdge('u', 'r')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -264,7 +264,7 @@ describe('raw-body sim capture (plan 10 §3c)', () => {
     app.nodes = [rawNode('r', 'a,b\n1,2', 'text/csv')]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -276,7 +276,7 @@ describe('raw-body sim capture (plan 10 §3c)', () => {
     app.nodes = [rawNode('r', '[1, 2, 3]')]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -301,7 +301,7 @@ describe('mock nodes in the sim (plan 09 N2)', () => {
     app.nodes = [mkMock('m1', '{"users":[{"name":"ada"}]}'), mkNode('a1')]
     app.edges = [mkEdge('m1', 'a1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -318,7 +318,7 @@ describe('mock nodes in the sim (plan 09 N2)', () => {
     app.nodes = [mkMock('m1', '{"broken'), mkNode('a1'), mkNode('b1')]
     app.edges = [mkEdge('m1', 'a1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -353,7 +353,7 @@ describe('delay nodes in the sim (plan 09 N3)', () => {
     app.nodes = [mkMock('m1', '{"id":"u1"}'), mkDelay('d1', 500), mkNode('a1')]
     app.edges = [mkEdge('m1', 'd1'), mkEdge('d1', 'a1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -370,7 +370,7 @@ describe('delay nodes in the sim (plan 09 N3)', () => {
     app.nodes = [mkDelay('d1', 500)]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -383,7 +383,7 @@ describe('delay nodes in the sim (plan 09 N3)', () => {
     app.nodes = [mkDelay('d1', 0), mkNode('a1'), mkNode('b1')]
     app.edges = [mkEdge('d1', 'a1')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 

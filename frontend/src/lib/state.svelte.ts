@@ -470,11 +470,6 @@ export class AppState {
     await startRun(this, targetId, scope)
   }
 
-  /** @deprecated call run(); kept until the call sites migrate. */
-  async simulateRun(targetId?: string, scope: RunScope = 'upstream') {
-    await this.run(targetId, scope)
-  }
-
   /** Cancel the in-flight run. Idle is a no-op. */
   async stopRun() {
     await stopRun(this)

@@ -140,13 +140,13 @@ describe('escape priority (plan 03 §1)', () => {
   })
 })
 
-describe('targeted simulateRun (plan 03 §4)', () => {
+describe('targeted run (plan 03 §4)', () => {
   it('runs exactly the ancestor set; a disconnected chain never leaves its previous status', async () => {
     vi.useFakeTimers()
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('b1'), mkNode('b2')]
     app.edges = [mkEdge('a1', 'a2'), mkEdge('b1', 'b2')]
 
-    const run = app.simulateRun('a2', 'upstream')
+    const run = app.run('a2', 'upstream')
     await vi.runAllTimersAsync()
     await run
 
@@ -163,7 +163,7 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
     app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
 
-    const run = app.simulateRun('a2', 'downstream')
+    const run = app.run('a2', 'downstream')
     // While running, the ancestor is not part of the active run set (its edge must not animate).
     expect(app.activeRunIds).toEqual(new Set(['a2', 'a3']))
     await vi.runAllTimersAsync()
@@ -181,14 +181,14 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
     app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
 
-    let run = app.simulateRun('a2', 'upstream')
+    let run = app.run('a2', 'upstream')
     await vi.runAllTimersAsync()
     await run
     expect(statusOf('a1')).toBe('success')
     expect(statusOf('a2')).toBe('success')
     expect(statusOf('a3')).toBe('stale')
 
-    run = app.simulateRun('a2', 'component')
+    run = app.run('a2', 'component')
     await vi.runAllTimersAsync()
     await run
     expect(statusOf('a3')).toBe('success')
@@ -199,7 +199,7 @@ describe('targeted simulateRun (plan 03 §4)', () => {
     app.nodes = [mkNode('a1'), mkNode('b1')]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
     expect(statusOf('a1')).toBe('success')
@@ -213,7 +213,7 @@ describe('run control (plan 11)', () => {
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
     app.edges = [mkEdge('a1', 'a2'), mkEdge('a2', 'a3')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.advanceTimersByTimeAsync(600) // a1 finished, a2 in flight
     await app.stopRun()
     await vi.runAllTimersAsync()
@@ -233,7 +233,7 @@ describe('run control (plan 11)', () => {
     app.nodes = [mkNode('a1'), mkNode('a2')]
     app.edges = [mkEdge('a1', 'a2')]
 
-    const run = app.simulateRun()
+    const run = app.run()
     expect(app.isRunning).toBe(true)
     await app.openBoard(serializeBoard('b2', 'Other', [], []))
     expect(app.isRunning).toBe(false)
@@ -259,7 +259,7 @@ describe('run control (plan 11)', () => {
     // whose entire event stream failed to arrive.
     const subscribe = vi.spyOn(api, 'onRunEvent').mockReturnValue(() => {})
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 
@@ -276,7 +276,7 @@ describe('run control (plan 11)', () => {
     app.nodes = [mkNode('a1')]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     // Stand in for a successor run: the flags now belong to it, not to `run`.
     app.runId = 'run-later'
     app.isRunning = true
@@ -325,7 +325,7 @@ describe('clearLogs (plan 10 §1)', () => {
     app.nodes = [mkNode('a')]
     app.edges = []
 
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
 

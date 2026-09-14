@@ -56,7 +56,7 @@
       disabled={app.isRunning}
       onclick={(e) => {
         e.stopPropagation()
-        app.simulateRun(id, 'downstream')
+        app.run(id, 'downstream')
       }}
       title="Run this node and the chain after it"
       aria-label="Run this node"

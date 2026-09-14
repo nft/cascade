@@ -75,7 +75,7 @@ describe('For loops in the sim (plan 09 N7)', () => {
 
   const runSim = async () => {
     vi.useFakeTimers()
-    const run = app.simulateRun()
+    const run = app.run()
     await vi.runAllTimersAsync()
     await run
   }

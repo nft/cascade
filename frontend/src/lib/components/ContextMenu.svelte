@@ -94,10 +94,10 @@
         fitView()
         break
       case 'run-node':
-        if (menu.id) app.simulateRun(menu.id, 'upstream')
+        if (menu.id) app.run(menu.id, 'upstream')
         break
       case 'run-chain':
-        if (menu.id) app.simulateRun(menu.id, 'component')
+        if (menu.id) app.run(menu.id, 'component')
         break
       case 'copy':
         if (menu.id) void copyNodes(app, selectionForCopy(app.nodes, menu.id))
