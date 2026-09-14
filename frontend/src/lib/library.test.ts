@@ -4,6 +4,9 @@ import {
   libraryLinkState,
   requestDefFromNode,
   requestDiffers,
+  saveNodeToCollection,
+  updateCollectionRequestFromNode,
+  upsertCollectionRequest,
 } from './library'
 import { demoCollection } from './mock'
 import type { HttpNode, OperationNodeData, RequestDef } from './model'
@@ -176,7 +179,7 @@ describe('library flows through AppState (plan 08 B3)', () => {
   })
 
   it('saveNodeToCollection writes the stripped request into the folder and links the node', () => {
-    const requestId = app.saveNodeToCollection('n1', demoCollection.id, 'billing', 'Invoice v2')
+    const requestId = saveNodeToCollection(app, 'n1', demoCollection.id, 'billing', 'Invoice v2')
     expect(requestId).not.toBeNull()
     const folder = app.collections[0].root.folders?.find((f) => f.id === 'billing')
     const saved = folder?.requests.find((r) => r.id === requestId)
@@ -198,7 +201,7 @@ describe('library flows through AppState (plan 08 B3)', () => {
         requestRef: { collectionId: demoCollection.id, requestId: 'create-invoice' },
       }),
     ]
-    expect(app.updateCollectionRequestFromNode('n1')).toBe(true)
+    expect(updateCollectionRequestFromNode(app, 'n1')).toBe(true)
     const folder = app.collections[0].root.folders?.find((f) => f.id === 'billing')
     const updated = folder?.requests.find((r) => r.id === 'create-invoice')
     expect(updated?.name).toBe('Create invoice') // identity kept
@@ -208,17 +211,17 @@ describe('library flows through AppState (plan 08 B3)', () => {
 
   it('updateCollectionRequestFromNode is a no-op on a dangling ref', () => {
     app.nodes = [node({ requestRef: { collectionId: demoCollection.id, requestId: 'gone' } })]
-    expect(app.updateCollectionRequestFromNode('n1')).toBe(false)
+    expect(updateCollectionRequestFromNode(app, 'n1')).toBe(false)
   })
 
   it('upsertCollectionRequest adds new requests and replaces existing ones in place', () => {
     const fresh: RequestDef = { id: 'req-new', name: 'Fresh', protocol: 'http', method: 'GET', url: '/v1/fresh' }
-    expect(app.upsertCollectionRequest(demoCollection.id, 'root', fresh)).toBe(true)
+    expect(upsertCollectionRequest(app, demoCollection.id, 'root', fresh)).toBe(true)
     expect(app.collections[0].root.requests.some((r) => r.id === 'req-new')).toBe(true)
 
     const replaced = { ...fresh, name: 'Renamed', url: '/v2/fresh' }
     // folderId is ignored for existing requests — they keep their place.
-    expect(app.upsertCollectionRequest(demoCollection.id, 'billing', replaced)).toBe(true)
+    expect(upsertCollectionRequest(app, demoCollection.id, 'billing', replaced)).toBe(true)
     const inRoot = app.collections[0].root.requests.find((r) => r.id === 'req-new')
     expect(inRoot?.url).toBe('/v2/fresh')
     const billing = app.collections[0].root.folders?.find((f) => f.id === 'billing')

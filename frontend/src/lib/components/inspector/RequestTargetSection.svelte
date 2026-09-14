@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { libraryLinkState } from '../../library'
+  import { libraryLinkState, updateCollectionRequestFromNode } from '../../library'
   import { HTTP_METHODS, isHttpMethod, type HttpNode } from '../../model'
   import { urlHost } from '../../request'
   import { app } from '../../state.svelte'
@@ -124,7 +124,7 @@
       differs from its library request
       <button
         class="ml-auto rounded px-1.5 py-0.5 text-[10px] text-sky-300 hover:bg-zinc-800"
-        onclick={() => app.updateCollectionRequestFromNode(node.id)}
+        onclick={() => updateCollectionRequestFromNode(app, node.id)}
         title="Push this node's method, URL and fields back onto the collection request"
       >
         Update library

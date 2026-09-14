@@ -5,11 +5,23 @@
   // interaction state stays in this one component.
   import { SvelteSet } from 'svelte/reactivity'
   import {
+    addCollectionFolder,
+    createCollection,
+    deleteCollection,
+    deleteCollectionFolder,
+    deleteCollectionRequest,
+    duplicateCollectionRequest,
+    renameCollection,
+    renameCollectionFolder,
+    renameCollectionRequest,
+  } from '../../collectionActions.svelte'
+  import {
     flattenRequests,
     folderById,
     folderDepth,
     MAX_FOLDER_DEPTH,
     requestMatches,
+    requestRefCount,
     ROOT_FOLDER_ID,
   } from '../../collections'
   import { libraryMenuItems, type LibraryMenuKind } from '../../contextMenu'
@@ -59,13 +71,13 @@
   const menuRefCount = $derived.by(() => {
     const m = menu
     if (!m || !menuCollection) return 0
-    if (m.kind === 'request') return app.collectionRefCount(m.collectionId, m.requestId)
-    if (m.kind === 'collection') return app.collectionRefCount(m.collectionId)
+    if (m.kind === 'request') return requestRefCount(app.allNodeData(), m.collectionId, m.requestId)
+    if (m.kind === 'collection') return requestRefCount(app.allNodeData(), m.collectionId)
     // Folder: references to any request inside it.
     const folder = folderById(menuCollection.root, m.folderId)
     if (!folder) return 0
     return flattenRequests(folder).reduce(
-      (sum, { request }) => sum + app.collectionRefCount(m.collectionId, request.id),
+      (sum, { request }) => sum + requestRefCount(app.allNodeData(), m.collectionId, request.id),
       0,
     )
   })
@@ -110,7 +122,7 @@
         }
         break
       case 'new-folder': {
-        const id = app.addCollectionFolder(m.collectionId, m.folderId, DEFAULT_FOLDER_NAME)
+        const id = addCollectionFolder(app, m.collectionId, m.folderId, DEFAULT_FOLDER_NAME)
         if (id) {
           collapsed.delete(m.folderId)
           collapsed.delete(m.collectionId)
@@ -127,7 +139,7 @@
         }
         break
       case 'duplicate-request':
-        if (m.requestId) app.duplicateCollectionRequest(m.collectionId, m.folderId, m.requestId)
+        if (m.requestId) duplicateCollectionRequest(app, m.collectionId, m.folderId, m.requestId)
         break
       case 'delete-item':
         // Two-step confirm, ProjectSwitcher-style: first click arms, second deletes.
@@ -135,9 +147,9 @@
           menu = { ...m, confirmingDelete: true }
           return
         }
-        if (m.kind === 'collection') void app.deleteCollection(m.collectionId)
-        else if (m.kind === 'folder') app.deleteCollectionFolder(m.collectionId, m.folderId)
-        else if (m.requestId) app.deleteCollectionRequest(m.collectionId, m.requestId)
+        if (m.kind === 'collection') void deleteCollection(app, m.collectionId)
+        else if (m.kind === 'folder') deleteCollectionFolder(app, m.collectionId, m.folderId)
+        else if (m.requestId) deleteCollectionRequest(app, m.collectionId, m.requestId)
         break
     }
     menu = null
@@ -149,9 +161,9 @@
     editing = null
     const name = draft.trim()
     if (!name) return
-    if (kind === 'collection') app.renameCollection(collectionId, name)
-    else if (kind === 'folder') app.renameCollectionFolder(collectionId, id, name)
-    else app.renameCollectionRequest(collectionId, id, name)
+    if (kind === 'collection') renameCollection(app, collectionId, name)
+    else if (kind === 'folder') renameCollectionFolder(app, collectionId, id, name)
+    else renameCollectionRequest(app, collectionId, id, name)
   }
 
   function onRenameKeydown(event: KeyboardEvent) {
@@ -163,7 +175,7 @@
   }
 
   function newCollection() {
-    const collection = app.createCollection(DEFAULT_COLLECTION_NAME)
+    const collection = createCollection(app, DEFAULT_COLLECTION_NAME)
     if (collection) {
       editing = {
         kind: 'collection',

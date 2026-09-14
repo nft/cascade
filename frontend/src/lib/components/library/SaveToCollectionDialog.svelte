@@ -2,8 +2,10 @@
   // "Save to collection…" picker (plan 08 B3): choose collection + folder +
   // name for a canvas node; saving strips board wiring (library.ts) and
   // links the node back via requestRef.
+  import { createCollection } from '../../collectionActions.svelte'
   import { folderOptions, ROOT_FOLDER_ID } from '../../collections'
   import { dialogs } from '../../dialogs.svelte'
+  import { saveNodeToCollection } from '../../library'
   import { app } from '../../state.svelte'
   import Button from '../ui/Button.svelte'
   import Field from '../ui/Field.svelte'
@@ -44,12 +46,12 @@
     let targetCollection = collectionId
     let targetFolder = folderId
     if (collectionId === NEW_COLLECTION) {
-      const created = app.createCollection(newCollectionName.trim())
+      const created = createCollection(app, newCollectionName.trim())
       if (!created) return
       targetCollection = created.id
       targetFolder = ROOT_FOLDER_ID
     }
-    app.saveNodeToCollection(nodeId, targetCollection, targetFolder, name.trim())
+    saveNodeToCollection(app, nodeId, targetCollection, targetFolder, name.trim())
     close()
   }
 </script>

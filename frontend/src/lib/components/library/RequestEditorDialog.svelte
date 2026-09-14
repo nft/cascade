@@ -5,6 +5,7 @@
   // canvas; save writes the definition into the collection.
   import { findRequest, libraryId } from '../../collections'
   import { dialogs, type RequestEditorContext } from '../../dialogs.svelte'
+  import { upsertCollectionRequest } from '../../library'
   import { HTTP_METHODS, isHttpMethod, type RequestDef } from '../../model'
   import { draftTarget } from '../../requestEditor'
   import { app } from '../../state.svelte'
@@ -64,7 +65,7 @@
     request.url = request.url.trim()
     if (request.description !== undefined && request.description.trim() === '') delete request.description
     if (!request.defaults?.length) delete request.defaults
-    app.upsertCollectionRequest(collectionId, folderId, request)
+    upsertCollectionRequest(app, collectionId, folderId, request)
     close()
   }
 </script>

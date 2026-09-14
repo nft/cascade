@@ -1,7 +1,10 @@
 // Collection tree CRUD (plan 08 B1/B2), kept out of state.svelte.ts the same
-// way credentialActions.svelte.ts holds the credential flows. Every tree edit
-// goes through AppState.mutateCollection, which owns the "a null result means
-// leave the state untouched" contract and the save that follows a good one.
+// way credentialActions.svelte.ts holds the credential flows — and, like
+// environmentActions.svelte.ts, called straight from components instead of
+// being re-exported as AppState methods, which that file has no room left for.
+// Every tree edit goes through AppState.mutateCollection, which owns the "a
+// null result means leave the state untouched" contract and the save that
+// follows a good one.
 import { api } from './api'
 import {
   addFolder,
@@ -36,6 +39,10 @@ export function createCollection(app: AppState, name: string): CollectionDef | n
   app.project.collections = [...app.project.collections, collection]
   void persistCollection(app, collection)
   return collection
+}
+
+export function renameCollection(app: AppState, collectionId: string, name: string) {
+  app.mutateCollection(collectionId, (c) => ({ ...c, name }))
 }
 
 export async function deleteCollection(app: AppState, collectionId: string) {

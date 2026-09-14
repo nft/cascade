@@ -4,7 +4,7 @@
   import { menuItems, type MenuItem } from '../contextMenu'
   import { dialogs } from '../dialogs.svelte'
   import { centeredNodePosition, edgeScope } from '../edgeInsert'
-  import { libraryLinkState } from '../library'
+  import { libraryLinkState, updateCollectionRequestFromNode } from '../library'
   import { isHttpNode, type Operation } from '../model'
   import { copyNodes, pasteFromClipboard, selectionForCopy } from '../shareActions'
   import { app } from '../state.svelte'
@@ -115,7 +115,7 @@
         if (menu.id) dialogs.saveToCollection = { nodeId: menu.id }
         break
       case 'update-collection-request':
-        if (menu.id) app.updateCollectionRequestFromNode(menu.id)
+        if (menu.id) updateCollectionRequestFromNode(app, menu.id)
         break
       case 'delete-node':
         if (menu.id) app.removeNodeRequest(menu.id)

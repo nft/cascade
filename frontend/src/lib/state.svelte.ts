@@ -1,16 +1,10 @@
 import { api } from './api'
 import { deserializeBoard, serializeBoard, TRANSIENT_NODE_KEYS } from './board'
-import * as collectionActions from './collectionActions.svelte'
-import { requestRefCount } from './collections'
+import { persistCollection } from './collectionActions.svelte'
 import type { ContextMenuKind } from './contextMenu'
 import { deleteCredential, saveCredential } from './credentialActions.svelte'
 import { credentialRefCount } from './credentials'
 import { adoptEdgeScope, spliceEdge } from './edgeInsert'
-import {
-  saveNodeToCollection,
-  updateCollectionRequestFromNode,
-  upsertCollectionRequest,
-} from './library'
 import {
   isHttpNode,
   type AppEdge,
@@ -500,7 +494,7 @@ export class AppState {
     return [...saved, ...this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))]
   }
 
-  // --- collections (plan 08 B1/B2) -------------------------------------------
+  // --- collections (plan 08 B1/B2): tree flows live in collectionActions.svelte.ts
 
   get collections(): CollectionDef[] {
     return this.project?.collections ?? []
@@ -509,8 +503,8 @@ export class AppState {
   /**
    * Apply an immutable tree operation to one collection and persist the
    * result. A null from the operation means "target not found / invariant
-   * would break" — the state is left untouched. Public so library flows
-   * (library.ts) can compose it; components use the named methods below.
+   * would break" — the state is left untouched. Public so the tree and
+   * library flows (collectionActions.svelte.ts, library.ts) can compose it.
    */
   mutateCollection(
     collectionId: string,
@@ -524,65 +518,8 @@ export class AppState {
     this.project.collections = this.project.collections.map((c) =>
       c.id === collectionId ? next : c,
     )
-    void collectionActions.persistCollection(this, next)
+    void persistCollection(this, next)
     return true
-  }
-
-  createCollection(name: string): CollectionDef | null {
-    return collectionActions.createCollection(this, name)
-  }
-
-  renameCollection(collectionId: string, name: string) {
-    this.mutateCollection(collectionId, (c) => ({ ...c, name }))
-  }
-
-  deleteCollection(collectionId: string): Promise<void> {
-    return collectionActions.deleteCollection(this, collectionId)
-  }
-
-  /** Nodes across all boards (the open one included) referencing the collection. */
-  collectionRefCount(collectionId: string, requestId?: string): number {
-    return requestRefCount(this.allNodeData(), collectionId, requestId)
-  }
-
-  /** Returns the new folder's id, or null when the parent is missing or the depth cap would break. */
-  addCollectionFolder(collectionId: string, parentFolderId: string, name: string): string | null {
-    return collectionActions.addCollectionFolder(this, collectionId, parentFolderId, name)
-  }
-
-  renameCollectionFolder(collectionId: string, folderId: string, name: string) {
-    collectionActions.renameCollectionFolder(this, collectionId, folderId, name)
-  }
-
-  deleteCollectionFolder(collectionId: string, folderId: string) {
-    collectionActions.deleteCollectionFolder(this, collectionId, folderId)
-  }
-
-  renameCollectionRequest(collectionId: string, requestId: string, name: string) {
-    collectionActions.renameCollectionRequest(this, collectionId, requestId, name)
-  }
-
-  duplicateCollectionRequest(collectionId: string, folderId: string, requestId: string) {
-    collectionActions.duplicateCollectionRequest(this, collectionId, folderId, requestId)
-  }
-
-  deleteCollectionRequest(collectionId: string, requestId: string) {
-    collectionActions.deleteCollectionRequest(this, collectionId, requestId)
-  }
-
-  /** "Save to collection…" (plan 08 B3); returns the new request's id, or null. */
-  saveNodeToCollection(nodeId: string, collectionId: string, folderId: string, name: string): string | null {
-    return saveNodeToCollection(this, nodeId, collectionId, folderId, name)
-  }
-
-  /** Explicitly push a node's shape back onto its library request (plan 08 B3). */
-  updateCollectionRequestFromNode(nodeId: string): boolean {
-    return updateCollectionRequestFromNode(this, nodeId)
-  }
-
-  /** Request editor dialog save: replace in place, or add to the folder (plan 08 B3). */
-  upsertCollectionRequest(collectionId: string, folderId: string, request: RequestDef): boolean {
-    return upsertCollectionRequest(this, collectionId, folderId, request)
   }
 
   /** Instantiate a collection request as a canvas node (plan 08 B3). */
