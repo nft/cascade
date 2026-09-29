@@ -194,6 +194,29 @@ describe('targeted run (plan 03 §4)', () => {
     expect(statusOf('a3')).toBe('success')
   })
 
+  it('a loop child as the target paints and resets its whole loop on the click', async () => {
+    const loop: AppNode = {
+      id: 'loop',
+      type: 'for',
+      position: { x: 0, y: 0 },
+      data: { name: 'loop', key: 'key_loop', status: 'failed', note: 'iteration 1 of 3 failed', mode: 'count', count: 3 },
+    }
+    app.nodes = [mkNode('seed'), loop, { ...mkNode('c1', 'failed'), parentId: 'loop' }, mkNode('after', 'failed')]
+    app.edges = [mkEdge('seed', 'loop'), mkEdge('loop', 'after')]
+    // The engine never answers, so only the synchronous pre-flight can have
+    // painted what follows.
+    vi.spyOn(api, 'runBoard').mockResolvedValue({ runId: '', projectId: '', boardId: '', statuses: {} })
+
+    const run = app.run('c1', 'downstream')
+    expect(app.activeRunIds).toEqual(new Set(['loop', 'c1', 'after']))
+    expect(statusOf('loop')).toBe('idle')
+    expect(app.nodes.find((n) => n.id === 'loop')?.data).toMatchObject({ note: undefined })
+    expect(statusOf('c1')).toBe('idle')
+    expect(statusOf('after')).toBe('idle')
+    expect(statusOf('seed')).toBe('stale')
+    await run
+  })
+
   it('a run without a target still touches the whole board', async () => {
     vi.useFakeTimers()
     app.nodes = [mkNode('a1'), mkNode('b1')]

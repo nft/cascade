@@ -5,7 +5,7 @@ import { api } from './api'
 import { applyRunEvent, applyRunResult, RUN_FAILED_MESSAGE, runScopeOf } from './applyRunEvent'
 import { serializeBoard } from './board'
 import { dialogs } from './dialogs.svelte'
-import { componentIds, downstreamIds, upstreamIds } from './graph'
+import { runSet } from './graph'
 import type { RunRequest } from './runEvents'
 import type { AppState, RunScope } from './state.svelte'
 
@@ -63,28 +63,17 @@ export async function stopRun(app: AppState) {
 /**
  * Paints the run set and clears last run's statuses, synchronously — before
  * the first await, so the canvas responds on the click rather than a round
- * trip later. `run.started` replaces the set with the engine's authoritative
- * one the moment it arrives (plan 11 D11).
+ * trip later. `runSet` is the engine's own rule, so the `run.started` that
+ * replaces this set (plan 11 D11) confirms it rather than correcting it.
  */
 function preflight(app: AppState, runId: string, targetId: string | undefined, scope: RunScope) {
   app.isRunning = true
   app.runId = runId
-  const include = targetId
-    ? scope === 'upstream'
-      ? upstreamIds(app.edges, targetId)
-      : scope === 'downstream'
-        ? downstreamIds(app.edges, targetId)
-        : componentIds(app.edges, targetId)
-    : null
+  const include = targetId ? runSet(app.nodes, app.edges, targetId, scope) : null
   // Note nodes are annotations — they never run, so they keep no status.
-  // Loop children never run at top level: their For executes them.
-  const excluded = new Set(app.nodes.filter((n) => n.type === 'note' || n.parentId).map((n) => n.id))
-  const topLevel = app.nodes
-    .filter((n) => !excluded.has(n.id) && (!include || include.has(n.id)))
+  const runIds = app.nodes
+    .filter((n) => n.type !== 'note' && (!include || include.has(n.id)))
     .map((n) => n.id)
-  const inRun = new Set(topLevel)
-  const loopChildren = app.nodes.filter((n) => n.parentId && inRun.has(n.parentId)).map((n) => n.id)
-  const runIds = [...topLevel, ...loopChildren]
   app.activeRunIds = new Set(runIds)
   for (const id of runIds) app.updateNodeData(id, { status: 'idle', note: undefined })
 }

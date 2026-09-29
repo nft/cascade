@@ -3,7 +3,7 @@
 // returns a RunResult, exactly like RunBoard — so nothing above it knows which
 // side executed. Per-node execution lives in inMemoryNodes.ts.
 import { deserializeBoard } from './board'
-import { componentIds, downstreamIds, upstreamIds } from './graph'
+import { runSet } from './graph'
 import {
   capture,
   exportsByNodeId,
@@ -92,24 +92,15 @@ class InMemoryRun {
   }
 
   /**
-   * The run set: the target's subgraph (or the whole board), minus notes —
-   * annotations never run — and minus loop children, which their For executes
-   * rather than the top level.
-   *
-   * The three scopes are the engine's (`exec.Options.Target`), with one
-   * difference: `Graph.Closure` promotes a target inside a For to its
-   * container, and this path does not.
+   * The run set: the target's subgraph under the engine's rule (`runSet`
+   * ports `Graph.Closure`, loop promotion included) or the whole board, minus
+   * notes — annotations never run. `order` also leaves out loop children,
+   * which their For executes rather than the top level.
    */
   private plan(): { order: string[]; all: string[] } {
     const { nodes, edges } = this.ctx
     const target = this.options.request.target
-    const include = target
-      ? target.scope === 'upstream'
-        ? upstreamIds(edges, target.node)
-        : target.scope === 'downstream'
-          ? downstreamIds(edges, target.node)
-          : componentIds(edges, target.node)
-      : null
+    const include = target ? runSet(nodes, edges, target.node, target.scope) : null
     const excluded = new Set(nodes.filter((n) => n.type === 'note' || n.parentId).map((n) => n.id))
     const order = executionOrder(nodes, edges).filter(
       (id) => (!include || include.has(id)) && !excluded.has(id),

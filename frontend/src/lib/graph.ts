@@ -1,6 +1,7 @@
 // Pure graph helpers over the canvas node/edge arrays (plan 03 §3–4).
 import type { AppEdge, AppNode } from './model'
 import { formatEdgeLabel, nodeSendKeys } from './nodeIO'
+import type { RunScope } from './state.svelte'
 
 /**
  * Map edges to display edges: an edge animates iff its target node is running
@@ -145,6 +146,56 @@ export function polylinesIntersect(a: Point[], b: Point[]): boolean {
     }
   }
   return false
+}
+
+const scopeWalks: Record<RunScope, (edges: AppEdge[], targetId: string) => Set<string>> = {
+  upstream: upstreamIds,
+  downstream: downstreamIds,
+  component: componentIds,
+}
+
+/**
+ * The node set a targeted run covers — a port of the engine's `Graph.Closure`,
+ * so the canvas paints the set the engine is about to run. Walking edges is
+ * not enough on its own: a loop child only runs inside its For, so the target
+ * is first promoted to its outermost container, and the walk's result is then
+ * closed under containment both ways.
+ */
+export function runSet(
+  nodes: readonly Pick<AppNode, 'id' | 'parentId'>[],
+  edges: AppEdge[],
+  targetId: string,
+  scope: RunScope,
+): Set<string> {
+  const parentOf = new Map<string, string>()
+  const childrenOf = new Map<string, string[]>()
+  for (const n of nodes) {
+    if (!n.parentId) continue
+    parentOf.set(n.id, n.parentId)
+    childrenOf.set(n.parentId, [...(childrenOf.get(n.parentId) ?? []), n.id])
+  }
+  const result = scopeWalks[scope](edges, outermostContainer(targetId, parentOf))
+  const work = [...result]
+  while (work.length > 0) {
+    const id = work.pop()!
+    for (const next of [...(childrenOf.get(id) ?? []), parentOf.get(id)]) {
+      if (next === undefined || result.has(next)) continue
+      result.add(next)
+      work.push(next)
+    }
+  }
+  return result
+}
+
+/** Follows parent links to the top. A parent cycle — a board the engine rejects — stops where it repeats. */
+function outermostContainer(id: string, parentOf: ReadonlyMap<string, string>): string {
+  const seen = new Set([id])
+  let root = id
+  for (let parent = parentOf.get(root); parent !== undefined && !seen.has(parent); parent = parentOf.get(root)) {
+    seen.add(parent)
+    root = parent
+  }
+  return root
 }
 
 /** The node's weakly-connected component: ancestors and descendants (BFS over undirected edges). */

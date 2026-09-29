@@ -155,10 +155,13 @@ func (g *Graph) Closure(target NodeID, scope Scope) (map[NodeID]bool, error) {
 	}
 
 	// Promote before walking edges, not after: the edges that matter are the
-	// container's, and a child's own edges never leave the loop body.
+	// container's, and a child's own edges never leave the loop body. seen only
+	// matters for a parent cycle — Validate rejects one, but checkRefs does not.
 	root := target
-	for parent[root] != "" {
-		root = parent[root]
+	seen := map[NodeID]bool{root: true}
+	for p := parent[root]; p != "" && !seen[p]; p = parent[root] {
+		seen[p] = true
+		root = p
 	}
 
 	set := map[NodeID]bool{root: true}

@@ -6,6 +6,7 @@ import {
   decorateEdges,
   downstreamIds,
   polylinesIntersect,
+  runSet,
   segmentsIntersect,
   upstreamIds,
 } from './graph'
@@ -216,31 +217,31 @@ describe('slice geometry (plan 03 §5 v2)', () => {
 
 describe('run target sets against the shared engine fixture (plan 11 D11)', () => {
   const vectors = JSON.parse(vectorsSource) as {
-    graphs: Record<string, { edges: { from: string; to: string }[] }>
-    cases: {
-      note?: string
-      graph: string
-      target: string
-      scope: 'upstream' | 'downstream' | 'component'
-      expect: string[]
-      expectPreflight?: string[]
-    }[]
+    graphs: Record<
+      string,
+      { nodes: { id: string; parent?: string }[]; edges: { from: string; to: string }[] }
+    >
+    cases: { graph: string; target: string; scope: 'upstream' | 'downstream' | 'component'; expect: string[] }[]
   }
-  const helpers = { upstream: upstreamIds, downstream: downstreamIds, component: componentIds }
 
   it('covers every case in core/testdata/closure_vectors.json', () => {
     expect(vectors.cases.length).toBeGreaterThan(0)
   })
 
   for (const c of vectors.cases) {
-    // expectPreflight is present exactly where the engine's containment rule
-    // makes the two answers differ: these helpers walk edges alone and never
-    // see node.parent. The engine's set is authoritative — run.started
-    // replaces this one — so the divergence is pinned, not fixed here.
-    const expected = c.expectPreflight ?? c.expect
-    it(`${c.graph}/${c.target}/${c.scope}${c.expectPreflight ? ' (containment differs)' : ''}`, () => {
-      const edges = vectors.graphs[c.graph].edges.map((e) => mkEdge(e.from, e.to))
-      expect(helpers[c.scope](edges, c.target)).toEqual(new Set(expected))
+    it(`${c.graph}/${c.target}/${c.scope}`, () => {
+      const graph = vectors.graphs[c.graph]
+      const nodes = graph.nodes.map((n) => ({ id: n.id, parentId: n.parent }))
+      const edges = graph.edges.map((e) => mkEdge(e.from, e.to))
+      expect(runSet(nodes, edges, c.target, c.scope)).toEqual(new Set(c.expect))
     })
   }
+
+  it('stops promoting at a parent cycle instead of spinning', () => {
+    const nodes = [
+      { id: 'a', parentId: 'b' },
+      { id: 'b', parentId: 'a' },
+    ]
+    expect(runSet(nodes, [], 'a', 'upstream')).toEqual(new Set(['a', 'b']))
+  })
 })

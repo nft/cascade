@@ -220,6 +220,17 @@ func TestClosureVectors(t *testing.T) {
 	}
 }
 
+func TestClosureStopsAtAParentCycle(t *testing.T) {
+	g := &Graph{Nodes: []Node{{ID: "a", Parent: "b"}, {ID: "b", Parent: "a"}}}
+	set, err := g.Closure("a", ScopeUpstream)
+	if err != nil {
+		t.Fatalf("Closure: %v", err)
+	}
+	if !reflect.DeepEqual(set, map[NodeID]bool{"a": true, "b": true}) {
+		t.Errorf("got %v, want a and b", set)
+	}
+}
+
 func TestClosureRejects(t *testing.T) {
 	g := &Graph{Nodes: []Node{{ID: "a"}, {ID: "b"}}, Edges: []Edge{{From: "a", To: "b"}}}
 	if _, err := g.Closure("a", "sideways"); err == nil {

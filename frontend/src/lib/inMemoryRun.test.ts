@@ -4,7 +4,7 @@
 // iteration: scope, aggregation, progress, fail-fast and config tiering.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { isForNode, type AppEdge, type AppNode } from './model'
-import { app } from './state.svelte'
+import { app, type RunScope } from './state.svelte'
 
 const mkEdge = (source: string, target: string): AppEdge => ({ id: `${source}->${target}`, source, target })
 
@@ -73,9 +73,9 @@ describe('For loops in the sim (plan 09 N7)', () => {
     vi.useRealTimers()
   })
 
-  const runSim = async () => {
+  const runSim = async (targetId?: string, scope?: RunScope) => {
     vi.useFakeTimers()
-    const run = app.run()
+    const run = app.run(targetId, scope)
     await vi.runAllTimersAsync()
     await run
   }
@@ -181,5 +181,26 @@ describe('For loops in the sim (plan 09 N7)', () => {
 
     expect(app.responses.loop?.body).toEqual({ idx: [{ n: 0 }, { n: 1 }, { n: 2 }] })
     expect(statusOf('loop')).toBe('success')
+  })
+
+  it('targeting a loop child runs its whole loop — the child has no {{i}} outside it', async () => {
+    app.nodes = [
+      mkMockNode('seed', 'seed', '{}'),
+      mkForNode('loop', 'loop', { mode: 'count', count: 2 }),
+      mkPick('shape', 'idx', [{ key: 'n', source: 'template', value: '{{i}}' }], 'loop'),
+      mkPick('after', 'collect', [
+        { key: 'all', source: 'binding', value: '', ref: { nodeId: 'loop', path: 'idx[*].n' } },
+      ]),
+    ]
+    app.edges = [mkEdge('seed', 'loop'), mkEdge('loop', 'after')]
+
+    await runSim('shape', 'downstream')
+
+    expect(app.logs.filter((l) => l.nodeId === 'shape').map((l) => l.iteration)).toEqual([0, 1])
+    expect(app.responses.loop?.body).toEqual({ idx: [{ n: 0 }, { n: 1 }] })
+    expect(app.responses.after?.body).toEqual({ all: [0, 1] })
+    // Promotion walks the loop's edges, so a downstream run leaves its upstream alone.
+    expect(statusOf('seed')).toBe('idle')
+    expect(app.responses.seed).toBeUndefined()
   })
 })

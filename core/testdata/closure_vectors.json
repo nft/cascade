@@ -1,13 +1,11 @@
 {
   "_comment": [
     "Run-target closures, shared by core/graph_test.go (Graph.Closure) and",
-    "frontend/src/lib/graph.test.ts (upstreamIds/downstreamIds/componentIds).",
-    "`expect` is the engine's answer and is authoritative: the frontend replaces",
-    "its pre-flight set with the engine's on run.started. `expectPreflight` is",
-    "given only where the two legitimately differ — the frontend helpers walk",
-    "edges alone, and a For container's containment is carried by node.parent,",
-    "which they never see. Every such divergence is spelled out here rather than",
-    "left for someone to rediscover."
+    "frontend/src/lib/graph.test.ts (runSet, its port). Both sides must give",
+    "exactly `expect`: the canvas paints its set on the click and the engine's",
+    "run.started only confirms it, so a divergence would leave nodes the run",
+    "never touches painted, or ones it does touch still wearing last run's",
+    "status. Containment is carried by node.parent, never by edges."
   ],
   "graphs": {
     "chain": {
@@ -46,6 +44,39 @@
         { "from": "c1", "to": "c2" },
         { "from": "loop", "to": "after" }
       ]
+    },
+    "loneChild": {
+      "nodes": [
+        { "id": "seed", "type": "mock" },
+        { "id": "loop", "type": "for" },
+        { "id": "solo", "parent": "loop" },
+        { "id": "after" }
+      ],
+      "edges": [
+        { "from": "seed", "to": "loop" },
+        { "from": "loop", "to": "after" }
+      ]
+    },
+    "island": {
+      "nodes": [
+        { "id": "loop", "type": "for" },
+        { "id": "c1", "parent": "loop" },
+        { "id": "c2", "parent": "loop" }
+      ],
+      "edges": [{ "from": "c1", "to": "c2" }]
+    },
+    "twoLoops": {
+      "nodes": [
+        { "id": "l1", "type": "for" },
+        { "id": "a1", "parent": "l1" },
+        { "id": "a2", "parent": "l1" },
+        { "id": "l2", "type": "for" },
+        { "id": "b1", "parent": "l2" }
+      ],
+      "edges": [
+        { "from": "a1", "to": "a2" },
+        { "from": "l1", "to": "l2" }
+      ]
     }
   },
   "cases": [
@@ -70,51 +101,44 @@
       "graph": "loop",
       "target": "loop",
       "scope": "upstream",
-      "expect": ["c1", "c2", "loop", "seed"],
-      "expectPreflight": ["loop", "seed"]
+      "expect": ["c1", "c2", "loop", "seed"]
     },
     {
       "graph": "loop",
       "target": "loop",
       "scope": "downstream",
-      "expect": ["after", "c1", "c2", "loop"],
-      "expectPreflight": ["after", "loop"]
+      "expect": ["after", "c1", "c2", "loop"]
     },
     {
       "note": "targeting a child promotes to its container: a loop child has no meaning outside its iteration",
       "graph": "loop",
       "target": "c1",
       "scope": "downstream",
-      "expect": ["after", "c1", "c2", "loop"],
-      "expectPreflight": ["c1", "c2"]
+      "expect": ["after", "c1", "c2", "loop"]
     },
     {
       "graph": "loop",
       "target": "c2",
       "scope": "upstream",
-      "expect": ["c1", "c2", "loop", "seed"],
-      "expectPreflight": ["c1", "c2"]
+      "expect": ["c1", "c2", "loop", "seed"]
     },
     {
       "graph": "loop",
       "target": "c2",
       "scope": "component",
-      "expect": ["after", "c1", "c2", "loop", "seed"],
-      "expectPreflight": ["c1", "c2"]
+      "expect": ["after", "c1", "c2", "loop", "seed"]
     },
     {
       "graph": "loop",
       "target": "after",
       "scope": "upstream",
-      "expect": ["after", "c1", "c2", "loop", "seed"],
-      "expectPreflight": ["after", "loop", "seed"]
+      "expect": ["after", "c1", "c2", "loop", "seed"]
     },
     {
       "graph": "loop",
       "target": "seed",
       "scope": "downstream",
-      "expect": ["after", "c1", "c2", "loop", "seed"],
-      "expectPreflight": ["after", "loop", "seed"]
+      "expect": ["after", "c1", "c2", "loop", "seed"]
     },
     {
       "note": "a node outside the loop is unaffected by containment",
@@ -122,6 +146,42 @@
       "target": "seed",
       "scope": "upstream",
       "expect": ["seed"]
+    },
+    { "graph": "loop", "target": "c1", "scope": "upstream", "expect": ["c1", "c2", "loop", "seed"] },
+    { "graph": "loop", "target": "c1", "scope": "component", "expect": ["after", "c1", "c2", "loop", "seed"] },
+
+    {
+      "note": "a child with no edges of its own still reaches through its container",
+      "graph": "loneChild",
+      "target": "solo",
+      "scope": "downstream",
+      "expect": ["after", "loop", "solo"]
+    },
+    { "graph": "loneChild", "target": "solo", "scope": "upstream", "expect": ["loop", "seed", "solo"] },
+
+    {
+      "note": "a loop with no outside edges: the body's own edges never reach the container",
+      "graph": "island",
+      "target": "c2",
+      "scope": "upstream",
+      "expect": ["c1", "c2", "loop"]
+    },
+    { "graph": "island", "target": "c1", "scope": "downstream", "expect": ["c1", "c2", "loop"] },
+
+    {
+      "note": "promotion walks the container's edges, so the next loop comes whole",
+      "graph": "twoLoops",
+      "target": "a1",
+      "scope": "downstream",
+      "expect": ["a1", "a2", "b1", "l1", "l2"]
+    },
+    { "graph": "twoLoops", "target": "b1", "scope": "upstream", "expect": ["a1", "a2", "b1", "l1", "l2"] },
+    {
+      "note": "an included loop brings its own body, never an upstream loop's",
+      "graph": "twoLoops",
+      "target": "l2",
+      "scope": "downstream",
+      "expect": ["b1", "l2"]
     }
   ]
 }
