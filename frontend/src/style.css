@@ -12,6 +12,8 @@
 
 @theme {
   --color-surface: #101013;
+  /* The logo's coral (logos/cascade-schema-icon.svg). */
+  --color-brand: #ef805a;
   /* Code editor tokens (plan 06): CodeMirror is themed through these, not a
      forked theme stylesheet. */
   --color-code-bg: #09090b;

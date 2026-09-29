@@ -16,6 +16,7 @@
     title={app.sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
     onclick={() => (app.sidebarOpen = !app.sidebarOpen)}
   />
+  <Logo size={16} class="shrink-0 text-brand" />
   <ProjectSwitcher />
 
   <div class="ml-auto flex items-center gap-2">

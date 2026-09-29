@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="250" viewBox="0 0 1000 250">
+
+      <g transform="translate(36 52) scale(1.8333333333333333)">
+          <path d="M34 17H29Q21 17 21 25V36Q21 44 14 48Q21 52 21 60V71Q21 79 29 79H34M62 17H67Q75 17 75 25V36Q75 44 82 48Q75 52 75 60V71Q75 79 67 79H62" fill="none" stroke="#EF805A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M42 42L55 55" fill="none" stroke="#EF805A" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="40" cy="40" r="6" fill="#EF805A"/>
+          <circle cx="57" cy="57" r="6" fill="#EF805A"/>
+        </g>
+      <text x="250" y="180" fill="#14202B" font-family="Avenir Next, Avenir, Arial, sans-serif" font-size="106" font-weight="600" letter-spacing="-5">Cascade</text>
+    
+</svg>

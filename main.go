@@ -11,10 +11,17 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// appIcon is the Linux window icon. macOS and Windows take theirs from the
+// bundle and exe resources that `wails build` generates from build/.
+//
+//go:embed build/appicon.png
+var appIcon []byte
 
 // appDataDirName is the directory under os.UserConfigDir() holding all
 // project data (e.g. ~/Library/Application Support/cascade on macOS).
@@ -53,7 +60,13 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: windowBackground,
-		OnStartup:        app.startup,
+		Linux: &linux.Options{
+			Icon: appIcon,
+			// Wails only defaults the policy to Never (wails#2977) when this
+			// block is nil; setting an icon must not switch GPU compositing on.
+			WebviewGpuPolicy: linux.WebviewGpuPolicyNever,
+		},
+		OnStartup: app.startup,
 		Bind: []any{
 			app,
 		},

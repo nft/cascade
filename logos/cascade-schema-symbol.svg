@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<title>Cascade schema logo symbol</title><g transform="translate(0 0) scale(5.333333333333333)">
+          <path d="M34 17H29Q21 17 21 25V36Q21 44 14 48Q21 52 21 60V71Q21 79 29 79H34M62 17H67Q75 17 75 25V36Q75 44 82 48Q75 52 75 60V71Q75 79 67 79H62" fill="none" stroke="#EF805A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M42 42L55 55" fill="none" stroke="#EF805A" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="40" cy="40" r="6" fill="#EF805A"/>
+          <circle cx="57" cy="57" r="6" fill="#EF805A"/>
+        </g>
+</svg>
