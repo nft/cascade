@@ -2,6 +2,10 @@ module cascade
 
 go 1.25.0
 
+// Go 1.26 is the last release that runs on macOS 12, the app's minimum
+// (LSMinimumSystemVersion in build/darwin); Go 1.27 needs macOS 13.
+toolchain go1.26.8
+
 require (
 	github.com/dop251/goja v0.0.0-20260701091749-b07b74453ea9
 	github.com/wailsapp/wails/v2 v2.15.0
