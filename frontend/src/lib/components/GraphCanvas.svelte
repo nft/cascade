@@ -13,6 +13,11 @@
   // Unknown node types must fail loudly, not render as xyflow's default node.
   $effect(() => assertKnownNodeTypes(app.nodes, registeredNodeTypes))
 
+  // The minimap's SVG takes its size from these props, not from CSS on the
+  // panel; sizing the panel alone lets the default 200×150 map spill out.
+  const MINIMAP_WIDTH = 160
+  const MINIMAP_HEIGHT = 112
+
   const scissors = $derived(app.canvasTool === 'scissors')
   const interactive = $derived(!scissors && !app.canvasLocked)
   const displayEdges = $derived(
@@ -153,7 +158,8 @@
     <Background bgColor="#0b0b0e" patternColor="#27272a" />
     <CanvasControls />
     <MiniMap
-      class="!h-28 !w-40"
+      width={MINIMAP_WIDTH}
+      height={MINIMAP_HEIGHT}
       bgColor="var(--color-surface)"
       maskColor="rgba(0,0,0,0.55)"
       nodeColor="#3f3f46"
