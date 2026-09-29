@@ -197,6 +197,19 @@ describe('validateFieldRefs (edit-time, mirrors core/binding)', () => {
     )
   })
 
+  it("lets a loop child read its loop's ancestors, but not a sibling it does not follow", () => {
+    const loopNodes = [
+      ...nodes,
+      { ...httpNode('loop-1', 'Loop', 'loop'), type: 'for' } as AppNode,
+      { ...httpNode('child-1', 'Child', 'child'), parentId: 'loop-1' },
+      { ...httpNode('sibling-1', 'Sibling', 'sibling'), parentId: 'loop-1' },
+    ]
+    const loopEdges = [{ source: 'create-user-1', target: 'loop-1' }]
+    const field = (nodeId: string) => orgField(`${nodeId}.body.id`, { nodeId, path: 'body.id' })
+    expect(validateFieldRefs(field('create-user-1'), 'child-1', loopNodes, loopEdges)).toBeNull()
+    expect(validateFieldRefs(field('sibling-1'), 'child-1', loopNodes, loopEdges)).toMatch(/not an upstream ancestor/)
+  })
+
   it('flags refs to non-ancestors and unknown nodes', () => {
     expect(
       validateFieldRefs(orgField('{{create-org-1.body.id}}'), 'create-user-1', nodes, edges),

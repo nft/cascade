@@ -385,7 +385,7 @@ func (r *runner) runTransform(
 	}
 	in := transform.Input{
 		Env:     env,
-		Nodes:   r.keyedOutputs(sc.outputs),
+		Nodes:   r.keyedOutputs(sc.outputs, r.readableAncestors(node)),
 		Index:   env.Index,
 		Item:    env.Item,
 		HasItem: env.HasItem,
@@ -459,14 +459,32 @@ func (r *runner) skipped(statuses map[core.NodeID]Status, ups []core.NodeID) boo
 	return false
 }
 
-// keyedOutputs re-keys already-produced outputs by node key for script
-// access (`nodes.<key>`).
-func (r *runner) keyedOutputs(outputs map[string]*binding.Output) map[string]*binding.Output {
-	keyed := make(map[string]*binding.Output, len(outputs))
-	for id, out := range outputs {
-		keyed[r.key(core.NodeID(id))] = out
+// keyedOutputs re-keys the readable nodes' already-produced outputs by node
+// key for script access (`nodes.<key>`). Everything that happened to run
+// earlier is not the same set: after a paste re-keys a script's real
+// upstream, the old key would otherwise go on reading the original node.
+func (r *runner) keyedOutputs(outputs map[string]*binding.Output, readable map[core.NodeID]bool) map[string]*binding.Output {
+	keyed := make(map[string]*binding.Output, len(readable))
+	for id := range readable {
+		if out, ok := outputs[string(id)]; ok {
+			keyed[r.key(id)] = out
+		}
 	}
 	return keyed
+}
+
+// readableAncestors is what a node may read: its ancestors and, for a loop
+// child, its for node's — they ran before the loop and hold still across
+// iterations. The for node itself is not one: its output is the aggregate
+// the body is still producing.
+func (r *runner) readableAncestors(node core.Node) map[core.NodeID]bool {
+	ids := r.ancestorIDs(node.ID)
+	if node.Parent != "" {
+		for id := range r.ancestorIDs(node.Parent) {
+			ids[id] = true
+		}
+	}
+	return ids
 }
 
 func idStrings(ids []core.NodeID) []string {

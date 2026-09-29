@@ -58,9 +58,9 @@ class InMemoryRun {
   async execute(): Promise<RunResult> {
     const runIds = this.plan()
     // A seed for a node inside the run set is ignored (plan 11 D10): the node
-    // is about to produce its own output, and a script binding by key — which
-    // travels along no edge — would otherwise read the previous run's value
-    // instead of finding it absent.
+    // is about to produce its own output, and a reference to it from a node
+    // it is not an ancestor of — ordered by no edge — would otherwise read the
+    // previous run's value instead of finding it absent.
     for (const id of runIds.all) delete this.ctx.outputs[id]
     this.event(RunEventKind.RunStarted, { nodes: runIds.all })
 

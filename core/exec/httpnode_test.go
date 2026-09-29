@@ -368,10 +368,11 @@ func TestDownstreamTargetWithSeedRunsTheTarget(t *testing.T) {
 // resolve against the capture it is replacing.
 //
 // The leak this closes is narrow but real. A binding through an edge cannot
-// see a stale seed — the seeded node runs first and overwrites it. A transform
-// script can: it receives every output in scope by key, edges or not, so a
-// script that names a node scheduled LATER in this run would read the previous
-// run's value instead of finding it absent.
+// see a stale seed — the seeded node runs first and overwrites it — and a
+// script only sees its ancestors. A reference to a NON-ancestor can: the
+// engine checks ancestry only at edit time outside a loop, so a field naming
+// a node scheduled LATER in this run would read the previous run's value
+// instead of failing by name.
 func TestSeedInsideTheRunSetIsIgnored(t *testing.T) {
 	g := &core.Graph{
 		Nodes: []core.Node{
@@ -393,19 +394,24 @@ func TestSeedInsideTheRunSetIsIgnored(t *testing.T) {
 		},
 		Specs: map[core.NodeID]nodespec.Spec{
 			"root":        mockSpec("root", 0, `{}`),
-			"probe":       transformScript("probe", `return { saw: nodes.createUser ? nodes.createUser.body.id : "absent" }`),
+			"probe":       transformPick("probe", templateField("saw", "{{create-user.body.id}}")),
 			"create-user": httpSpec("createUser", "POST", "/users"),
 		},
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.Statuses["probe"] != StatusSuccess {
-		t.Fatalf("probe status = %s (records: %+v)", res.Statuses["probe"], res.Records)
+	if out := res.Outputs["probe"]; out != nil {
+		t.Fatalf("probe read %#v from an earlier run; a node this run produces must not be seeded", out.Body)
 	}
-	body, _ := res.Outputs["probe"].Body.(map[string]any)
-	if body["saw"] != "absent" {
-		t.Errorf("script saw %#v from an earlier run; a node this run produces must not be seeded", body["saw"])
+	var probeErr string
+	for _, rec := range res.Records {
+		if rec.Node == "probe" {
+			probeErr = rec.Err
+		}
+	}
+	if !strings.Contains(probeErr, `node "create-user" has not produced an output`) {
+		t.Errorf("probe error = %q; want the not-yet-run node named", probeErr)
 	}
 }
 

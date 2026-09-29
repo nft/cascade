@@ -145,4 +145,24 @@ return { count: members.length, emails: members.map(m => m.email) }`,
     }
     await expect(executeTransform(noReturn, nodes, edges, { 'create-org-1': orgResponse }, {})).rejects.toThrow(/returned no value/)
   })
+
+  it("gives a loop child its loop's ancestors, and never a node that merely ran", async () => {
+    const loop: AppNode = {
+      id: 'loop-1',
+      type: 'for',
+      position: { x: 0, y: 0 },
+      data: { name: 'Loop', key: 'loop', status: 'idle', mode: 'count', count: 1 },
+    }
+    const child: TransformNode = {
+      ...transform,
+      id: 'child-1',
+      parentId: 'loop-1',
+      data: { ...transform.data, key: 'child', script: 'return Object.keys(nodes).sort()' },
+    }
+    const stranger: AppNode = { ...nodes[0], id: 'stranger-1', data: { ...nodes[0].data, key: 'stranger' } } as AppNode
+    const board = [nodes[0], loop, child, stranger]
+    const loopEdges: AppEdge[] = [{ id: 'e1', source: 'create-org-1', target: 'loop-1' }]
+    const responses = { 'create-org-1': orgResponse, 'stranger-1': orgResponse }
+    await expect(executeTransform(child, board, loopEdges, responses, {})).resolves.toEqual(['createOrg'])
+  })
 })

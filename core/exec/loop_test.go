@@ -172,6 +172,49 @@ func TestForPrimitiveItemsAndTransformScope(t *testing.T) {
 	}
 }
 
+// A script's `nodes` holds what the node may read — its ancestors and, in a
+// loop, the loop's — never every node that happened to run earlier.
+func TestScriptNodesAreOnlyReadableAncestors(t *testing.T) {
+	g := &core.Graph{
+		Nodes: []core.Node{
+			{ID: "stranger", Type: core.NodeTypeMock},
+			{ID: "seed", Type: core.NodeTypeMock},
+			{ID: "top", Type: core.NodeTypeTransform},
+			{ID: "loop", Type: core.NodeTypeFor},
+			{ID: "sibling", Type: core.NodeTypeMock, Parent: "loop"},
+			{ID: "first", Type: core.NodeTypeMock, Parent: "loop"},
+			{ID: "shape", Type: core.NodeTypeTransform, Parent: "loop"},
+		},
+		Edges: []core.Edge{
+			{From: "seed", To: "top"},
+			{From: "seed", To: "loop"},
+			{From: "first", To: "shape"},
+		},
+	}
+	keysOf := "return Object.keys(nodes).sort()"
+	res, err := Run(context.Background(), g, Options{
+		Specs: map[core.NodeID]nodespec.Spec{
+			"stranger": mockSpec("stranger", 0, `{}`),
+			"seed":     mockSpec("seed", 0, `{}`),
+			"top":      transformScript("top", keysOf),
+			"loop":     loopCount("loop", 1),
+			"sibling":  mockSpec("sibling", 0, `{}`),
+			"first":    mockSpec("first", 0, `{}`),
+			"shape":    transformScript("shape", keysOf),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := res.Outputs["top"].Body; !reflect.DeepEqual(got, []any{"seed"}) {
+		t.Errorf("top-level script saw %v; want only its ancestor", got)
+	}
+	want := map[string]any{"sibling": []any{map[string]any{}}, "first": []any{map[string]any{}}, "shape": []any{[]any{"first", "seed"}}}
+	if got := res.Outputs["loop"].Body; !reflect.DeepEqual(got, want) {
+		t.Errorf("loop aggregate = %#v; want the child script to see its own and the loop's ancestors", got)
+	}
+}
+
 // A stored child ref that escapes the loop's ancestor set fails the child
 // with the named error — it must never silently resolve against a
 // non-ancestor that happened to run earlier in topological order.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { CapturedResponse, RunnableNode } from './model'
-import { arrayPaths, nodeSchemaSource } from './picker'
+import type { AppNode, CapturedResponse, RunnableNode } from './model'
+import { ancestorNodes, arrayPaths, nodeSchemaSource } from './picker'
 import { inferSchema, schemaTree } from './schema'
 
 describe('arrayPaths (plan 09 N6)', () => {
@@ -62,5 +62,34 @@ describe('nodeSchemaSource (plan 11 W8)', () => {
   it('still puts a pinned schema first', () => {
     const pinned = { ...node, data: { ...node.data, responseSchema: { type: 'string' } } } as RunnableNode
     expect(nodeSchemaSource(pinned, captured())?.origin).toBe('pinned')
+  })
+})
+
+describe('ancestorNodes (plan 09: a loop child reads its loop\'s ancestors)', () => {
+  const mock = (id: string, parentId?: string): AppNode => ({
+    id,
+    type: 'mock',
+    position: { x: 0, y: 0 },
+    ...(parentId ? { parentId } : {}),
+    data: { name: id, key: id, status: 'idle', body: '{}', statusCode: 200 },
+  })
+  const loop: AppNode = {
+    id: 'loop',
+    type: 'for',
+    position: { x: 0, y: 0 },
+    data: { name: 'loop', key: 'loop', status: 'idle', mode: 'count', count: 2 },
+  }
+  const nodes = [mock('seed'), loop, mock('first', 'loop'), mock('shape', 'loop'), mock('stranger')]
+  const edges = [
+    { id: 'e1', source: 'seed', target: 'loop' },
+    { id: 'e2', source: 'first', target: 'shape' },
+  ]
+
+  it('offers a child its in-body upstream as direct and the loop\'s upstream as reachable', () => {
+    const offered = ancestorNodes(nodes, edges, 'shape').map(({ node, direct }) => [node.id, direct])
+    expect(offered).toEqual([
+      ['seed', false],
+      ['first', true],
+    ])
   })
 })

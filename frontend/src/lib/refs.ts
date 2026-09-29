@@ -7,6 +7,7 @@
 // Resolution semantics mirror core/binding on the Go side: accessor paths
 // give the explicit prefixes `status` / `headers` / `body` precedence, then
 // named exports, then body keys (`res.name` ≡ upstream `body.name`).
+import { readableAncestors } from './ancestry'
 import type { AppNode, CapturedResponse, FieldRef, NodeExport, NodeField } from './model'
 
 export const REF_RES = 'res'
@@ -270,21 +271,6 @@ export function directUpstreams(edges: readonly { source: string; target: string
   return [...seen]
 }
 
-function transitiveAncestors(edges: readonly { source: string; target: string }[], nodeId: string): Set<string> {
-  const result = new Set<string>()
-  const queue = [nodeId]
-  while (queue.length > 0) {
-    const id = queue.shift()!
-    for (const e of edges) {
-      if (e.target === id && !result.has(e.source)) {
-        result.add(e.source)
-        queue.push(e.source)
-      }
-    }
-  }
-  return result
-}
-
 /**
  * A selection export unbinds a field whose upstream it left behind and
  * records what it was bound to (share/export.go). The engine refuses to run
@@ -297,8 +283,9 @@ export function danglingFieldMessage(dangling: NonNullable<NodeField['dangling']
 /**
  * Edit-time referential check for one field (mirrors core/binding
  * ValidateSource): bare `res` needs exactly one direct upstream; qualified
- * refs must point at transitive ancestors. Returns a user-facing error
- * message, or null when the field is fine.
+ * refs must point at a node this one may read — an ancestor, or for a loop
+ * child an ancestor of its For. Returns a user-facing error message, or null
+ * when the field is fine.
  */
 export function validateFieldRefs(
   field: NodeField,
@@ -314,7 +301,7 @@ export function validateFieldRefs(
   const refs = fieldRefs(field)
   if (refs.length === 0) return null
   const upstreams = directUpstreams(edges, nodeId)
-  const ancestors = transitiveAncestors(edges, nodeId)
+  const ancestors = readableAncestors(nodes, edges, nodeId)
   const keys = keyByNodeId(nodes)
   for (const ref of refs) {
     if (ref.nodeId === '') {

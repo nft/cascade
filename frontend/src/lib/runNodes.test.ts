@@ -105,7 +105,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     vi.useFakeTimers()
     // A binding to a node that is in the run set but has not run yet must
     // fail, not silently read the previous run's value. No edge, so nothing
-    // orders u1 before o1 — the exact case a script by key would hit.
+    // orders u1 before o1.
     app.responses = { u1: { status: 201, body: { id: 'stale-id' }, at: '2026-07-01T00:00:00.000Z' } }
     app.nodes = [
       withFields('o1', [

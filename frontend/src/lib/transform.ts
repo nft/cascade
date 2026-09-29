@@ -2,8 +2,8 @@
 // mirrored resolver in refs.ts; Script mode is executed by the Go sandbox
 // through the api layer. Used by both the run simulation and the inspector's
 // "Test against last response" button.
+import { readableAncestors } from './ancestry'
 import { api } from './api'
-import { upstreamIds } from './graph'
 import type {
   AppEdge,
   AppNode,
@@ -101,7 +101,7 @@ export async function executeTransform(
     })
   }
   const keys = keyByNodeId(nodes)
-  const ancestors = upstreamIds(edges as AppEdge[], node.id)
+  const ancestors = readableAncestors(nodes, edges, node.id)
   const byKey: Record<string, ScriptUpstream> = {}
   for (const n of nodes) {
     if (n.id === node.id || !ancestors.has(n.id)) continue

@@ -1,7 +1,7 @@
 // Pure logic behind the binding picker (plan 05 V4), kept out of the Svelte
 // components so it stays unit-testable.
+import { readableAncestors } from './ancestry'
 import { formatClock } from './format'
-import { upstreamIds } from './graph'
 import {
   isHttpNode,
   isRunnableNode,
@@ -82,7 +82,7 @@ export function ancestorNodes(
   edges: readonly AppEdge[],
   targetId: string,
 ): { node: RunnableNode; direct: boolean }[] {
-  const reachable = upstreamIds(edges as AppEdge[], targetId)
+  const reachable = readableAncestors(nodes, edges, targetId)
   const direct = new Set(edges.filter((e) => e.target === targetId).map((e) => e.source))
   return nodes
     .filter((n) => n.id !== targetId && reachable.has(n.id))
