@@ -1,0 +1,202 @@
+name: Release
+
+# Pushing a version tag (v0.1.0) builds Cascade for macOS, Windows and Linux
+# and publishes a GitHub release: the builds, SHA256SUMS.txt, and that
+# version's CHANGELOG.md section as the notes. The website links to these
+# asset names (web/src/lib/release/platforms.ts); rename both together.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  MAC_DMG: Cascade-macOS-universal.dmg
+  WINDOWS_SETUP: Cascade-Windows-x64-setup.exe
+  WINDOWS_ZIP: Cascade-Windows-x64.zip
+  LINUX_TAR: Cascade-Linux-x64.tar.gz
+  # The folder the Linux tarball unpacks into; the download page names it.
+  LINUX_FOLDER: cascade-linux-x64
+  CHECKSUMS: SHA256SUMS.txt
+
+jobs:
+  notes:
+    name: Check the version and notes
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # wails.json stamps the version into the macOS bundle, the Windows
+      # executable and its installer, so a mismatch would ship wrong metadata.
+      - name: Match the tag to wails.json
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          declared="$(jq -r '.info.productVersion' wails.json)"
+          if [ "$version" != "$declared" ]; then
+            echo "::error file=wails.json::Tag $GITHUB_REF_NAME does not match info.productVersion $declared"
+            exit 1
+          fi
+
+      - name: Extract the release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # From the version's "## [x.y.z]" heading up to the next heading, or
+          # to the link definitions that close the file.
+          awk -v heading="## [$version]" '
+            index($0, heading) == 1 { found = 1; next }
+            found && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error file=CHANGELOG.md::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+          site="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          printf '\n---\n\nInstall notes and checksums: %s/download\n' "$site" >> notes.md
+
+      - name: Upload the notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: notes
+          path: notes.md
+          if-no-files-found: error
+
+  build:
+    name: Build for ${{ matrix.name }}
+    needs: notes
+    strategy:
+      matrix:
+        include:
+          - name: macOS
+            os: macos-15
+          - name: Windows
+            os: windows-2025
+          - name: Linux
+            # WebKitGTK 4.1, which the webkit2_41 build tag targets.
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # wails.json builds the frontend with Bun.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # The CLI at the version go.mod pins, so it matches the library.
+      - name: Install the Wails CLI
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)"
+
+      - name: Install GTK and WebKitGTK
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      # The Windows Server 2025 image no longer ships NSIS.
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: |
+          choco install nsis --yes --no-progress
+          echo 'C:\Program Files (x86)\NSIS' >> "$GITHUB_PATH"
+
+      # Every build uses the bindings committed in frontend/wailsjs rather than
+      # regenerating them, which would run main() on the runner. The same
+      # script builds a disk image locally.
+      - name: Build the macOS disk image
+        if: runner.os == 'macOS'
+        run: scripts/build-dmg.sh "dist/$MAC_DMG"
+
+      - name: Build the Windows installer
+        if: runner.os == 'Windows'
+        run: |
+          wails build -clean -trimpath -skipbindings -platform windows/amd64 -nsis
+          mkdir -p dist
+          mv build/bin/Cascade-amd64-installer.exe "dist/$WINDOWS_SETUP"
+
+      - name: Zip the portable Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path build/bin/Cascade.exe, LICENSE -DestinationPath "dist/$env:WINDOWS_ZIP"
+
+      - name: Build the Linux tarball
+        if: runner.os == 'Linux'
+        run: |
+          wails build -clean -trimpath -skipbindings -platform linux/amd64 -tags webkit2_41
+          mkdir -p "$LINUX_FOLDER" dist
+          cp build/bin/Cascade LICENSE "$LINUX_FOLDER/"
+          tar -czf "dist/$LINUX_TAR" "$LINUX_FOLDER"
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      # Create the release and upload its files.
+      contents: write
+      # Start the Pages workflow afterwards.
+      actions: write
+    steps:
+      - name: Download the builds
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download the notes
+        uses: actions/download-artifact@v8
+        with:
+          name: notes
+
+      - name: Write the checksums
+        working-directory: dist
+        run: |
+          sha256sum -- * > "../$CHECKSUMS"
+          mv "../$CHECKSUMS" .
+          cat "$CHECKSUMS"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A tag like v0.2.0-beta.1 is a prerelease, which "latest" skips.
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Cascade ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md \
+            "${prerelease[@]}"
+
+      # The site bakes the latest release's files into its download buttons at
+      # build time. Events caused by GITHUB_TOKEN start no workflow runs, with
+      # workflow_dispatch as the exception, so the rebuild is requested here.
+      - name: Rebuild the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref "${{ github.event.repository.default_branch }}"
