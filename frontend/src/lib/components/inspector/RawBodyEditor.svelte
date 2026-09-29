@@ -1,7 +1,10 @@
 <script lang="ts">
   import type { RawBody } from '../../model'
+  import { rawBodyField } from '../../nodeIO'
+  import { keyByNodeId, nodeIdByKey, parseTemplate, renderTemplate, validateFieldRefs } from '../../refs'
   import { formatJsonBody, isJsonContentType, jsonBodyParses } from '../../request'
   import type { RequestEditorTarget } from '../../requestEditor'
+  import { app } from '../../state.svelte'
   import IconButton from '../ui/IconButton.svelte'
   import Input from '../ui/Input.svelte'
   import BindingPicker from './BindingPicker.svelte'
@@ -11,6 +14,13 @@
 
   // Bindings are board concepts: the reference picker only exists on nodes.
   const boundNodeId = $derived(target.nodeId ?? null)
+  // The text names nodes by id, like every stored reference, and the editor
+  // shows keys — the same round trip a field row makes. A library draft has
+  // no board to map against, so it edits the text as is.
+  const shown = $derived(boundNodeId ? renderTemplate(rawBody.text, keyByNodeId(app.nodes)) : rawBody.text)
+  const refError = $derived(
+    boundNodeId ? validateFieldRefs(rawBodyField(rawBody.text), boundNodeId, app.nodes, app.edges) : null,
+  )
   const isJson = $derived(isJsonContentType(rawBody.contentType))
   const invalidJson = $derived(isJson && rawBody.text.trim() !== '' && !jsonBodyParses(rawBody.text))
   // Format is offered only when the text parses as typed — reformatting would
@@ -27,6 +37,10 @@
   function insert(text: string) {
     pickerOpen = false
     editor?.insertText(text)
+  }
+
+  function setText(text: string) {
+    patch({ text: boundNodeId ? parseTemplate(text, nodeIdByKey(app.nodes)) : text })
   }
 </script>
 
@@ -63,12 +77,10 @@
   {#if pickerOpen && boundNodeId}
     <BindingPicker nodeId={boundNodeId} onInsert={insert} />
   {/if}
-  <CodeEditor
-    bind:this={editor}
-    value={rawBody.text}
-    language={isJson ? 'json' : 'javascript'}
-    onChange={(text) => patch({ text })}
-  />
+  <CodeEditor bind:this={editor} value={shown} language={isJson ? 'json' : 'javascript'} onChange={setText} />
+  {#if refError}
+    <p class="text-[10px] text-rose-400">{refError}</p>
+  {/if}
   {#if invalidJson}
     <p class="text-[10px] text-amber-400">not valid JSON yet (checked with {'{{'}…{'}}'} references ignored)</p>
   {/if}

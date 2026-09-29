@@ -125,14 +125,27 @@ function mapExprOwner(expr: string, map: ReadonlyMap<string, string>): string {
   return joinRefExpr(mapped, path)
 }
 
+/**
+ * Maps every token's owner through `map`, splicing only the expression so
+ * the rest — spacing inside the braces included — stays as written. Editors
+ * commit on every keystroke, so display → stored → display has to be exact:
+ * a value that comes back different replaces what the user is typing.
+ */
+export function mapTemplateOwners(text: string, map: ReadonlyMap<string, string>): string {
+  return text.replace(TEMPLATE_RE, (token: string, expr: string) => {
+    const mapped = mapExprOwner(expr, map)
+    return mapped === expr ? token : token.replace(expr, () => mapped)
+  })
+}
+
 /** Stored template (`{{<nodeId>.path}}`) → display (`{{<key>.path}}`). */
 export function renderTemplate(stored: string, keys: ReadonlyMap<string, string>): string {
-  return stored.replace(TEMPLATE_RE, (_m, expr: string) => `{{${mapExprOwner(expr, keys)}}}`)
+  return mapTemplateOwners(stored, keys)
 }
 
 /** Display template (`{{<key>.path}}`) → stored (`{{<nodeId>.path}}`). Unknown keys pass through. */
 export function parseTemplate(display: string, ids: ReadonlyMap<string, string>): string {
-  return display.replace(TEMPLATE_RE, (_m, expr: string) => `{{${mapExprOwner(expr, ids)}}}`)
+  return mapTemplateOwners(display, ids)
 }
 
 /** Canonical stored form of a ref: `res.name`, `create-user.body.id`. */

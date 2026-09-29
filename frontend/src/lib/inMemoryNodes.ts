@@ -21,6 +21,7 @@ import {
   type NodeField,
   type TransformNode,
 } from './model'
+import { rawBodyField } from './nodeIO'
 import { directUpstreams, keyByNodeId, resolveField, type ResolveContext } from './refs'
 import { BODY_KEY_PREFIX } from './request'
 import type { RunStatus } from './runEvents'
@@ -295,7 +296,7 @@ function fabricateFieldsBody(fields: readonly NodeField[], ctx: ResolveContext):
 function fabricateRawBody(text: string, ctx: ResolveContext): unknown {
   let resolved: unknown
   try {
-    resolved = resolveField({ key: 'rawBody', source: 'template', value: text }, ctx)
+    resolved = resolveField(rawBodyField(text), ctx)
   } catch (err) {
     return `«unresolved: ${message(err)}»`
   }

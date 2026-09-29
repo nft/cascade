@@ -10,6 +10,7 @@ import {
   keyByNodeId,
   nodeIdByKey,
   parseFieldInput,
+  parseTemplate,
   renderTemplate,
   resolveField,
   slugifyKey,
@@ -99,6 +100,14 @@ describe('key rename safety (plan 05 scope guard)', () => {
     expect(fieldDisplayValue(template, keys)).toBe('welcome-{{makeUser.body.name}}')
   })
 
+  it('round-trips typed text exactly, so an editor committing per keystroke never sees it change', () => {
+    const typed = '{"a": "{{ createUser.body.id }}", "b": {{createUser[0].id}}, "c": {{ i }}, "d": "{{ghost.x}}"}'
+    const stored = parseTemplate(typed, nodeIdByKey(nodes))
+    expect(stored).toBe(
+      '{"a": "{{ create-user-1.body.id }}", "b": {{create-user-1[0].id}}, "c": {{ i }}, "d": "{{ghost.x}}"}',
+    )
+    expect(renderTemplate(stored, keyByNodeId(nodes))).toBe(typed)
+  })
 })
 
 describe('parseFieldInput (editor → stored form)', () => {

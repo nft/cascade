@@ -34,6 +34,14 @@ export const EMPTY_EXPR_LABEL = '—'
 /** Synthetic field key for the raw-body template, which is not a NodeField. */
 const RAW_BODY_FIELD_KEY = 'rawBody'
 
+/**
+ * A raw body's text as the template field it behaves as: its {{…}} tokens
+ * name nodes by id, and resolve and validate exactly like a field's.
+ */
+export function rawBodyField(text: string): NodeField {
+  return { key: RAW_BODY_FIELD_KEY, source: 'template', value: text }
+}
+
 export interface Overflow<T> {
   shown: T[]
   more: number
@@ -48,7 +56,7 @@ export function withOverflow<T>(items: readonly T[], cap: number): Overflow<T> {
 /** References made by a request's fields plus its raw body, which templates too. */
 function requestRefs(fields: readonly NodeField[], rawBody: RawBody | undefined): FieldRef[] {
   const refs = fields.flatMap(fieldRefs)
-  if (rawBody) refs.push(...fieldRefs({ key: RAW_BODY_FIELD_KEY, source: 'template', value: rawBody.text }))
+  if (rawBody) refs.push(...fieldRefs(rawBodyField(rawBody.text)))
   return refs
 }
 
