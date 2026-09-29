@@ -1,24 +1,17 @@
 // Paste pipeline (plan 07 E3): turns an envelope's board into fresh canvas
 // nodes — new IDs, keys re-slugged on collision against the target board,
-// bindings and template tokens rewritten to the new IDs (they store node
-// IDs), positions recentered on the paste target with the original relative
-// layout, and everything marked selected so the paste lands as a group.
+// bindings, template tokens and raw-body tokens rewritten to the new IDs
+// (they store node IDs), positions recentered on the paste target with the
+// original relative layout, and everything marked selected so the paste
+// lands as a group.
 import { deserializeBoard } from './board'
 import type { AppEdge, AppNode, BoardJSON, NodeField } from './model'
-import { takenKeys, uniqueKey } from './refs'
+import { mapTemplateOwners, refToStored, takenKeys, uniqueKey } from './refs'
 
 export interface PastedGraph {
   nodes: AppNode[]
   edges: AppEdge[]
 }
-
-/**
- * Matches {{…}} interpolation tokens in template fields. The format's Go
- * parser is `core/binding`'s (`TemplateSpans`), which `share` now rewrites
- * through; this stays a regex because paste only swaps node keys and never
- * has to agree on what a malformed token means.
- */
-const TEMPLATE_TOKEN_RE = /\{\{\s*([^{}]+?)\s*\}\}/g
 
 /** Node id prefix marking pasted nodes; the suffix makes ids board-unique. */
 const PASTE_ID_PREFIX = 'paste'
@@ -76,13 +69,19 @@ export function buildPaste(
       }
     }
     if (n.type === 'http') {
+      const { rawBody } = n.data
       return {
         ...n,
         id,
         position,
         parentId,
         selected: true,
-        data: { ...n.data, key, fields: n.data.fields.map((f) => remapField(f, idMap)) },
+        data: {
+          ...n.data,
+          key,
+          fields: n.data.fields.map((f) => remapField(f, idMap)),
+          ...(rawBody ? { rawBody: { ...rawBody, text: mapTemplateOwners(rawBody.text, idMap) } } : {}),
+        },
       }
     }
     if (n.type === 'for') {
@@ -131,26 +130,18 @@ function centerOffset(nodes: readonly AppNode[], target: { x: number; y: number 
 /**
  * Rewrites a field's node references onto the pasted ids. Untouched: res
  * sugar (empty nodeId — the edge carries the target), dangling markers, and
- * template tokens whose head is not a pasted node id ({{i}}, keys left by
+ * template tokens whose owner is not a pasted node id ({{i}}, keys left by
  * the exporter's dangling rewrite).
  */
 function remapField(field: NodeField, idMap: Map<string, string>): NodeField {
   if (field.source === 'binding' && field.ref && field.ref.nodeId !== '') {
     const nodeId = idMap.get(field.ref.nodeId)
     if (nodeId === undefined) return field
-    return {
-      ...field,
-      ref: { nodeId, path: field.ref.path },
-      value: field.ref.path ? `${nodeId}.${field.ref.path}` : nodeId,
-    }
+    const ref = { nodeId, path: field.ref.path }
+    return { ...field, ref, value: refToStored(ref) }
   }
   if (field.source === 'template') {
-    const value = field.value.replace(TEMPLATE_TOKEN_RE, (token, inner: string) => {
-      const [head, ...rest] = inner.split('.')
-      const mapped = idMap.get(head)
-      if (mapped === undefined) return token
-      return `{{${[mapped, ...rest].join('.')}}}`
-    })
+    const value = mapTemplateOwners(field.value, idMap)
     return value === field.value ? field : { ...field, value }
   }
   return field

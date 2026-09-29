@@ -116,6 +116,35 @@ describe('buildPaste (plan 07 E3)', () => {
     expect(invoice.data.fields[1].value).toBe('member+{{p0.body.id}}-{{i}}@x.io')
   })
 
+  it('remaps index-path owners, keeps token spacing, and rewrites the raw body too', () => {
+    const board = envelopeBoard()
+    board.nodes.push({
+      id: 'n4',
+      type: 'http',
+      name: 'Bulk',
+      data: {
+        key: 'bulk',
+        method: 'POST',
+        path: '/v1/bulk',
+        environment: 'staging',
+        credential: '',
+        fields: [
+          { key: 'body.first', source: 'binding', value: 'n1[0].id', ref: { nodeId: 'n1', path: '[0].id' } },
+          { key: 'body.all', source: 'template', value: '{{n1[*].id}}|{{ n1.body.id }}|{{ghost[0].id}}' },
+        ],
+        rawBody: { contentType: 'application/json', text: '{"id": "{{n1[0].id}}", "n": {{ i }}, "x": "{{ghost.body}}"}' },
+      },
+    })
+    board.edges.push({ id: 'e3', from: 'n1', to: 'n4' })
+    board.layout!.positions.n4 = { x: 600, y: 0 }
+
+    const bulk = buildPaste(board, [], { x: 0, y: 0 }, makeId).nodes[3]
+    if (bulk.type !== 'http') throw new Error('expected http node')
+    expect(bulk.data.fields[0]).toMatchObject({ ref: { nodeId: 'p0', path: '[0].id' }, value: 'p0[0].id' })
+    expect(bulk.data.fields[1].value).toBe('{{p0[*].id}}|{{ p0.body.id }}|{{ghost[0].id}}')
+    expect(bulk.data.rawBody?.text).toBe('{"id": "{{p0[0].id}}", "n": {{ i }}, "x": "{{ghost.body}}"}')
+  })
+
   it('carries dangling markers through untouched', () => {
     const { nodes } = buildPaste(envelopeBoard(), [], { x: 0, y: 0 }, makeId)
     const invoice = nodes[1]
