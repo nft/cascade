@@ -339,6 +339,27 @@ func TestExportSelectionResSugarDanglesThroughAnIndex(t *testing.T) {
 	}
 }
 
+func TestExportSelectionRewritesDataNotYetJSONShaped(t *testing.T) {
+	p := newTestProject(t)
+	b := testBoard()
+	// A Go caller can hand the exporter a typed slice rather than the []any a
+	// JSON decode produces. The rewrite must reason about the same map it
+	// writes into, or it sees no rows here and ships the binding still bound.
+	b.Nodes[1].Data["fields"] = []map[string]any{{
+		"key": "body.userId", "source": "binding", "value": "n1.body.id",
+		"ref": map[string]any{"nodeId": "n1", "path": "body.id"},
+	}}
+	raw, err := ExportSelection(p, b, []string{"n2"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	n2 := nodeByID(t, exportedBoard(t, raw).Board.Nodes, "n2")
+	row := n2.Data["fields"].([]any)[0].(map[string]any)
+	if row["source"] != "literal" || row["ref"] != nil {
+		t.Errorf("row = %v; want the cut binding unbound", row)
+	}
+}
+
 func TestExportSelectionKeepsTemplateSpacing(t *testing.T) {
 	p := newTestProject(t)
 	b := testBoard()

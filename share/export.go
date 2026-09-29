@@ -43,20 +43,18 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 		keep[id] = true
 	}
 	upstream := singleUpstreams(b.Edges)
-	// Decode every node, not just the kept ones: a cut binding is named by
-	// its upstream's KEY, and that upstream is by definition outside the
-	// selection.
-	specs := make(map[string]nodespec.Spec, len(b.Nodes))
+	// Every node's key, not just the kept ones': a cut binding is named by its
+	// upstream's KEY, and that upstream is by definition outside the selection.
 	idToKey := make(map[string]string, len(b.Nodes))
 	for _, n := range b.Nodes {
 		spec, err := nodespec.Decode(core.NodeType(n.Type), n.Data)
 		if err != nil {
 			return nil, fmt.Errorf("node %q: %w", n.ID, err)
 		}
-		specs[n.ID] = spec
 		idToKey[n.ID] = spec.Key
 	}
 
+	specs := make(map[string]nodespec.Spec, len(selected))
 	out := store.Board{
 		FormatVersion: b.FormatVersion,
 		Nodes:         []store.BoardNode{},
@@ -80,7 +78,15 @@ func export(p *store.Project, b store.Board, kind string, selected []string) ([]
 			return nil, fmt.Errorf("node %q: %w", n.ID, err)
 		}
 		sanitizeRunState(data)
-		rewriteDanglingBindings(data, specs[n.ID], n.ID, keep, upstream, idToKey)
+		// Decode the copy, not n.Data: the rewrite writes into
+		// nodespec.Rows(data, …), so the fields it reasons about have to come
+		// from that same map for row i to be the one that produced field i.
+		spec, err := nodespec.Decode(core.NodeType(n.Type), data)
+		if err != nil {
+			return nil, fmt.Errorf("node %q: %w", n.ID, err)
+		}
+		specs[n.ID] = spec
+		rewriteDanglingBindings(data, spec, n.ID, keep, upstream, idToKey)
 		// Containment travels only when the container is in the selection: a
 		// parent naming an absent node is rejected by core.Graph.Validate on
 		// import, so a cut child exports as top level — the same treatment
@@ -155,9 +161,8 @@ func sanitizeRunState(data map[string]any) {
 // createUser.body.id" and the user re-binds — never a silent wrong value.
 // The decoded fields and the rows they came from are walked in lockstep:
 // reading is nodespec's job, but the marker has to be written back into the
-// opaque map, and nodespec.Rows is the very function Decode read them with.
-// The rows here belong to the exported COPY, which is a JSON round-trip of
-// the map the spec was decoded from, so the two line up index for index.
+// opaque map, and nodespec.Rows is the very function Decode read them with —
+// so spec must have been decoded from data itself.
 func rewriteDanglingBindings(
 	data map[string]any,
 	spec nodespec.Spec,
