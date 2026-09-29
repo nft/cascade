@@ -1,9 +1,10 @@
 name: Release
 
-# Pushing a version tag (v0.1.0) builds Cascade for macOS, Windows and Linux
-# and publishes a GitHub release: the builds, SHA256SUMS.txt, and that
-# version's CHANGELOG.md section as the notes. The website links to these
-# asset names (web/src/lib/release/platforms.ts); rename both together.
+# Pushing a version tag (v0.1.0) runs the CI checks on the tagged commit, then
+# builds Cascade for macOS, Windows and Linux and publishes a GitHub release:
+# the builds, SHA256SUMS.txt, and that version's CHANGELOG.md section as the
+# notes. The website links to these asset names, in
+# web/src/lib/release/platforms.ts; rename both together.
 on:
   push:
     tags: ['v*.*.*']
@@ -25,6 +26,10 @@ env:
   CHECKSUMS: SHA256SUMS.txt
 
 jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
   notes:
     name: Check the version and notes
     runs-on: ubuntu-24.04
@@ -69,7 +74,7 @@ jobs:
 
   build:
     name: Build for ${{ matrix.name }}
-    needs: notes
+    needs: [checks, notes]
     strategy:
       matrix:
         include:
