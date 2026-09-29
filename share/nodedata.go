@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-// core/nodespec owns the node-data format: Decode reads it and the exported
-// nodespec.DataKey*/FieldKey*/DanglingKey* constants spell the keys a writer
-// needs. Only run state lives here, because it is not configuration and
+// core/nodespec owns the node-data format: Decode reads it and its exported
+// key constants (DataKey*, FieldKey*, DanglingKey*, RefKey*, RawBodyKey*)
+// spell the keys a writer needs. Only run state lives here, because it is not configuration and
 // nodespec deliberately does not model it — an exported node must arrive idle.
 const (
 	dataKeyStatus = "status"

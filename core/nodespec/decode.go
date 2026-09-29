@@ -24,7 +24,6 @@ const (
 	dataKeyOrigin      = "origin"
 	dataKeyEnvironment = "environment"
 	dataKeyCredential  = "credential"
-	dataKeyRawBody     = "rawBody"
 
 	dataKeyMode   = "mode"
 	dataKeyScript = "script"
@@ -34,8 +33,7 @@ const (
 
 	dataKeyDurationMs = "durationMs"
 
-	dataKeyCount  = "count"
-	dataKeySource = "source"
+	dataKeyCount = "count"
 )
 
 // The exported keys are the ones a WRITER of the format needs. Decode is the
@@ -43,8 +41,10 @@ const (
 // rewrites bindings the selection cut and has to spell these back into the
 // opaque map, and spelling them twice is how the two sides drift.
 const (
-	DataKeyFields = "fields"
-	DataKeyPick   = "pick"
+	DataKeyFields  = "fields"
+	DataKeyPick    = "pick"
+	DataKeyRawBody = "rawBody"
+	DataKeySource  = "source"
 
 	FieldKeySource   = "source"
 	FieldKeyValue    = "value"
@@ -53,20 +53,21 @@ const (
 
 	DanglingKeyOriginal = "originalKey"
 	DanglingKeyPath     = "path"
+
+	RefKeyNodeID   = "nodeId"
+	RawBodyKeyText = "text"
 )
 
 // Row keys of the nested objects node data carries.
 const (
 	fieldKeyKey = "key"
 
-	refKeyNodeID = "nodeId"
-	refKeyPath   = "path"
+	refKeyPath = "path"
 
 	exportKeyKey  = "key"
 	exportKeyPath = "path"
 
 	rawBodyKeyContentType = "contentType"
-	rawBodyKeyText        = "text"
 
 	requestRefKeyCollection = "collectionId"
 	requestRefKeyRequest    = "requestId"
@@ -129,7 +130,7 @@ func Decode(t core.NodeType, data map[string]any) (Spec, error) {
 		spec.Loop = &LoopSpec{
 			Mode:   stringAt(data, dataKeyMode),
 			Count:  intAt(data, dataKeyCount),
-			Source: decodeRef(mapAt(data, dataKeySource)),
+			Source: decodeRef(mapAt(data, DataKeySource)),
 		}
 	default:
 		return Spec{}, fmt.Errorf("nodespec: unknown node type %q", t)
@@ -165,7 +166,7 @@ func decodeRef(row map[string]any) *Ref {
 	if row == nil {
 		return nil
 	}
-	return &Ref{NodeID: stringAt(row, refKeyNodeID), Path: stringAt(row, refKeyPath)}
+	return &Ref{NodeID: stringAt(row, RefKeyNodeID), Path: stringAt(row, refKeyPath)}
 }
 
 func decodeExports(data map[string]any) []binding.Export {
@@ -188,13 +189,13 @@ func decodeExports(data map[string]any) []binding.Export {
 // undefined`), so dropping an empty one would flip the node back to
 // field mode at run time.
 func decodeRawBody(data map[string]any) *httpcall.RawBody {
-	row := mapAt(data, dataKeyRawBody)
+	row := mapAt(data, DataKeyRawBody)
 	if row == nil {
 		return nil
 	}
 	return &httpcall.RawBody{
 		ContentType: stringAt(row, rawBodyKeyContentType),
-		Text:        stringAt(row, rawBodyKeyText),
+		Text:        stringAt(row, RawBodyKeyText),
 	}
 }
 

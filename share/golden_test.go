@@ -59,16 +59,40 @@ func templateBoard() store.Board {
 						"key": "body.indexed", "source": "template",
 						"value": "{{n1.body.items[0].id}}",
 					},
+					// A template Go cannot parse travels exactly as written — cut
+					// reference included — rather than failing the export; the
+					// field fails loudly when it runs instead.
+					map[string]any{
+						"key": "body.malformed", "source": "template",
+						"value": "{{n1.body.id}} {{oops",
+					},
 					// Structured bindings travel the same rewrite.
 					map[string]any{
 						"key": "body.userId", "source": "binding", "value": "createUser.body.id",
 						"ref": map[string]any{"nodeId": "n1", "path": "body.id"},
 					},
 				},
+				// A raw body is one template with no row to mark: its cut token
+				// is rewritten and nothing else in the text moves.
+				"rawBody": map[string]any{
+					"contentType": "application/json",
+					"text":        `{"user": "{{ n1.body.id }}", "n": {{ i }}}`,
+				},
+			}},
+			// A loop source is a bare ref: a cut one is renamed to the key.
+			{ID: "n3", Type: "for", Name: "Each Item", Data: map[string]any{
+				"name": "Each Item", "key": "eachItem", "mode": "each", "count": 3,
+				"source": map[string]any{"nodeId": "n1", "path": "body.items"},
+			}},
+			{ID: "c1", Type: "http", Name: "Tag Item", Parent: "n3", Data: map[string]any{
+				"name": "Tag Item", "key": "tagItem", "method": "POST", "path": "/v1/tags",
+				"environment": "local", "repeat": 1,
 			}},
 		},
-		Edges:  []store.BoardEdge{{ID: "e1", From: "n1", To: "n2"}},
-		Layout: store.BoardLayout{Positions: map[string]store.Position{"n1": {X: 0, Y: 0}, "n2": {X: 300, Y: 40}}},
+		Edges: []store.BoardEdge{{ID: "e1", From: "n1", To: "n2"}, {ID: "e2", From: "n1", To: "n3"}},
+		Layout: store.BoardLayout{Positions: map[string]store.Position{
+			"n1": {X: 0, Y: 0}, "n2": {X: 300, Y: 40}, "n3": {X: 300, Y: 240}, "c1": {X: 20, Y: 40},
+		}},
 	}
 }
 
@@ -82,8 +106,8 @@ func templateBoard() store.Board {
 // machine.
 func TestGoldenEnvelope(t *testing.T) {
 	p := newTestProject(t)
-	// n1 is cut, so every reference in n2 points outside the selection.
-	got, err := ExportSelection(p, templateBoard(), []string{"n2"})
+	// n1 is cut, so every reference in n2 and n3 points outside the selection.
+	got, err := ExportSelection(p, templateBoard(), []string{"n2", "n3", "c1"})
 	if err != nil {
 		t.Fatalf("ExportSelection: %v", err)
 	}

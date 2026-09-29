@@ -53,6 +53,11 @@
                 "value": "{{createUser.body.items[0].id}}"
               },
               {
+                "key": "body.malformed",
+                "source": "template",
+                "value": "{{n1.body.id}} {{oops"
+              },
+              {
                 "dangling": {
                   "originalKey": "createUser",
                   "path": "body.id"
@@ -66,6 +71,39 @@
             "method": "POST",
             "name": "Create Invoice",
             "path": "/v1/invoices",
+            "rawBody": {
+              "contentType": "application/json",
+              "text": "{\"user\": \"{{createUser.body.id}}\", \"n\": {{ i }}}"
+            },
+            "repeat": 1
+          }
+        },
+        {
+          "id": "n3",
+          "type": "for",
+          "name": "Each Item",
+          "data": {
+            "count": 3,
+            "key": "eachItem",
+            "mode": "each",
+            "name": "Each Item",
+            "source": {
+              "nodeId": "createUser",
+              "path": "body.items"
+            }
+          }
+        },
+        {
+          "id": "c1",
+          "type": "http",
+          "name": "Tag Item",
+          "parent": "n3",
+          "data": {
+            "environment": "local",
+            "key": "tagItem",
+            "method": "POST",
+            "name": "Tag Item",
+            "path": "/v1/tags",
             "repeat": 1
           }
         }
@@ -73,9 +111,17 @@
       "edges": [],
       "layout": {
         "positions": {
+          "c1": {
+            "x": 20,
+            "y": 40
+          },
           "n2": {
             "x": 300,
             "y": 40
+          },
+          "n3": {
+            "x": 300,
+            "y": 240
           }
         }
       }

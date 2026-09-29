@@ -155,10 +155,11 @@ func sanitizeRunState(data map[string]any) {
 	delete(data, dataKeyNote)
 }
 
-// rewriteDanglingBindings unbinds field rows whose reference leaves the kept
-// set. The row keeps a dangling marker naming the upstream by KEY (IDs are
-// meaningless to the receiver), so the importer can show "was bound to
-// createUser.body.id" and the user re-binds — never a silent wrong value.
+// rewriteDanglingBindings unbinds every reference that leaves the kept set:
+// field and pick rows, raw-body tokens, and a loop's each-source. A row keeps
+// a dangling marker naming the upstream by KEY (IDs are meaningless to the
+// receiver), so the importer can show "was bound to createUser.body.id" and
+// the user re-binds — never a silent wrong value.
 // The decoded fields and the rows they came from are walked in lockstep:
 // reading is nodespec's job, but the marker has to be written back into the
 // opaque map, and nodespec.Rows is the very function Decode read them with —
@@ -200,6 +201,12 @@ func rewriteDanglingBindings(
 				rewriteDanglingTemplate(rows[i], field, nodeID, keep, upstream, idToKey)
 			}
 		}
+	}
+	if spec.HTTP != nil && spec.HTTP.RawBody != nil {
+		rewriteDanglingRawBody(data, spec.HTTP.RawBody.Text, nodeID, keep, upstream, idToKey)
+	}
+	if spec.Loop != nil && spec.Loop.Source != nil {
+		rewriteDanglingLoopSource(data, *spec.Loop.Source, nodeID, keep, upstream, idToKey)
 	}
 }
 
@@ -248,11 +255,8 @@ func rewriteDanglingRef(
 	delete(row, nodespec.FieldKeyRef)
 }
 
-// rewriteDanglingTemplate rewrites a template's external {{id.path}} tokens
-// to {{key.path}} — human-readable, and unresolvable on the target board, so
-// the reference surfaces as invalid instead of silently binding to whatever
-// node happens to share the id or position. Tokens that stay are spliced
-// around, not re-rendered, so their spacing survives the trip.
+// rewriteDanglingTemplate rewrites a template field's cut tokens (see
+// rewriteCutTokens) and marks the row with the first of them.
 func rewriteDanglingTemplate(
 	row map[string]any,
 	field nodespec.Field,
@@ -261,20 +265,92 @@ func rewriteDanglingTemplate(
 	upstream map[string]string,
 	idToKey map[string]string,
 ) {
-	value := field.Value
-	if value == "" {
+	value, cut := rewriteCutTokens(field.Value, nodeID, keep, upstream, idToKey)
+	if cut == nil {
 		return
+	}
+	// The marker names the FIRST cut reference; a field with two is rare and
+	// the importer shows one line either way.
+	row[nodespec.FieldKeyDangling] = map[string]any{
+		nodespec.DanglingKeyOriginal: cut.key,
+		nodespec.DanglingKeyPath:     cut.path,
+	}
+	row[nodespec.FieldKeyValue] = value
+}
+
+// rewriteDanglingRawBody gives a raw body's cut tokens the rewrite a template
+// field gets, without the marker: a raw body is one text rather than a row,
+// and its key-form token already fails the run by name.
+func rewriteDanglingRawBody(
+	data map[string]any,
+	text string,
+	nodeID string,
+	keep map[string]bool,
+	upstream map[string]string,
+	idToKey map[string]string,
+) {
+	rewritten, cut := rewriteCutTokens(text, nodeID, keep, upstream, idToKey)
+	raw, ok := data[nodespec.DataKeyRawBody].(map[string]any)
+	if cut == nil || !ok {
+		return
+	}
+	raw[nodespec.RawBodyKeyText] = rewritten
+}
+
+// rewriteDanglingLoopSource points a cut each-source at its upstream's KEY.
+// A loop source is a bare ref with no row to carry a marker, so it takes the
+// template tokens' convention instead: a key cannot resolve as a node id, so
+// the loop fails by name — and the inspector shows the key — rather than
+// iterating whatever node on the receiving board shares the id. Rewritten in
+// count mode too, where it is idle, so switching modes cannot revive it.
+func rewriteDanglingLoopSource(
+	data map[string]any,
+	source nodespec.Ref,
+	nodeID string,
+	keep map[string]bool,
+	upstream map[string]string,
+	idToKey map[string]string,
+) {
+	key := danglingTarget(source.Binding(), nodeID, keep, upstream, idToKey)
+	raw, ok := data[nodespec.DataKeySource].(map[string]any)
+	if key == "" || !ok {
+		return
+	}
+	raw[nodespec.RefKeyNodeID] = key
+}
+
+// cutRef is a reference the selection cut, named by its upstream's key.
+type cutRef struct {
+	key  string
+	path string
+}
+
+// rewriteCutTokens rewrites a template's external {{id.path}} tokens to
+// {{key.path}} — human-readable, and unresolvable on the target board, so
+// the reference surfaces as invalid instead of silently binding to whatever
+// node happens to share the id or position. Tokens that stay are spliced
+// around, not re-rendered, so their spacing survives the trip. It returns the
+// first cut reference, or nil when nothing was cut.
+func rewriteCutTokens(
+	value string,
+	nodeID string,
+	keep map[string]bool,
+	upstream map[string]string,
+	idToKey map[string]string,
+) (string, *cutRef) {
+	if value == "" {
+		return value, nil
 	}
 	spans, err := binding.TemplateSpans(value)
 	if err != nil {
 		// A template Go cannot parse has no well-formed reference to dangle,
 		// and refusing the export would be a new failure for input every
 		// previous build accepted. §7 leaves Go's strictness to a later plan.
-		return
+		return value, nil
 	}
 	var rewritten strings.Builder
 	pos := 0
-	dangled := false
+	var first *cutRef
 	for _, span := range spans {
 		if !span.IsRef {
 			continue
@@ -283,24 +359,18 @@ func rewriteDanglingTemplate(
 		if key == "" {
 			continue
 		}
-		// The marker names the FIRST cut reference; a field with two is rare
-		// and the importer shows one line either way.
-		if !dangled {
-			dangled = true
-			row[nodespec.FieldKeyDangling] = map[string]any{
-				nodespec.DanglingKeyOriginal: key,
-				nodespec.DanglingKeyPath:     span.Ref.Path,
-			}
+		if first == nil {
+			first = &cutRef{key: key, path: span.Ref.Path}
 		}
 		rewritten.WriteString(value[pos:span.Start])
 		rewritten.WriteString(binding.RefToken(key, span.Ref.Path))
 		pos = span.End
 	}
-	if !dangled {
-		return
+	if first == nil {
+		return value, nil
 	}
 	rewritten.WriteString(value[pos:])
-	row[nodespec.FieldKeyValue] = rewritten.String()
+	return rewritten.String(), first
 }
 
 // deriveRequires collects the environment and credential names the exported

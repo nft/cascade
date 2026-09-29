@@ -408,6 +408,64 @@ func loopBoard() store.Board {
 	}
 }
 
+func TestExportSelectionRewritesACutRawBody(t *testing.T) {
+	p := newTestProject(t)
+	b := testBoard()
+	b.Nodes[1].Data["rawBody"] = map[string]any{
+		"contentType": "application/json",
+		"text":        `{"user": "{{ n1.body.id }}", "n": {{ i }}}`,
+	}
+	raw, err := ExportSelection(p, b, []string{"n2"})
+	if err != nil {
+		t.Fatalf("ExportSelection: %v", err)
+	}
+	body := nodeByID(t, exportedBoard(t, raw).Board.Nodes, "n2").Data["rawBody"].(map[string]any)
+	if want := `{"user": "{{createUser.body.id}}", "n": {{ i }}}`; body["text"] != want {
+		t.Errorf("text = %v; want %v", body["text"], want)
+	}
+	if body["contentType"] != "application/json" || body["dangling"] != nil {
+		t.Errorf("raw body = %v; want only its text rewritten", body)
+	}
+}
+
+func TestExportSelectionRewritesACutLoopSource(t *testing.T) {
+	loopBoard := func(source map[string]any) store.Board {
+		b := testBoard()
+		b.Nodes = append(b.Nodes,
+			store.BoardNode{ID: "n4", Type: "for", Name: "Each", Data: map[string]any{
+				"name": "Each", "key": "each", "mode": "each", "count": 3, "source": source,
+			}},
+			store.BoardNode{ID: "c1", Type: "http", Name: "Child", Parent: "n4", Data: map[string]any{
+				"name": "Child", "key": "child", "method": "GET", "path": "/v1/x", "environment": "local",
+			}},
+		)
+		b.Edges = append(b.Edges, store.BoardEdge{ID: "e3", From: "n1", To: "n4"})
+		return b
+	}
+	cases := []struct {
+		name     string
+		source   map[string]any
+		selected []string
+		want     string
+	}{
+		{"an explicit source", map[string]any{"nodeId": "n1", "path": "body.items"}, []string{"n4", "c1"}, "createUser"},
+		{"the res sugar", map[string]any{"nodeId": "", "path": "body.items"}, []string{"n4", "c1"}, "createUser"},
+		{"a source still in the selection", map[string]any{"nodeId": "n1", "path": "body.items"}, []string{"n1", "n4", "c1"}, "n1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := ExportSelection(newTestProject(t), loopBoard(tc.source), tc.selected)
+			if err != nil {
+				t.Fatalf("ExportSelection: %v", err)
+			}
+			source := nodeByID(t, exportedBoard(t, raw).Board.Nodes, "n4").Data["source"].(map[string]any)
+			if source["nodeId"] != tc.want || source["path"] != "body.items" {
+				t.Errorf("source = %v; want nodeId %q and the path kept", source, tc.want)
+			}
+		})
+	}
+}
+
 func TestExportSelectionKeepsContainmentAndSizes(t *testing.T) {
 	p := newTestProject(t)
 	raw, err := ExportSelection(p, loopBoard(), []string{"each", "child1", "child2"})
