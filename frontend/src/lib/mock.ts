@@ -1,8 +1,20 @@
 // Demo dataset (plan 01): seeds the in-memory API fallback (inMemoryApi.ts,
 // used by vitest and plain-browser dev) and mirrors the Go-side Default
-// project seed in seed/default.json — keep the two in sync. Components never
-// import this directly; they read the current project from the app state.
-import type { AppEdge, AppNode, CollectionDef, CredentialDef, EnvironmentDef, Operation } from './model'
+// project seed in seed/default.json — keep the two in sync, except for the
+// request target. The seed points at localhost with no credential so a real
+// Run fails in a way the user can act on; this path fabricates responses, so
+// it keeps the fictional staging host its scripted demo was written against.
+// Components never import this directly; they read the current project from
+// the app state.
+import type {
+  AppEdge,
+  AppNode,
+  CollectionDef,
+  CredentialDef,
+  EnvironmentDef,
+  Operation,
+  ProjectDefaults,
+} from './model'
 
 export const operations: Operation[] = [
   { ref: 'createUser', method: 'POST', path: '/v1/users', summary: 'Create a user', group: 'Users' },
@@ -14,6 +26,8 @@ export const operations: Operation[] = [
   { ref: 'getProject', method: 'GET', path: '/v1/projects/{id}', summary: 'Fetch a project', group: 'Projects' },
   { ref: 'patchProject', method: 'PATCH', path: '/v1/projects/{id}', summary: 'Update a project', group: 'Projects' },
 ]
+
+export const demoDefaults: ProjectDefaults = { environment: 'staging', credential: 'staging-admin' }
 
 export const environments: EnvironmentDef[] = [
   { name: 'local', baseUrl: 'http://localhost:8080' },

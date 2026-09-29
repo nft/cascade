@@ -8,7 +8,15 @@ import helpersSource from '../../../core/transform/helpers.js?raw'
 import type { RunApi, StoreApi } from './api'
 import { serializeBoard } from './board'
 import { inMemoryRun } from './inMemoryRun'
-import { credentials, demoCollection, environments, initialEdges, initialNodes, operations } from './mock'
+import {
+  credentials,
+  demoCollection,
+  demoDefaults,
+  environments,
+  initialEdges,
+  initialNodes,
+  operations,
+} from './mock'
 import type {
   BoardJSON,
   EnvelopePayload,
@@ -83,7 +91,7 @@ export function createInMemoryApi(): StoreApi {
       project: {
         id,
         name,
-        defaults: seeded ? { environment: 'staging', credential: 'staging-admin' } : {},
+        defaults: seeded ? { ...demoDefaults } : {},
       },
       sources: seeded ? [demoSource] : [],
       environments: seeded ? environments : [],
