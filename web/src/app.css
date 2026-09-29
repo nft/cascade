@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-symbols: 'Material Symbols Rounded';
+
+  /* Page surfaces: navy-black, lifting toward the icon's navy. */
+  --color-canvas: #070b11;
+  --color-surface: #0b121a;
+  --color-raised: #0f1822;
+  --color-navy: #14202b;
+  /* Recessed wells: code blocks, terminals. */
+  --color-well: #05080c;
+  --color-line: #1a2633;
+  --color-line-strong: #26374a;
+
+  --color-fg: #e9eef3;
+  --color-fg-muted: #9aa7b4;
+  --color-fg-subtle: #6c7c8c;
+  --color-fg-faint: #3e4d5d;
+
+  /* The logo's coral is 500. */
+  --color-coral-100: #fde6dc;
+  --color-coral-200: #fbcdb9;
+  --color-coral-300: #f7ae91;
+  --color-coral-400: #f3946f;
+  --color-coral-500: #ef805a;
+  --color-coral-600: #de6a42;
+  --color-coral-700: #b9522f;
+  --color-coral-900: #4a2213;
+  --color-coral-950: #25110a;
+
+  /* The desktop app's own canvas, for the product replica. */
+  --color-app-canvas: #0b0b0e;
+  --color-app-surface: #101013;
+  --color-app-dot: #27272a;
+
+  /* macOS window controls, on the frames around product imagery. */
+  --color-mac-close: #ff5f57;
+  --color-mac-minimize: #febc2e;
+  --color-mac-zoom: #28c840;
+
+  --shadow-window:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(255 255 255 / 0.07), 0 50px 140px -40px rgb(0 0 0 / 0.85);
+  --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-button: inset 0 1px 0 0 rgb(255 255 255 / 0.25), 0 8px 24px -8px rgb(239 128 90 / 0.45);
+
+  --animate-rise: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-dash: dash 0.5s linear infinite;
+  --animate-row: row 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-arrive: arrive 0.9s ease-out both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* xyflow's animated edge: a 5-unit dash walking toward the target. */
+  @keyframes dash {
+    from {
+      stroke-dashoffset: 10;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes row {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+
+  /* A coral ring that fades out: a bound value just arrived. */
+  @keyframes arrive {
+    from {
+      box-shadow: 0 0 0 2px var(--color-coral-400);
+    }
+    to {
+      box-shadow: 0 0 0 2px transparent;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Room for the sticky header when jumping to an anchor. */
+    scroll-padding-top: 5.5rem;
+  }
+
+  html {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-coral-500) 35%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-coral-400);
+    outline-offset: 3px;
+  }
+}
+
+/* The app canvas' dot grid. A utility can't take the gradient and its tile
+   size as one token, so it lives here; --dot sets the dot color. */
+@utility bg-dots {
+  background-image: radial-gradient(circle at center, var(--dot, var(--color-line)) 1px, transparent 1.25px);
+  background-size: var(--dot-gap, 22px) var(--dot-gap, 22px);
+}
+
+/* Scalable canvas geometry for the product replica. The canvas sets --u, one
+   logical unit in container-query width, and children place themselves in
+   units through --x/--y/--w/--h, so the whole board scales with its
+   container in CSS alone: no measuring, no hydration shift. One unit is one
+   pixel of the app at 100% zoom.
+
+   Tailwind's spacing and radius scales are re-based on the unit, so the
+   replica's utilities (p-3, gap-2, rounded-lg) scale like a zoomed board.
+   Text is sized in em of the 10-unit base font. */
+@utility canvas-units {
+  --u: calc(100cqw / var(--cw));
+  --spacing: calc(var(--u) * 4);
+  --radius-sm: calc(var(--u) * 4);
+  --radius-md: calc(var(--u) * 6);
+  --radius-lg: calc(var(--u) * 8);
+  font-size: calc(var(--u) * 10);
+}
+
+@utility canvas-box {
+  position: absolute;
+  left: calc(var(--x) * var(--u));
+  top: calc(var(--y) * var(--u));
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+}

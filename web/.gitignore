@@ -1,8 +1,4 @@
 node_modules
-dist
-
-# Pages are compiled from src/pages/*.fhtml into the Vite root by the fhtml
-# plugin. They are build output that happens to live at the root (Vite resolves
-# an HTML entry's /src/… references relative to the root), so they are ignored
-# rather than committed.
-/*.html
+/build
+/.svelte-kit
+vite.config.*.timestamp-*

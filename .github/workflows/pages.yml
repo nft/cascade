@@ -3,11 +3,14 @@ name: Pages
 on:
   push:
     branches: [main]
-    # Only the marketing/docs site is deployed from here; a change to the
-    # desktop app must not trigger a publish.
+    # The site, and what it reads at build time: the changelog it renders as
+    # patch notes. A change to the desktop app alone does not publish.
     paths:
       - 'web/**'
+      - 'CHANGELOG.md'
       - '.github/workflows/pages.yml'
+  # Also started by the release workflow, so the download buttons pick up the
+  # files it just published.
   workflow_dispatch:
 
 permissions:
@@ -22,11 +25,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # https://nft.github.io/cascade/ — vite.config.ts already defaults to this,
-  # but naming it here makes the deployed base visible. Moving to a custom
-  # domain means setting this to '/' AND updating SITE_URL in
-  # web/src/data/site.ts, which is what canonical and og:url are built from.
-  BASE_PATH: /cascade/
+  # https://nft.github.io/cascade serves the site from the repository's
+  # sub-path; SvelteKit wants it without a trailing slash. Moving to a custom
+  # domain means setting this to '' and updating SITE_ORIGIN in
+  # web/src/lib/config/site.ts, which canonical and og:url are built from.
+  BASE_PATH: /cascade
 
 jobs:
   build:
@@ -55,17 +58,18 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
-      # Actions sets CI=true, which switches the local fhtml plugin
-      # (web/plugins/fhtml.ts) into denyWarnings mode: a template warning that
-      # is only logged during `bun run dev` fails the build here.
       - name: Build
         run: bun run build
+        env:
+          # Prerendering asks the GitHub API for the latest release; the token
+          # keeps that call clear of the anonymous rate limit.
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
           # Action inputs are not affected by `defaults.run.working-directory`.
-          path: web/dist
+          path: web/build
 
   deploy:
     needs: build
