@@ -100,7 +100,13 @@ export function takenKeys(nodes: readonly AppNode[], exceptNodeId?: string): Set
 
 // --- reference strings -----------------------------------------------------
 
-/** Splits a reference expression into its owner (first dot segment) and path. */
+/** Joins an owner and accessor path: an index path takes no dot (`n1[0].id`), mirroring core/binding RefExpr. */
+export function joinRefExpr(owner: string, path: string): string {
+  if (!path) return owner
+  return path.startsWith('[') ? `${owner}${path}` : `${owner}.${path}`
+}
+
+/** Splits a reference expression into its owner (up to the first `.` or `[`) and path. */
 function splitOwner(expr: string): { owner: string; path: string } {
   const dot = expr.indexOf('.')
   const bracket = expr.indexOf('[')
@@ -116,7 +122,7 @@ function mapExprOwner(expr: string, map: ReadonlyMap<string, string>): string {
   if (RESERVED_REF_ROOTS.has(owner)) return expr
   const mapped = map.get(owner)
   if (!mapped) return expr
-  return path ? (path.startsWith('[') ? `${mapped}${path}` : `${mapped}.${path}`) : mapped
+  return joinRefExpr(mapped, path)
 }
 
 /** Stored template (`{{<nodeId>.path}}`) → display (`{{<key>.path}}`). */
@@ -131,17 +137,13 @@ export function parseTemplate(display: string, ids: ReadonlyMap<string, string>)
 
 /** Canonical stored form of a ref: `res.name`, `create-user.body.id`. */
 export function refToStored(ref: FieldRef): string {
-  const owner = ref.nodeId === '' ? REF_RES : ref.nodeId
-  if (!ref.path) return owner
-  return ref.path.startsWith('[') ? `${owner}${ref.path}` : `${owner}.${ref.path}`
+  return joinRefExpr(ref.nodeId === '' ? REF_RES : ref.nodeId, ref.path)
 }
 
 /** Display form of a ref: the owner rendered as its node key. */
 export function refToDisplay(ref: FieldRef, keys: ReadonlyMap<string, string>): string {
   if (ref.nodeId === '') return refToStored(ref)
-  const owner = keys.get(ref.nodeId) ?? ref.nodeId
-  if (!ref.path) return owner
-  return ref.path.startsWith('[') ? `${owner}${ref.path}` : `${owner}.${ref.path}`
+  return joinRefExpr(keys.get(ref.nodeId) ?? ref.nodeId, ref.path)
 }
 
 /** Parses a stored expression (owner = node ID or res) into a FieldRef; null for the scope refs `i` and `item`. */
@@ -271,6 +273,15 @@ function transitiveAncestors(edges: readonly { source: string; target: string }[
 }
 
 /**
+ * A selection export unbinds a field whose upstream it left behind and
+ * records what it was bound to (share/export.go). The engine refuses to run
+ * it in these words (nodespec danglingFormat, pinned by refs.guard.test.ts).
+ */
+export function danglingFieldMessage(dangling: NonNullable<NodeField['dangling']>): string {
+  return `lost its binding to ${joinRefExpr(dangling.originalKey, dangling.path)} — re-bind it`
+}
+
+/**
  * Edit-time referential check for one field (mirrors core/binding
  * ValidateSource): bare `res` needs exactly one direct upstream; qualified
  * refs must point at transitive ancestors. Returns a user-facing error
@@ -282,6 +293,7 @@ export function validateFieldRefs(
   nodes: readonly AppNode[],
   edges: readonly { source: string; target: string }[],
 ): string | null {
+  if (field.dangling) return danglingFieldMessage(field.dangling)
   if (field.source === 'template') {
     const syntax = templateSyntaxError(field.value)
     if (syntax) return syntax
@@ -324,6 +336,7 @@ export interface ResolveContext {
 export class ResolveError extends Error {}
 
 export function resolveField(field: NodeField, ctx: ResolveContext): unknown {
+  if (field.dangling) throw new ResolveError(`field ${field.key}: ${danglingFieldMessage(field.dangling)}`)
   switch (field.source) {
     case 'literal':
       return field.value

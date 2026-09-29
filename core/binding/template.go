@@ -127,18 +127,23 @@ func TemplateSpans(tpl string) ([]TemplateSpan, error) {
 	return spans, nil
 }
 
-// RefToken renders an owner and accessor path back into a {{…}} token — the
+// RefExpr joins an owner and accessor path into a reference expression — the
 // inverse of splitFirst, so an index path joins without a dot: ("n1",
-// "[0].id") is {{n1[0].id}}, never {{n1.[0].id}}.
-func RefToken(owner, path string) string {
+// "[0].id") is n1[0].id, never n1.[0].id.
+func RefExpr(owner, path string) string {
 	switch {
 	case path == "":
-		return templateOpen + owner + templateClose
+		return owner
 	case strings.HasPrefix(path, "["):
-		return templateOpen + owner + path + templateClose
+		return owner + path
 	default:
-		return templateOpen + owner + "." + path + templateClose
+		return owner + "." + path
 	}
+}
+
+// RefToken is RefExpr wrapped in {{…}}.
+func RefToken(owner, path string) string {
+	return templateOpen + RefExpr(owner, path) + templateClose
 }
 
 func (e *Env) resolveTemplate(tpl string) (any, error) {

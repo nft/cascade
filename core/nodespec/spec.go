@@ -47,14 +47,27 @@ type TransformSpec struct {
 // request fields do.
 func (s TransformSpec) Engine() (transform.Spec, error) {
 	spec := transform.Spec{Mode: transform.Mode(s.Mode), Script: s.Script}
+	// The inspector hides pick rows in script mode but keeps them for a switch
+	// back, so a row there — even one an export cut — runs nothing and must
+	// fail nothing.
+	if !s.picks() {
+		return spec, nil
+	}
 	for _, f := range s.Pick {
-		source, err := f.BindingSource()
+		source, err := f.sourceToRun()
 		if err != nil {
 			return transform.Spec{}, fmt.Errorf("pick %q: %w", f.Key, err)
 		}
 		spec.Pick = append(spec.Pick, transform.PickRow{Key: f.Key, Source: source})
 	}
 	return spec, nil
+}
+
+// picks reports whether the pick rows are what runs. An empty mode is pick,
+// the default, as transform.Execute reads it.
+func (s TransformSpec) picks() bool {
+	mode := transform.Mode(s.Mode)
+	return mode == transform.ModePick || mode == ""
 }
 
 // MockSpec is a mock node's authored output. Body is JSON *text* (model.ts

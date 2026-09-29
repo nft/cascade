@@ -58,7 +58,7 @@ func (s HTTPSpec) validate() error {
 		if _, _, err := f.Section(); err != nil {
 			return err
 		}
-		if _, err := f.BindingSource(); err != nil {
+		if _, err := f.sourceToRun(); err != nil {
 			return fmt.Errorf("field %q: %w", f.Key, err)
 		}
 	}
@@ -72,8 +72,11 @@ func (s TransformSpec) validate() error {
 	default:
 		return fmt.Errorf("unknown transform mode %q", s.Mode)
 	}
+	if !s.picks() {
+		return nil
+	}
 	for _, f := range s.Pick {
-		if _, err := f.BindingSource(); err != nil {
+		if _, err := f.sourceToRun(); err != nil {
 			return fmt.Errorf("pick %q: %w", f.Key, err)
 		}
 	}

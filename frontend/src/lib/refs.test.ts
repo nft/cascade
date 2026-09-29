@@ -98,6 +98,7 @@ describe('key rename safety (plan 05 scope guard)', () => {
     expect(fieldDisplayValue(binding, keys)).toBe('makeUser.body.id')
     expect(fieldDisplayValue(template, keys)).toBe('welcome-{{makeUser.body.name}}')
   })
+
 })
 
 describe('parseFieldInput (editor → stored form)', () => {
@@ -210,6 +211,19 @@ describe('validateFieldRefs (edit-time, mirrors core/binding)', () => {
       { nodeId: '', path: 'name' },
     ])
   })
+
+  it('flags a binding a selection export cut, naming what it was bound to', () => {
+    // What share/export.go leaves behind: an empty literal plus the marker.
+    const cut: NodeField = {
+      key: 'body.orgId',
+      source: 'literal',
+      value: '',
+      dangling: { originalKey: 'createOrg', path: 'body.items[0].id' },
+    }
+    expect(validateFieldRefs(cut, 'create-org-1', nodes, edges)).toBe(
+      'lost its binding to createOrg.body.items[0].id — re-bind it',
+    )
+  })
 })
 
 describe('resolveField (mirrors core/binding resolution)', () => {
@@ -235,6 +249,16 @@ describe('resolveField (mirrors core/binding resolution)', () => {
   })
   const template = (value: string): NodeField => ({ key: 'k', source: 'template', value })
 
+
+  it('refuses a field whose binding a selection export cut instead of sending ""', () => {
+    const cut: NodeField = {
+      key: 'body.userId',
+      source: 'literal',
+      value: '',
+      dangling: { originalKey: 'createUser', path: 'body.id' },
+    }
+    expect(() => resolveField(cut, ctx)).toThrow('field body.userId: lost its binding to createUser.body.id')
+  })
   it('resolves res sugar, explicit prefixes and exports', () => {
     expect(resolveField(binding('', 'name'), ctx)).toBe('Ada')
     expect(resolveField(binding('', 'status'), ctx)).toBe(201)

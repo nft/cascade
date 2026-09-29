@@ -256,6 +256,18 @@ func TestBuildRequestErrors(t *testing.T) {
 		spec: HTTPSpec{Method: http.MethodGet, Path: "/v1/users"},
 		want: "node has no target",
 	}, {
+		// What a selection export leaves behind: the empty literal must not
+		// go out on the wire as if the user had typed it.
+		name: "a field whose binding an export cut",
+		spec: HTTPSpec{
+			Method: http.MethodPost, Path: "/v1/users", Environment: testEnvName,
+			Fields: []Field{{
+				Key: "body.orgId", Source: FieldLiteral, Value: "",
+				Dangling: &Dangling{OriginalKey: "createOrg", Path: "body.items[0].id"},
+			}},
+		},
+		want: `field "body.orgId": lost its binding to createOrg.body.items[0].id — re-bind it`,
+	}, {
 		name: "a field bound to a node that has not run",
 		spec: HTTPSpec{
 			Method: http.MethodPost, Path: "/v1/users", Environment: testEnvName,

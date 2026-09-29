@@ -13,6 +13,13 @@ import (
 // loads, so a field still missing its ref here cannot be resolved at all.
 var errNoRef = errors.New("bound field has no reference — re-pick its upstream value")
 
+// danglingFormat refuses a field whose binding a selection export cut. The
+// exporter leaves an empty literal plus a marker naming what it was bound to;
+// sending that empty value would be the silent wrong value the marker exists
+// to prevent. refs.ts danglingFieldMessage shows the same words in the
+// inspector, and a guard test keeps the two in step.
+const danglingFormat = "lost its binding to %s — re-bind it"
+
 // FieldSource mirrors model.ts FieldSource: how one request field or pick row
 // gets its value.
 type FieldSource string
@@ -78,6 +85,17 @@ func (f Field) BindingSource() (binding.Source, error) {
 	return binding.Source{}, fmt.Errorf("unknown field source %q", f.Source)
 }
 
+// sourceToRun is BindingSource for every path that produces a value. It
+// differs in one case: a field a selection export unbound still describes a
+// source — an empty literal, which is why Refs lists no dependency for it —
+// but must not be RUN as one.
+func (f Field) sourceToRun() (binding.Source, error) {
+	if f.Dangling != nil {
+		return binding.Source{}, fmt.Errorf(danglingFormat, binding.RefExpr(f.Dangling.OriginalKey, f.Dangling.Path))
+	}
+	return f.BindingSource()
+}
+
 // Section is the request part a field key's prefix selects.
 type Section string
 
@@ -124,7 +142,7 @@ func (f Field) Section() (Section, string, error) {
 // which of a node's fields produced it — the same reason
 // transform.executePick names its row.
 func (f Field) resolve(env *binding.Env) (any, error) {
-	source, err := f.BindingSource()
+	source, err := f.sourceToRun()
 	if err != nil {
 		return nil, fmt.Errorf("field %q: %w", f.Key, err)
 	}

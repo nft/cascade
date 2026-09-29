@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cascade/core"
+	"cascade/core/transform"
 )
 
 func TestValidate(t *testing.T) {
@@ -142,9 +143,47 @@ func TestValidate(t *testing.T) {
 // The golden board is a board a user could actually save, so every node in it
 // has to pass the checks the inspector runs.
 func TestValidateGoldenBoard(t *testing.T) {
+	// create-user carries a binding a selection export cut (body.plan): it
+	// must refuse to run until re-bound, and nothing else may.
+	const cut = "create-user"
 	for id, spec := range loadBoard(t) {
-		if err := spec.Validate(); err != nil {
+		err := spec.Validate()
+		if id == cut {
+			if err == nil || !strings.Contains(err.Error(), `field "body.plan": lost its binding to pickPlan.body.plan`) {
+				t.Errorf("node %q: err = %v; want the cut binding refused", id, err)
+			}
+			continue
+		}
+		if err != nil {
 			t.Errorf("node %q: %v", id, err)
 		}
+	}
+}
+
+func TestTransformEngineRefusesACutPickRow(t *testing.T) {
+	spec := TransformSpec{Pick: []Field{{
+		Key: "plan", Source: FieldLiteral, Value: "",
+		Dangling: &Dangling{OriginalKey: "pickPlan", Path: "body.plan"},
+	}}}
+	_, err := spec.Engine()
+	if err == nil || !strings.Contains(err.Error(), `pick "plan": lost its binding to pickPlan.body.plan`) {
+		t.Fatalf("Engine err = %v; want the cut pick row refused", err)
+	}
+}
+
+func TestTransformScriptIgnoresItsHiddenPickRows(t *testing.T) {
+	spec := TransformSpec{Mode: string(transform.ModeScript), Script: "return 1", Pick: []Field{{
+		Key: "plan", Source: FieldLiteral, Value: "",
+		Dangling: &Dangling{OriginalKey: "pickPlan", Path: "body.plan"},
+	}}}
+	engine, err := spec.Engine()
+	if err != nil {
+		t.Fatalf("Engine: %v", err)
+	}
+	if len(engine.Pick) != 0 {
+		t.Errorf("Engine carried %d pick rows into script mode", len(engine.Pick))
+	}
+	if err := spec.validate(); err != nil {
+		t.Errorf("validate: %v", err)
 	}
 }
