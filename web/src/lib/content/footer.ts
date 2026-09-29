@@ -38,4 +38,4 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
 export const FOOTER_BLURB =
   'A free, open-source desktop app for seeding environments through your API, one connected graph at a time.'
 
-export const COPYRIGHT_HOLDER = 'The Cascade Authors'
+export const COPYRIGHT_HOLDER = 'Igor Vishnevsky'
