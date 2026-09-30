@@ -121,11 +121,68 @@ jobs:
           choco install nsis --yes --no-progress
           echo 'C:\Program Files (x86)\NSIS' >> "$GITHUB_PATH"
 
+      # macOS releases are signed with the Developer ID certificate and
+      # notarized with an App Store Connect API key, both kept as repository
+      # secrets. RUNNER_TEMP is emptied after the job, key files included.
+      - name: Prepare macOS signing
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          # The intermediate that issues Developer ID certificates, imported so
+          # codesign can build the chain whatever the runner image ships.
+          DEVELOPER_ID_CA: https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+        run: |
+          for secret in MACOS_CERTIFICATE MACOS_CERTIFICATE_PASSWORD NOTARY_KEY NOTARY_KEY_ID NOTARY_ISSUER_ID; do
+            if [ -z "${!secret}" ]; then
+              echo "::error::The $secret repository secret is missing; macOS releases are signed and notarized"
+              exit 1
+            fi
+          done
+
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          # No auto-lock, so the keychain stays open through the build.
+          security set-keychain-settings "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -f pkcs12 \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          curl -fsSL "$DEVELOPER_ID_CA" -o "$RUNNER_TEMP/developer-id-ca.cer"
+          security import "$RUNNER_TEMP/developer-id-ca.cer" -k "$keychain"
+          # Lets codesign use the private key without a confirmation dialog.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain"
+
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk '/Developer ID Application/ { print $2; exit }')"
+          if [ -z "$identity" ]; then
+            echo "::error::MACOS_CERTIFICATE holds no Developer ID Application identity"
+            exit 1
+          fi
+          # Stored base64-encoded, like the certificate.
+          if ! printf '%s' "$NOTARY_KEY" | base64 --decode > "$RUNNER_TEMP/notary-key.p8" ||
+            ! grep -q -- '-----BEGIN PRIVATE KEY-----' "$RUNNER_TEMP/notary-key.p8"; then
+            echo "::error::NOTARY_KEY is not a base64-encoded App Store Connect API key (.p8)"
+            exit 1
+          fi
+          {
+            echo "MACOS_SIGN_IDENTITY=$identity"
+            echo "NOTARY_KEY_PATH=$RUNNER_TEMP/notary-key.p8"
+          } >> "$GITHUB_ENV"
+
       # Every build uses the bindings committed in frontend/wailsjs rather than
       # regenerating them, which would run main() on the runner. The same
       # script builds a disk image locally.
-      - name: Build the macOS disk image
+      - name: Build, sign and notarize the macOS disk image
         if: runner.os == 'macOS'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: scripts/build-dmg.sh "dist/$MAC_DMG"
 
       - name: Build the Windows installer
