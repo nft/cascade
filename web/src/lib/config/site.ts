@@ -35,7 +35,7 @@ export const LINKS = {
   newIssue: `${REPO_URL}/issues/new/choose`,
   license: `${REPO_URL}/blob/main/LICENSE`,
   changelogSource: `${REPO_URL}/blob/main/CHANGELOG.md`,
-  roadmap: `${REPO_URL}/blob/main/docs/ROADMAP.md`,
+  roadmap: `${REPO_URL}/blob/main/ROADMAP.md`,
   formatSpec: `${REPO_URL}/blob/main/docs/format.md`,
   readme: `${REPO_URL}#readme`,
   wails: 'https://wails.io',

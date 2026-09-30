@@ -215,7 +215,7 @@ export const RELEASES_INTRO = {
   next: 'Coming next',
 } as const
 
-/** Unshipped roadmap items (docs/ROADMAP.md), in the order they are planned. */
+/** The Next list in ROADMAP.md, in the order it is planned. */
 export const NEXT_UP: readonly string[] = [
   'OpenAPI import, so the palette comes from your own spec',
   'Value generators for ids, emails and random data',

@@ -15,6 +15,8 @@ Builds for macOS, Windows and Linux are on the [releases page](https://github.co
 - **OpenAPI/Swagger import does not exist.** There is no spec parser in the Go code — `core/schema/` holds only sample-response schema inference. The "Import schema" button in the top bar is an inert placeholder, and the operation palette comes from an embedded demo catalog ([`seed/default.json`](seed/default.json)).
 - Nodes run one at a time in dependency order; independent branches do not run in parallel. Pause/resume, per-node log policy, value generators, and LLM-assisted values are untouched.
 
+[ROADMAP.md](ROADMAP.md) lists what comes next.
+
 ## First launch
 
 On an empty data directory Cascade creates a project named "Default" from `seed/default.json`: a demo operation catalog, environments, credentials, a collection, and a "Main" board already populated with nodes. The catalog is fabricated, but Run is not: the board targets `http://localhost:8080`, so pressing Run issues real HTTP requests and the first node fails with connection-refused until something is listening there. Point the `local` environment at your own API to see it work.
@@ -40,6 +42,7 @@ Three layers, with a hard rule: nothing under `core/` may import Wails, `store/`
 | [`seed/`](seed/) | `default.json`, embedded and used to seed the first project |
 | `*.go` (root) | The Wails shell: `main.go`, `app.go` and friends — the methods bound to the frontend |
 | [`frontend/`](frontend/) | Svelte app. `src/lib/` holds unit-tested pure helpers, `src/lib/components/` the UI (`inspector/`, `sidebar/`, `library/`, `schema/`, `ui/` primitives), `wailsjs/` the generated Go bindings (committed) |
+| [`docs/`](docs/) | [`format.md`](docs/format.md), the `.cascade.json` board file format for tools that read or write boards |
 | [`web/`](web/) | The marketing and documentation site, deployed to GitHub Pages; shares no code with the app |
 
 Several files are hand-mirrored across the Go/TypeScript boundary and drift silently if you change one side only: `frontend/src/lib/model.ts` mirrors the Go types, `refs.ts` reimplements `core/binding`'s resolution semantics, `credentials.ts` mirrors `core/httpcall` and store validation, `inMemoryApi.ts` mirrors the whole store, and `mock.ts` mirrors `seed/default.json` apart from its request target, which the two disagree on deliberately — the in-memory runner fabricates responses, so mock.ts can keep pointing at a fictional host.
