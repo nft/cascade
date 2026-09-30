@@ -30,7 +30,7 @@ const bindingRow = (key: string, path: string): NodeField => ({
   ref: { nodeId: '', path },
 })
 
-describe('runPick (plan 06 T3)', () => {
+describe('runPick', () => {
   it('reshapes with [*], templates and nested output keys', () => {
     const rows: NodeField[] = [
       bindingRow('emails', 'body.members[*].email'),
@@ -112,7 +112,7 @@ return { count: members.length, emails: members.map(m => m.email) }`,
     expect(body).toEqual({ count: 2, emails: ['a@x.io', 'c@x.io'] })
   })
 
-  it('script and pick modes produce identical output (done-when parity)', async () => {
+  it('script and pick modes produce identical output', async () => {
     const viaScript = await executeTransform(transform, nodes, edges, { 'create-org-1': orgResponse }, {})
     const pickNode: TransformNode = {
       ...transform,

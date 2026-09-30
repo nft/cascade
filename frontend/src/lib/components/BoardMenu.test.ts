@@ -36,7 +36,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('BoardMenu (plan 07 E2)', () => {
+describe('BoardMenu', () => {
   it('opens with the export, import and copy entries', () => {
     menuButton().click()
     flushSync()
@@ -74,7 +74,7 @@ describe('BoardMenu (plan 07 E2)', () => {
   })
 })
 
-describe('BoardMenu response-capture toggle (plan 11 W8)', () => {
+describe('BoardMenu response-capture toggle', () => {
   const toggle = () =>
     document.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!
 

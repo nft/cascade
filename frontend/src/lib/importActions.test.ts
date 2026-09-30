@@ -44,7 +44,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('finishEnvelopeImport (plan 07 E4/E5)', () => {
+describe('finishEnvelopeImport', () => {
   it('is zero-dialog when every requirement matches by name', async () => {
     await finishEnvelopeImport(
       app,
@@ -91,7 +91,7 @@ describe('finishEnvelopeImport (plan 07 E4/E5)', () => {
   })
 })
 
-describe('applyImportMappings (plan 07 E4)', () => {
+describe('applyImportMappings', () => {
   const rows: RequirementRow[] = [
     { type: 'environment', name: 'prod' },
     { type: 'credential', name: 'prod-admin', kind: 'basic' },

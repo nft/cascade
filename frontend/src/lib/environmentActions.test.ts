@@ -55,7 +55,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('environment flows (plan 11 W7)', () => {
+describe('environment flows', () => {
   it('adds the first environment and claims the project default', async () => {
     expect(await saveEnvironment(app, local)).toBeNull()
     expect(app.environments).toEqual([local])

@@ -10,7 +10,7 @@ import type { AppState } from './state.svelte'
 export const RUN_FAILED_MESSAGE = 'Run failed'
 
 /**
- * The (project, board) pair a run is scoped to (plan 11 D17). Both are '' when
+ * The (project, board) pair a run is scoped to. Both are '' when
  * no project is open — the state unit tests assemble by hand — so the
  * comparison stays a plain string equality on every path.
  */
@@ -60,7 +60,7 @@ function applyNodeFinished(app: AppState, e: RunEvent): void {
 }
 
 /**
- * Reconcile the canvas against the run's terminal statuses (D12). The event
+ * Reconcile the canvas against the run's terminal statuses. The event
  * channel is lossless inside Go, but the Wails bus across the webview
  * boundary offers no delivery guarantee — without this a dropped
  * node.finished leaves a node spinning forever with the run already over.

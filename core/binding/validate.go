@@ -1,7 +1,7 @@
 package binding
 
 // ValidateSource checks the edit-time referential rules for one node's
-// input source (plan 05 §9a): a bare res reference requires exactly one
+// input source: a bare res reference requires exactly one
 // direct upstream, and every qualified reference must point at a transitive
 // ancestor reachable via edges. isAncestor reports whether the given node ID
 // is a transitive ancestor of the node owning the source. Malformed

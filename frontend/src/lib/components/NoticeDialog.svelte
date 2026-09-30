@@ -1,5 +1,5 @@
 <script lang="ts">
-  // App-level notice modal: surfaces paste/import errors (plan 07 E3) as a
+  // App-level notice modal: surfaces paste/import errors as a
   // clean dialog until a richer notification store exists.
   import { dialogs } from '../dialogs.svelte'
   import ModalShell from './library/ModalShell.svelte'

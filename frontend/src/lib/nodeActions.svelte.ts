@@ -12,7 +12,7 @@ import { capturedSchema } from './schema'
 import type { AppState } from './state.svelte'
 
 export function removeNode(app: AppState, id: string) {
-  // A For container takes its children with it (plan 09 N5) — a dangling
+  // A For container takes its children with it — a dangling
   // parentId would break xyflow; drag-out first is the rescue path.
   const doomed = new Set([id, ...app.nodes.filter((n) => n.parentId === id).map((n) => n.id)])
   app.nodes = app.nodes.filter((n) => !doomed.has(n.id))
@@ -43,7 +43,7 @@ export function removeNodeRequest(app: AppState, id: string) {
 }
 
 /**
- * Loop membership on drop (plan 09 N5): re-parent the dropped node into the
+ * Loop membership on drop: re-parent the dropped node into the
  * For container under its center, or back to top level, translating the
  * position so it stays visually put. Refusals (nested For, edges that would
  * cross the loop boundary) toast and change nothing.
@@ -96,7 +96,7 @@ export function setNodeKey(app: AppState, id: string, key: string): string | nul
 }
 
 /**
- * Set or clear a node's origin override (plan 08 A1). Returns an error
+ * Set or clear a node's origin override. Returns an error
  * message when the value is not an absolute http(s) URL; null on success.
  * An empty value clears the override back to the environment's base URL.
  */
@@ -124,7 +124,7 @@ export function setField(app: AppState, nodeId: string, field: NodeField) {
 /**
  * Rename a field in place, keeping its row position — composing
  * removeField+setField would append the renamed key at the bottom of its
- * section (setField appends unknown keys), which reads as a bug (plan 10 §3b).
+ * section (setField appends unknown keys), which reads as a bug.
  */
 export function renameField(app: AppState, nodeId: string, oldKey: string, newKey: string) {
   const node = app.nodes.find((n) => n.id === nodeId)
@@ -143,7 +143,7 @@ export function removeField(app: AppState, nodeId: string, fieldKey: string) {
 
 /**
  * Pin the schema inferred from the node's last captured response onto the
- * node (plan 05 §8). Pinned schemas serialize with the board, so shared
+ * node. Pinned schemas serialize with the board, so shared
  * boards keep working pickers without run history; invoking again after a
  * newer run re-infers.
  */

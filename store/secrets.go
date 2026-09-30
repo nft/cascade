@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// SecretStore owns credential secret values, which never touch project files
-// (plan 04 K4). Values are keyed by project ID and credential name; the
+// SecretStore owns credential secret values, which never touch project
+// files. Values are keyed by project ID and credential name; the
 // engine-facing resolver reads them lazily at run time.
 type SecretStore interface {
 	// SetSecret stores (or replaces — rotation) one credential's value.

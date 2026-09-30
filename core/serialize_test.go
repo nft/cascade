@@ -68,9 +68,9 @@ func TestUnmarshalRejectsUnknownNodeType(t *testing.T) {
 }
 
 func TestParentStaysFormatVersionOne(t *testing.T) {
-	// The parent key is additive (plan 09): a graph using containment still
+	// The parent key is additive: a graph using containment still
 	// writes formatVersion 1, and top-level nodes omit the key entirely so
-	// pre-plan-09 readers and diffs see no change.
+	// older readers and diffs see no change.
 	g := Graph{Nodes: []Node{
 		{ID: "loop", Type: NodeTypeFor},
 		{ID: "child", Type: NodeTypeHTTP, Parent: "loop"},

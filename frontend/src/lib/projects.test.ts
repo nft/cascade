@@ -1,4 +1,4 @@
-// Plan 01 P3/P5: project switching swaps the whole working set, and board
+// Project switching swaps the whole working set, and board
 // edits round-trip through the (in-memory) store. Without a Wails runtime,
 // `api` resolves to the in-memory implementation seeded from mock.ts — the
 // same shape the Go store serves.
@@ -31,7 +31,7 @@ async function openByName(name: string) {
   await app.openProject(info.id)
 }
 
-describe('project state (plan 01)', () => {
+describe('project state', () => {
   it('init opens the last-opened project with the seeded working set', async () => {
     await app.init()
     await openByName('Default')

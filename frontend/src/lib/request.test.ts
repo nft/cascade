@@ -19,7 +19,7 @@ import {
 } from './request'
 import { HTTP_METHODS, type NodeField } from './model'
 
-describe('methodAllowsBody (plan 08 A1)', () => {
+describe('methodAllowsBody', () => {
   it('refuses bodies only on GET and HEAD', () => {
     expect(methodAllowsBody('GET')).toBe(false)
     expect(methodAllowsBody('HEAD')).toBe(false)
@@ -79,7 +79,7 @@ describe('isAbsoluteUrl / urlHost / effectiveBaseUrl', () => {
   })
 })
 
-describe('splitUrl (plan 08 B3)', () => {
+describe('splitUrl', () => {
   it('splits an absolute URL into origin and path, keeping {placeholders} intact', () => {
     expect(splitUrl('https://api.stripe.com/v1/invoices/{id}')).toEqual({
       origin: 'https://api.stripe.com',
@@ -109,7 +109,7 @@ describe('pathPlaceholders', () => {
   })
 })
 
-describe('sectioned editor grouping (plan 08 A2)', () => {
+describe('sectioned editor grouping', () => {
   const field = (key: string): NodeField => ({ key, source: 'literal', value: 'x' })
   const fields = [
     field('body.email'),
@@ -142,7 +142,7 @@ describe('sectioned editor grouping (plan 08 A2)', () => {
   })
 })
 
-describe('paramRows (plan 08 A2)', () => {
+describe('paramRows', () => {
   const field = (key: string, value = 'x'): NodeField => ({ key, source: 'literal', value })
 
   it('seeds an empty required row per placeholder, backed by the stored field when present', () => {
@@ -166,7 +166,7 @@ describe('paramRows (plan 08 A2)', () => {
   })
 })
 
-describe('fieldKeyName (plan 10 §3b)', () => {
+describe('fieldKeyName', () => {
   it('strips the storage prefix, keeping body nesting intact', () => {
     expect(fieldKeyName('query.limit')).toBe('limit')
     expect(fieldKeyName('path.id')).toBe('id')
@@ -187,7 +187,7 @@ describe('fieldKeyName (plan 10 §3b)', () => {
   })
 })
 
-describe('raw JSON body helpers (plan 10 §3c)', () => {
+describe('raw JSON body helpers', () => {
   it('jsonBodyParses tolerates {{…}} templates in any position', () => {
     expect(jsonBodyParses('{"a": 1}')).toBe(true)
     expect(jsonBodyParses('{"user": "{{createUser.body.id}}", "count": {{i}}}')).toBe(true)

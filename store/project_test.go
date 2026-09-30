@@ -105,7 +105,7 @@ func testBoard(id string) Board {
 		Edges: []BoardEdge{{ID: "e1", From: "create-user", To: "create-org"}},
 		Layout: BoardLayout{
 			Positions: map[string]Position{"create-user": {X: 0, Y: 140}, "create-org": {X: 300, Y: 140}},
-			// Last responses ride along in the layout sidecar (plan 05 §8) and
+			// Last responses ride along in the layout sidecar and
 			// must survive the round trip untouched.
 			Responses: map[string]CapturedResponse{
 				"create-user": {

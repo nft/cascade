@@ -41,7 +41,7 @@ const tree = (): CollectionFolder => ({
   ],
 })
 
-describe('collection tree lookups (plan 08 B1)', () => {
+describe('collection tree lookups', () => {
   it('folderById finds nested folders, including the root', () => {
     expect(folderById(tree(), 'root')?.id).toBe('root')
     expect(folderById(tree(), 'b')?.name).toBe('Refunds')
@@ -117,7 +117,7 @@ describe('collection tree mutations are immutable', () => {
   })
 })
 
-describe('requestMatches / requestRefCount (plan 08 B2)', () => {
+describe('requestMatches / requestRefCount', () => {
   it('matches method, url and name case-insensitively; ws falls back to protocol', () => {
     expect(requestMatches(req('r1', 'Create invoice'), 'INVOICE')).toBe(true)
     expect(requestMatches(req('r1'), '/v1/r1')).toBe(true)

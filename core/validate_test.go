@@ -65,7 +65,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			// Loop scope ({{item}}, {{i}}, loop ancestors) feeds a child
-			// transform without an edge (plan 09 N4).
+			// transform without an edge.
 			name: "transform child of a for needs no upstream",
 			graph: Graph{
 				Nodes: []Node{{ID: "loop", Type: NodeTypeFor}, {ID: "t", Type: NodeTypeTransform, Parent: "loop"}},

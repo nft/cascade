@@ -1,4 +1,4 @@
-// Credential CRUD flows (plan 04 K2), kept out of state.svelte.ts the same
+// Credential CRUD flows, kept out of state.svelte.ts the same
 // way library.ts holds the collection flows. AppState wraps the mutating
 // ones; rotate touches no frontend state, so the dialog calls it directly.
 import { api } from './api'

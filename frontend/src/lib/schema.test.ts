@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CapturedResponse } from './model'
 import { capturedSchema, inferSchema, schemaTree, withInferredSchema } from './schema'
 
-describe('inferSchema (TS mirror of core/schema/infer, plan 05 §8)', () => {
+describe('inferSchema (TS mirror of core/schema/infer)', () => {
   it('infers nested objects and arrays with sorted keys', () => {
     const schema = inferSchema({
       data: { items: [{ id: 'a1', score: 1 }, { id: 'a2', score: 2.5 }] },
@@ -76,7 +76,7 @@ describe('schemaTree (picker rows)', () => {
   })
 })
 
-describe('capture schema helpers (plan 11 W8)', () => {
+describe('capture schema helpers', () => {
   const captured = (over: Partial<CapturedResponse> = {}): CapturedResponse => ({
     status: 200,
     body: { id: 'u1', tags: ['a'] },

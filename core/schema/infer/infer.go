@@ -1,4 +1,4 @@
-// Package infer derives a JSON schema from a sample JSON value (plan 05 §8):
+// Package infer derives a JSON schema from a sample JSON value:
 // the binding picker needs a navigable tree even when an OpenAPI spec has no
 // (or wrong) response schemas, and ad-hoc HTTP nodes have no spec at all.
 // Output is deterministic — properties marshal in sorted key order and type
@@ -23,7 +23,7 @@ const (
 	TypeBoolean = "boolean"
 )
 
-// Format guesses for string values (plan 05: strict matches only).
+// Format guesses for string values (strict matches only).
 const (
 	FormatUUID     = "uuid"
 	FormatEmail    = "email"
@@ -212,7 +212,7 @@ func mergeProperties(a, b map[string]*Schema) map[string]*Schema {
 			out[k] = merge(s, other)
 			continue
 		}
-		// Key absent in a sibling element: nullable, per plan 05 §8.
+		// Key absent in a sibling element: nullable.
 		c := *s
 		c.Nullable = true
 		out[k] = &c

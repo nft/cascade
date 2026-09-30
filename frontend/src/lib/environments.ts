@@ -1,4 +1,4 @@
-// Environment helpers (plan 11 W7), mirroring credentials.ts for the other
+// Environment helpers, mirroring credentials.ts for the other
 // half of a node's target. Everything here is pure — the flows that write
 // live in environmentActions.svelte.ts.
 import type { BoardNodeJSON, EnvironmentDef, OperationNodeData, ProjectDefaults } from './model'
@@ -84,8 +84,8 @@ export function environmentRefCount(
  *
  * Adding the first environment claims an empty default, so nodes created next
  * are born with a target. Deleting the default hands it to whatever remains
- * rather than clearing it, which would silently return the project to the
- * state W7 exists to fix. Deleting the last one does clear it — there is
+ * rather than clearing it, which would silently leave new nodes without a
+ * target again. Deleting the last one does clear it — there is
  * nothing left to point at. `preferred` is the explicit "Set default" pick.
  *
  * The credential half is carried through untouched: it is the credentials

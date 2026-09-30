@@ -1,4 +1,4 @@
-// Transform node execution on the frontend (plan 06): Pick mode runs on the
+// Transform node execution on the frontend: Pick mode runs on the
 // mirrored resolver in refs.ts; Script mode is executed by the Go sandbox
 // through the api layer. Used by both the run simulation and the inspector's
 // "Test against last response" button.

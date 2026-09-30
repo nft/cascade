@@ -11,7 +11,7 @@ import (
 	"cascade/store"
 )
 
-// Board import & clipboard paste bindings (plan 07 E3). Parse gates and the
+// Board import & clipboard paste bindings. Parse gates and the
 // new-board materialization live in share/; this file adds the Wails chrome:
 // clipboard read and open-file dialog.
 
@@ -45,7 +45,7 @@ func (a *App) ReadClipboardEnvelope() (ClipboardEnvelope, error) {
 // ImportBoardResult carries the imported board; Cancelled means the user
 // dismissed the open-file dialog and nothing happened. Requires and
 // Collections come from the envelope so the frontend can run the mapping
-// step and merge embedded request definitions (plan 07 E4/E5).
+// step and merge embedded request definitions.
 type ImportBoardResult struct {
 	Cancelled   bool               `json:"cancelled"`
 	Board       store.Board        `json:"board"`

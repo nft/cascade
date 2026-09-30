@@ -42,7 +42,7 @@ afterEach(() => {
   app.logHoverNodeId = null
 })
 
-describe('LogsPanel hover highlight (plan 10 §2)', () => {
+describe('LogsPanel hover highlight', () => {
   it('sets logHoverNodeId on row enter and clears it on leave', () => {
     rowFor('alpha').dispatchEvent(new Event('pointerenter'))
     flushSync()
@@ -73,7 +73,7 @@ describe('LogsPanel hover highlight (plan 10 §2)', () => {
   })
 })
 
-describe('LogsPanel clear button (plan 10 §1)', () => {
+describe('LogsPanel clear button', () => {
   it('empties the table on click and resets the hover highlight', () => {
     rowFor('alpha').dispatchEvent(new Event('pointerenter'))
     flushSync()
@@ -105,7 +105,7 @@ describe('LogsPanel collapse/expand buttons', () => {
   })
 })
 
-describe('LogsPanel rows with no status (plan 11 §6)', () => {
+describe('LogsPanel rows with no status', () => {
   // A call that never reached a server has no status, and `undefined >= 400`
   // is false — testing the status alone would file the most common real-run
   // failure under "success", in the success colour and hidden by the filter.
@@ -136,7 +136,7 @@ describe('LogsPanel rows with no status (plan 11 §6)', () => {
   })
 })
 
-describe('LogsPanel loop rows (plan 09 N6)', () => {
+describe('LogsPanel loop rows', () => {
   const summary: ForLogEntry = {
     kind: 'for',
     id: 'f1',

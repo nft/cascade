@@ -56,7 +56,7 @@
     setRows(rows.filter((r) => r.key !== key))
   }
 
-  /** Insert picker text at the cursor of the row's expression input (plan 05 V4). */
+  /** Insert picker text at the cursor of the row's expression input. */
   function insert(row: NodeField, text: string) {
     pickingFor = null
     const el = inputEls[row.key]

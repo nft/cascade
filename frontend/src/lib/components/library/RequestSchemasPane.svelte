@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The request editor's schema surfaces (plan 08 C8): the response schema
+  // The request editor's schema surfaces: the response schema
   // (drives downstream binding pickers once the request is instantiated) and
   // the request body schema (will pre-list known fields in the sectioned
   // editor). Edits land on the draft; nothing persists until the dialog saves.

@@ -1,10 +1,9 @@
 package main
 
-// RunEventName is the single Wails event every run transition travels on
-// (plan 11 D13). One name with a discriminated payload rather than five names
-// makes "events arrive in emission order" structural instead of something the
-// frontend has to reason about, and it means one subscription and one
-// teardown.
+// RunEventName is the single Wails event every run transition travels on.
+// One name with a discriminated payload rather than five names makes "events
+// arrive in emission order" structural instead of something the frontend has
+// to reason about, and it means one subscription and one teardown.
 const RunEventName = "run:event"
 
 // runEventBuffer sizes the channel between the engine and the drain

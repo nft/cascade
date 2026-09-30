@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { NO_TARGET_MESSAGE, unknownEnvironmentMessage } from './environments'
 
 // The inspector says at edit time what nodespec says at run time, in the same
-// words (plan 11 W7). Two copies of one sentence drift silently, so this
+// words. Two copies of one sentence drift silently, so this
 // pins the TS constants to the Go ones they were copied from.
 const HTTPBUILD_GO = fileURLToPath(new URL('../../../core/nodespec/httpbuild.go', import.meta.url))
 

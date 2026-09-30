@@ -17,7 +17,7 @@
   import { handleGlobalKeydown } from './lib/keyboard'
   import { app } from './lib/state.svelte'
 
-  // Load the project index and reopen the last-opened project (plan 01).
+  // Load the project index and reopen the last-opened project.
   onMount(() => void app.init())
 </script>
 
@@ -37,7 +37,7 @@
   </div>
 </div>
 
-<!-- Library dialogs (plan 08 B3) remount per open, so their drafts init fresh. -->
+<!-- Library dialogs remount per open, so their drafts init fresh. -->
 {#if dialogs.saveToCollection}
   <SaveToCollectionDialog nodeId={dialogs.saveToCollection.nodeId} />
 {/if}

@@ -1,4 +1,4 @@
-// Pure logic behind the binding picker (plan 05 V4), kept out of the Svelte
+// Pure logic behind the binding picker, kept out of the Svelte
 // components so it stays unit-testable.
 import { readableAncestors } from './ancestry'
 import { formatClock } from './format'
@@ -13,7 +13,7 @@ import {
 } from './model'
 import { capturedSchema, schemaTree, type SchemaTreeNode } from './schema'
 
-/** Where a node's picker tree comes from, in precedence order (plan 05 §8). */
+/** Where a node's picker tree comes from, in precedence order. */
 export type SchemaOrigin = 'pinned' | 'spec' | 'inferred'
 
 export interface NodeSchemaSource {
@@ -25,7 +25,7 @@ export interface NodeSchemaSource {
 
 /**
  * Picker precedence per node: pinned schema ("use last response as schema")
- * → explicit OpenAPI response schema (none until M2 wires spec import) →
+ * → explicit OpenAPI response schema (none until spec import exists) →
  * inferred from the last captured response. Null means the picker offers a
  * free-text path input instead of a tree.
  */
@@ -55,7 +55,7 @@ export function nodeSchemaSource(
  * direct upstream flagged (it is also reachable as `res` when it is the
  * only one).
  */
-/** One offerable each-mode For source: an array-typed path in a node's schema (plan 09 N6). */
+/** One offerable each-mode For source: an array-typed path in a node's schema. */
 export interface ArrayPathOption {
   path: string
   /** The row's type label from the schema tree (usually `array`). */

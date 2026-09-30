@@ -58,7 +58,7 @@ afterEach(() => {
   dialogs.saveToCollection = null
 })
 
-describe('SaveToCollectionDialog (plan 08 B3)', () => {
+describe('SaveToCollectionDialog', () => {
   it('prefills the node name and saves the stripped request into the picked folder', () => {
     mountDialog()
     const name = document.querySelector<HTMLInputElement>('input')!

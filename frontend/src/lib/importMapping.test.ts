@@ -24,7 +24,7 @@ const requires = (over: Partial<EnvelopeRequires> = {}): EnvelopeRequires => ({
   ...over,
 })
 
-describe('unmatchedRequirements (plan 07 E4)', () => {
+describe('unmatchedRequirements', () => {
   it('auto-matches by exact name — matched entries produce no rows', () => {
     const rows = unmatchedRequirements(
       requires({ environments: ['staging'], credentials: [{ name: 'staging-admin', kind: 'bearer' }] }),
@@ -120,7 +120,7 @@ const collection = (id: string, requests: RequestDef[], name = id): CollectionDe
   root: { id: 'root', name: '', requests },
 })
 
-describe('mergeCollections (plan 07 E5)', () => {
+describe('mergeCollections', () => {
   it('imports unknown collections as-is', () => {
     const embedded = [collection('col9', [request('r1')])]
     expect(mergeCollections([], embedded)).toEqual(embedded)

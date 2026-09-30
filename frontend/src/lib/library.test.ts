@@ -28,7 +28,7 @@ const data = (patch: Partial<OperationNodeData> = {}): OperationNodeData => ({
   ...patch,
 })
 
-describe('requestDefFromNode (plan 08 B3)', () => {
+describe('requestDefFromNode', () => {
   it('keeps literal fields, turns bound rows into empty defaults, drops board-only bits', () => {
     const def = requestDefFromNode(data(), { id: 'req-1', name: 'Create invoice' })
     expect(def).toEqual({
@@ -71,7 +71,7 @@ describe('requestDefFromNode (plan 08 B3)', () => {
   })
 })
 
-describe('requestDiffers — binding-blind divergence (plan 08 B3)', () => {
+describe('requestDiffers — binding-blind divergence', () => {
   // The library shape a save-to-collection of data() would produce.
   const saved: RequestDef = {
     id: 'req-1',
@@ -126,7 +126,7 @@ describe('requestDiffers — binding-blind divergence (plan 08 B3)', () => {
   })
 })
 
-describe('libraryLinkState (plan 08 B3)', () => {
+describe('libraryLinkState', () => {
   const collections = [structuredClone(demoCollection)]
   const linked = () =>
     data({
@@ -156,7 +156,7 @@ describe('libraryLinkState (plan 08 B3)', () => {
   })
 })
 
-describe('library flows through AppState (plan 08 B3)', () => {
+describe('library flows through AppState', () => {
   const node = (patch: Partial<OperationNodeData> = {}): HttpNode => ({
     id: 'n1',
     type: 'http',

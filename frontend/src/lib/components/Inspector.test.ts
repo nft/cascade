@@ -38,7 +38,7 @@ afterEach(() => {
   instance = null
 })
 
-describe('Inspector credential picker (plan 04 K5)', () => {
+describe('Inspector credential picker', () => {
   const cred = (name: string, kind: CredentialDef['kind']): CredentialDef => ({
     name,
     kind,
@@ -89,7 +89,7 @@ describe('Inspector credential picker (plan 04 K5)', () => {
   })
 })
 
-describe('Inspector close vs delete (plan 03 §1)', () => {
+describe('Inspector close vs delete', () => {
   it('✕ closes the panel and keeps the node', () => {
     const close = document.querySelector('button[title="Close inspector"]') as HTMLButtonElement
     expect(close).not.toBeNull()
@@ -111,7 +111,7 @@ describe('Inspector close vs delete (plan 03 §1)', () => {
   })
 })
 
-describe('Inspector environment picker (plan 11 W7)', () => {
+describe('Inspector environment picker', () => {
   const staging: EnvironmentDef = { name: 'staging', baseUrl: 'https://staging.example.com' }
 
   async function openProject(environments: EnvironmentDef[]) {
@@ -148,7 +148,7 @@ describe('Inspector environment picker (plan 11 W7)', () => {
     await openProject([])
     app.updateNodeData('n1', { environment: '' })
     flushSync()
-    // The dead end W7 exists to fix: nothing to pick, and no hint why.
+    // The dead end to avoid: nothing to pick, and no hint why.
     const hint = [...environmentSelect().options].find((o) => o.disabled)
     expect(hint?.textContent).toContain('No environments')
     expect(document.body.textContent).toContain(NO_TARGET_MESSAGE)

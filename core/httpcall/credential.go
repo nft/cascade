@@ -1,4 +1,4 @@
-// Credential injection (plan 04): a credential is a named secret string plus
+// Credential injection: a credential is a named secret string plus
 // an injection rule describing where that string enters the request. "Send
 // custom header X-Internal-Token: <secret>" is configuration, not a new type.
 package httpcall

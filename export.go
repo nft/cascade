@@ -10,7 +10,7 @@ import (
 	"cascade/store"
 )
 
-// Board export & clipboard sharing bindings (plan 07 E2). Envelope rules live
+// Board export & clipboard sharing bindings. Envelope rules live
 // in share/; this file adds only the Wails chrome: save dialog and clipboard.
 
 // Exports are meant to be shared and committed, not protected — owner-writable,

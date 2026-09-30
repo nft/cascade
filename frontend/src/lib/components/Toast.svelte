@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Transient bottom-center toast (plan 09 N5): refused edits that need a
+  // Transient bottom-center toast: refused edits that need a
   // one-line explanation, not a modal. Auto-dismisses via dialogs.showToast.
   import { dialogs } from '../dialogs.svelte'
   import Icon from './Icon.svelte'

@@ -135,7 +135,7 @@ type ScriptUpstream struct {
 }
 
 // ScriptRunRequest is one transform-script execution against captured
-// upstream responses (plan 06 T4/T5): both the inspector's Test button and
+// upstream responses: both the inspector's Test button and
 // the interim frontend run simulation call this. Nodes is keyed by node key
 // (scripts read `nodes.<key>`); Res is the single direct upstream, when
 // there is exactly one.
@@ -144,7 +144,7 @@ type ScriptRunRequest struct {
 	Nodes  map[string]ScriptUpstream `json:"nodes"`
 	Res    *ScriptUpstream           `json:"res,omitempty"`
 	Index  int                       `json:"index"`
-	// Item is the each-mode loop element (plan 09); HasItem gates it so a
+	// Item is the each-mode loop element; HasItem gates it so a
 	// stray `item` read outside a loop stays undefined.
 	Item    any  `json:"item,omitempty"`
 	HasItem bool `json:"hasItem,omitempty"`
@@ -203,7 +203,7 @@ func (a *App) SetCaptureResponses(projectID string, capture bool) error {
 	return p.SetCaptureResponses(capture)
 }
 
-// SaveCollection persists one request collection of a project (plan 08 B5).
+// SaveCollection persists one request collection of a project.
 func (a *App) SaveCollection(projectID string, collection store.Collection) error {
 	p, err := a.store.Project(projectID)
 	if err != nil {
@@ -213,7 +213,7 @@ func (a *App) SaveCollection(projectID string, collection store.Collection) erro
 }
 
 // DeleteCollection removes one request collection. Boards referencing its
-// requests keep working: a requestRef is provenance only (plan 08 B3).
+// requests keep working: a requestRef is provenance only.
 func (a *App) DeleteCollection(projectID, id string) error {
 	p, err := a.store.Project(projectID)
 	if err != nil {

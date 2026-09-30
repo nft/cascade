@@ -15,7 +15,7 @@ const fallbackBoardName = "Imported board"
 // gets a fresh ID and a name deduplicated against the project's boards; node
 // IDs stay as exported (they are board-scoped), which keeps a re-export
 // diffable against the original file. Returns the saved board plus the parsed
-// payload, whose requires/collections drive the frontend mapping step (E4).
+// payload, whose requires/collections drive the frontend mapping step.
 func ImportBoard(p *store.Project, data []byte) (store.Board, Payload, error) {
 	env, err := Parse(data)
 	if err != nil {

@@ -106,7 +106,7 @@ func (s LoopSpec) SourceRef() binding.Ref {
 	return s.Source.Binding()
 }
 
-// RequestRef is a node's collection provenance link (plan 08). Read by the
+// RequestRef is a node's collection provenance link. Read by the
 // exporter's deriveRequires; the executor ignores it.
 type RequestRef struct {
 	CollectionID string `json:"collectionId"`

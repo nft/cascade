@@ -1,4 +1,4 @@
-// The `_` helper object available to transform scripts (plan 06): a curated
+// The `_` helper object available to transform scripts: a curated
 // ~20-function set with lodash feel, implemented in plain JS and frozen so a
 // script cannot redefine helpers for later code in the same run.
 //

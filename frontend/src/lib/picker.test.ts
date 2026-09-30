@@ -3,7 +3,7 @@ import type { AppNode, CapturedResponse, RunnableNode } from './model'
 import { ancestorNodes, arrayPaths, nodeSchemaSource } from './picker'
 import { inferSchema, schemaTree } from './schema'
 
-describe('arrayPaths (plan 09 N6)', () => {
+describe('arrayPaths', () => {
   it('keeps only array-typed paths, including arrays nested under [0]', () => {
     const schema = inferSchema({
       name: 'ada',
@@ -26,7 +26,7 @@ describe('arrayPaths (plan 09 N6)', () => {
   })
 })
 
-describe('nodeSchemaSource (plan 11 W8)', () => {
+describe('nodeSchemaSource', () => {
   const node = {
     id: 'n1',
     type: 'http',
@@ -65,7 +65,7 @@ describe('nodeSchemaSource (plan 11 W8)', () => {
   })
 })
 
-describe('ancestorNodes (plan 09: a loop child reads its loop\'s ancestors)', () => {
+describe('ancestorNodes (a loop child reads its loop\'s ancestors)', () => {
   const mock = (id: string, parentId?: string): AppNode => ({
     id,
     type: 'mock',

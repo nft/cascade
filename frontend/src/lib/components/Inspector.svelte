@@ -32,7 +32,7 @@
       isDanglingCredential(app.credentials, node.data.credential),
   )
   // Said at edit time so the node is not left to fail at run time for a
-  // reason only the log explains; W2's engine error remains the backstop.
+  // reason only the log explains; the engine's own error remains the backstop.
   const noTarget = $derived(
     node && isHttpNode(node) ? targetProblem(app.environments, node.data) : null,
   )

@@ -1,4 +1,4 @@
-// Request-shape helpers (plan 08 A1/A2): URL assembly for custom origins,
+// Request-shape helpers: URL assembly for custom origins,
 // method/body rules, and the sectioned-editor grouping of prefixed field
 // keys. Pure and unit-tested, like graph.ts/refs.ts.
 import type { HttpMethod, NodeField, RawBody } from './model'
@@ -58,8 +58,8 @@ export function urlHost(value: string): string | null {
 
 /**
  * Splits an absolute URL into a normalized origin and a path, for
- * instantiating a collection request that carries its own origin (plan 08
- * B3). Returns null when the value is not an absolute http(s) URL.
+ * instantiating a collection request that carries its own origin. Returns
+ * null when the value is not an absolute http(s) URL.
  */
 export function splitUrl(url: string): { origin: string; path: string } | null {
   if (!isAbsoluteUrl(url)) return null
@@ -90,11 +90,11 @@ export function pathPlaceholders(path: string): string[] {
   return names
 }
 
-// --- raw body (plan 08 A1 / plan 10 §3c) -------------------------------------
+// --- raw body -------------------------------------
 
 export const JSON_CONTENT_TYPE = 'application/json'
 
-/** The raw-JSON body every new custom node starts with (plan 10 §3c). */
+/** The raw-JSON body every new custom node starts with. */
 export function emptyJsonRawBody(): RawBody {
   return { contentType: JSON_CONTENT_TYPE, text: '' }
 }
@@ -131,8 +131,8 @@ export function formatJsonBody(text: string): string | null {
   }
 }
 
-// --- sectioned editor (plan 08 A2) ------------------------------------------
-// Field keys keep their storage prefixes (body./path./query./header., plan 05);
+// --- sectioned editor ------------------------------------------
+// Field keys keep their storage prefixes (body./path./query./header.);
 // the editor only groups them, so bindings and the engine see no change.
 
 export type RequestSectionId = 'params' | 'headers' | 'body'
@@ -174,7 +174,7 @@ export function sectionKey(section: RequestSectionId, name: string, path: string
 /**
  * The name a field key displays as in the editor: its storage prefix stripped
  * (`query.limit` → `limit`, `body.user.name` → `user.name`). Round-trips with
- * sectionKey for rename commits (plan 10 §3b).
+ * sectionKey for rename commits.
  */
 export function fieldKeyName(key: string): string {
   for (const prefixes of Object.values(SECTION_PREFIXES)) {

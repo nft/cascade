@@ -1,6 +1,6 @@
 {
   "comment": [
-    "Golden vectors for the binding resolver and the Stringify wire format (plan 11 D16).",
+    "Golden vectors for the binding resolver and the Stringify wire format.",
     "Read by core/binding/vectors_test.go and frontend/src/lib/refs.test.ts: the frontend",
     "keeps a second resolver for the in-memory fallback, and this table is what stops the",
     "two from drifting. Hand-authored from the spec — never regenerate it from either",

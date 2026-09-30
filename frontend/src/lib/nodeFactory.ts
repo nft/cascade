@@ -38,7 +38,7 @@ export function makeHttpNode(
 }
 
 /**
- * An ad-hoc request node (plan 08 A3): no spec, no collection — the user
+ * An ad-hoc request node: no spec, no collection — the user
  * configures method/path/origin/fields by hand. Credential deliberately
  * starts as none: a node pointed at an arbitrary origin must opt into
  * secrets, never inherit the project default.
@@ -62,7 +62,7 @@ export function makeCustomHttpNode(
       credential: '',
       status: 'idle',
       fields: [],
-      // Raw-JSON-first (plan 10 §3c): a hand-configured node greets with the
+      // Raw-JSON-first: a hand-configured node greets with the
       // JSON editor; schema-seeded operation nodes keep fields mode.
       rawBody: emptyJsonRawBody(),
     },
@@ -70,7 +70,7 @@ export function makeCustomHttpNode(
 }
 
 /**
- * Instantiates a collection request onto the canvas (plan 08 B3): copies the
+ * Instantiates a collection request onto the canvas: copies the
  * request's shape, materializes its literal defaults into fields, and links
  * back via requestRef (provenance only — the node stays independent). An
  * absolute URL becomes an origin override; such a node also starts with
@@ -106,7 +106,7 @@ export function makeHttpNodeFromRequest(
   }
 }
 
-/** A transform node (plan 06): Pick mode by default, no target/env — it only reshapes. */
+/** A transform node: Pick mode by default, no target/env — it only reshapes. */
 export function makeTransformNode(
   id: string,
   existing: readonly AppNode[],
@@ -127,7 +127,7 @@ export function makeTransformNode(
   }
 }
 
-/** A mock node (plan 09): a pure data source — no target, no env, no credential. */
+/** A mock node: a pure data source — no target, no env, no credential. */
 export function makeMockNode(
   id: string,
   existing: readonly AppNode[],
@@ -147,7 +147,7 @@ export function makeMockNode(
   }
 }
 
-/** A delay node (plan 09): a timed gate — no target, no env, no credential. */
+/** A delay node: a timed gate — no target, no env, no credential. */
 export function makeDelayNode(
   id: string,
   existing: readonly AppNode[],
@@ -170,7 +170,7 @@ export function makeDelayNode(
 const FOR_DEFAULT_WIDTH = 400
 const FOR_DEFAULT_HEIGHT = 240
 
-/** A For container (plan 09): an empty sized group the user drags nodes into. */
+/** A For container: an empty sized group the user drags nodes into. */
 export function makeForNode(
   id: string,
   existing: readonly AppNode[],
@@ -192,7 +192,7 @@ export function makeForNode(
   }
 }
 
-/** A note sticky (plan 06 T6) — an annotation, never part of runs. */
+/** A note sticky — an annotation, never part of runs. */
 export function makeNoteNode(id: string, position: { x: number; y: number }): AppNode {
   return { id, type: 'note', position, data: { text: '' } }
 }

@@ -47,14 +47,14 @@ func (m ProjectMeta) CapturesResponses() bool {
 	return m.CaptureResponses == nil || *m.CaptureResponses
 }
 
-// Environment is a named API target. Default headers land with M4.
+// Environment is a named API target. It has no default headers yet.
 type Environment struct {
 	Name    string `json:"name"`
 	BaseURL string `json:"baseUrl"`
 }
 
 // Credential is credential metadata ONLY — secret values never touch project
-// files; they live in the OS keychain (plan 04, see SecretStore). Kind and
+// files; they live in the OS keychain (see SecretStore). Kind and
 // the kind-specific fields mirror httpcall's injection matrix.
 type Credential struct {
 	Name      string `json:"name"`
@@ -98,7 +98,7 @@ type Operation struct {
 }
 
 // Source is an imported schema document plus its parsed operation catalog.
-// Real OpenAPI import lands with M2; the catalog shape is stable now.
+// Real OpenAPI import is not built yet; the catalog shape is stable now.
 type Source struct {
 	ID         string      `json:"id"`
 	Title      string      `json:"title"`

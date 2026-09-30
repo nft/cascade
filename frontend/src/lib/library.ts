@@ -1,4 +1,4 @@
-// Library flows (plan 08 B3): converting board nodes into reusable
+// Library flows: converting board nodes into reusable
 // RequestDefs, the binding-blind divergence check, and the save/update
 // orchestration behind "Save to collection…" / "Update collection request".
 // AppState delegates here (type-only import, same pattern as sim.ts).
@@ -24,7 +24,7 @@ export function canonicalRequestUrl(url: string): string {
 }
 
 /**
- * Strips a node's data down to a library RequestDef (plan 08 B3): literal
+ * Strips a node's data down to a library RequestDef: literal
  * fields become defaults, binding/template rows become empty defaults (board
  * wiring never enters the library), and board-only bits — key, exports,
  * status, environment, credential — are dropped. Identity fields
@@ -50,7 +50,7 @@ export function requestDefFromNode(
 }
 
 /**
- * Binding-blind divergence (plan 08 B3): a node differs from its library
+ * Binding-blind divergence: a node differs from its library
  * request only when its method, effective URL, field key set, or the literal
  * values of fields whose stored row is literal changed. Binding/template
  * rows still count toward the key set (the field exists) but their values
@@ -73,7 +73,7 @@ export function requestDiffers(data: OperationNodeData, request: RequestDef): bo
 
 /**
  * 'none' — no requestRef, or it dangles (collection/request deleted; the
- * node keeps working, plan 08 B3). Drives the "update collection request"
+ * node keeps working). Drives the "update collection request"
  * affordances: hidden on none, disabled on clean, live on diverged.
  */
 export type LibraryLinkState = 'none' | 'clean' | 'diverged'
@@ -116,7 +116,7 @@ export function saveNodeToCollection(
 
 /**
  * "Update collection request": explicitly pushes the node's current shape
- * back onto its library request (one-way-by-default, plan 08 B3), keeping
+ * back onto its library request (one-way by default), keeping
  * the request's identity — id, name, description, requestSchema.
  */
 export function updateCollectionRequestFromNode(app: AppState, nodeId: string): boolean {

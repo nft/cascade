@@ -1,4 +1,4 @@
-// Paste pipeline (plan 07 E3): turns an envelope's board into fresh canvas
+// Paste pipeline: turns an envelope's board into fresh canvas
 // nodes — new IDs, keys re-slugged on collision against the target board,
 // bindings, template tokens and raw-body tokens rewritten to the new IDs
 // (they store node IDs), positions recentered on the paste target with the

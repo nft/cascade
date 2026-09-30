@@ -1,9 +1,9 @@
-// Package transform executes transform nodes (plan 06): pure data steps that
+// Package transform executes transform nodes: pure data steps that
 // reshape upstream outputs without making a request. A transform produces a
 // synthetic binding.Output (Status 0, Body = result) so the entire
 // binding/export/picker machinery treats it exactly like an http node.
 //
-// Two modes: Pick (declarative rows over the plan-05 path resolver, with the
+// Two modes: Pick (declarative rows over the binding path resolver, with the
 // [*] array-map extension) and Script (sandboxed JavaScript via goja).
 package transform
 
@@ -61,7 +61,7 @@ type Input struct {
 	Res *binding.Output
 	// Index is the fan-out iteration index ({{i}} in rows, `i` in scripts).
 	Index int
-	// Item is the current each-mode loop element (plan 09), exposed as
+	// Item is the current each-mode loop element, exposed as
 	// `item` in scripts when HasItem is set; pick rows read it through
 	// Env ({{item}}).
 	Item    any

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The SOURCES half of the requests tree (plan 08 B2): imported OpenAPI
+  // The SOURCES half of the requests tree: imported OpenAPI
   // operations, read-only, grouped as before — extracted from Sidebar.svelte.
   import { app } from '../../state.svelte'
   import { methodBadge } from '../../ui'

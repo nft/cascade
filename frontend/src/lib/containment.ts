@@ -1,4 +1,4 @@
-// For-container geometry (plan 09 N5): loop membership is decided on drop —
+// For-container geometry: loop membership is decided on drop —
 // a node whose center lands inside a For's bounds re-parents in, one dropped
 // outside re-parents out. These helpers do the absolute ↔ container-relative
 // coordinate math so a re-parented node stays visually put.
@@ -93,7 +93,7 @@ export function parentsFirst(nodes: readonly AppNode[]): AppNode[] {
 /**
  * Whether two nodes live in the same scope (both top-level, or children of
  * the same For). Edges may never cross a loop boundary — the For node is the
- * loop's single interface (plan 09).
+ * loop's single interface.
  */
 export function sameScope(nodes: readonly AppNode[], aId: string, bId: string): boolean {
   const parentOf = (id: string) => nodes.find((n) => n.id === id)?.parentId ?? null

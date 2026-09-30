@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Shared modal chrome for the library dialogs (plan 08 B3): backdrop,
+  // Shared modal chrome for the library dialogs: backdrop,
   // panel, titled header, Escape/backdrop-click to close. Escape stops
   // propagation so the global chain doesn't also clear the selection.
   import type { Snippet } from 'svelte'

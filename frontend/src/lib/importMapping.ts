@@ -1,8 +1,8 @@
-// Import mapping (plan 07 E4/E5): the pure logic behind the requires-mapping
+// Import mapping: the pure logic behind the requires-mapping
 // wizard and the embedded-collections merge. Auto-matching happens by exact
 // name; only what did not match reaches the dialog, and every resolution
 // degrades gracefully — leaving a requirement unmapped keeps the imported
-// nodes present (they surface via the plan-04 dangling badges), never fails
+// nodes present (they surface via the dangling-credential badges), never fails
 // the import.
 import { findRequest, flattenRequests } from './collections'
 import type {

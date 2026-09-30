@@ -27,7 +27,7 @@ const base = (): SchemaJSON => ({
 const at = (...steps: (string | 0)[]): SchemaPath =>
   steps.map((s) => (s === 0 ? { kind: 'items' as const } : { kind: 'prop' as const, key: s }))
 
-describe('schema path addressing (plan 08 C8)', () => {
+describe('schema path addressing', () => {
   it('schemaAt walks properties and items; misses return null', () => {
     expect(schemaAt(base(), at('customer', 'email'))?.format).toBe('email')
     expect(schemaAt(base(), at('lines', 0, 'sku'))?.type).toBe('string')
@@ -108,7 +108,7 @@ describe('schema edit operations', () => {
   })
 })
 
-describe('mergeInferred (plan 08 B4 merge-with-existing)', () => {
+describe('mergeInferred (merge with existing)', () => {
   it('user edits win over re-inference; new keys are added', () => {
     // User inferred once, then fixed a format, retyped a field, and deleted noise.
     const edited: SchemaJSON = {

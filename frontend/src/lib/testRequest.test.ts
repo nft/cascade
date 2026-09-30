@@ -14,7 +14,7 @@ const def = (over: Partial<RequestDef> = {}, defaults?: NodeField[]): RequestDef
 
 const lit = (key: string, value: string): NodeField => ({ key, source: 'literal', value })
 
-describe('buildTestRequest (plan 08 C9)', () => {
+describe('buildTestRequest', () => {
   it('groups prefixed defaults into params/query/headers and nests the body', () => {
     const result = buildTestRequest(
       def({ url: '/v1/orgs/{id}/invoices' }, [
@@ -83,7 +83,7 @@ describe('buildTestRequest (plan 08 C9)', () => {
     })
   })
 
-  it('GET drops body rows instead of failing; ws is rejected (plan 08 C10)', () => {
+  it('GET drops body rows instead of failing; ws is rejected', () => {
     const get = buildTestRequest(def({ method: 'GET' }, [lit('body.junk', '1')]), 'https://x.io', '')
     expect('request' in get && get.request.body).toBeUndefined()
 

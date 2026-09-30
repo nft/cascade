@@ -1,7 +1,7 @@
-// Package share implements board export/import and clipboard sharing
-// (plan 07): one self-identifying JSON envelope for whole-board files and
-// copied selections alike. It is app-layer — it knows project business
-// (requires mapping) — but stays free of Wails and any UI dependency.
+// Package share implements board export/import and clipboard sharing: one
+// self-identifying JSON envelope for whole-board files and copied selections
+// alike. It is app-layer — it knows project business (requires mapping) —
+// but stays free of Wails and any UI dependency.
 //
 // Secrets are structurally impossible to leak here: the package reads board
 // and project metadata only and has no code path into the secret store;
@@ -47,7 +47,7 @@ type Envelope struct {
 
 // Payload carries one shareable graph plus everything the importing side
 // needs to re-home it: named requirements to map onto the target project and
-// the collection request definitions its nodes reference (plan 08).
+// the collection request definitions its nodes reference.
 type Payload struct {
 	Kind          string `json:"kind"` // KindBoard | KindSelection
 	FormatVersion int    `json:"formatVersion"`

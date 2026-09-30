@@ -57,7 +57,7 @@ class InMemoryRun {
 
   async execute(): Promise<RunResult> {
     const runIds = this.plan()
-    // A seed for a node inside the run set is ignored (plan 11 D10): the node
+    // A seed for a node inside the run set is ignored: the node
     // is about to produce its own output, and a reference to it from a node
     // it is not an ancestor of — ordered by no edge — would otherwise read the
     // previous run's value instead of finding it absent.
@@ -158,7 +158,7 @@ class InMemoryRun {
   }
 
   /**
-   * Runs a For container (plan 09): count or each iterations over the child
+   * Runs a For container: count or each iterations over the child
    * sub-order, `i`/`item` in scope, fail-fast, live progress, and a per-child
    * aggregate output keyed by child key (delay children excluded) that
    * downstream `[*]` bindings map over. Config problems fail only this node.
@@ -222,7 +222,7 @@ class InMemoryRun {
         this.event(RunEventKind.NodeStarted, { node: id, ...iterTag(scope) })
         if (!(await this.runOne(child, scope))) iterationFailed.add(id)
       }
-      // Fail-fast: a failed iteration aborts the remaining ones (plan 09).
+      // Fail-fast: a failed iteration aborts the remaining ones.
       if (iterationFailed.size > 0) return fail(`iteration ${k + 1} of ${total} failed`, k)
       for (const child of children) {
         if (isDelayNode(child)) continue

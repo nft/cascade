@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// TestDoInjectionMatrix drives every credential kind against a live server
-// (plan 04 K3): each kind lands exactly where its rule says, and nothing that
-// leaves the package contains the secret.
+// TestDoInjectionMatrix drives every credential kind against a live server:
+// each kind lands exactly where its rule says, and nothing that leaves the
+// package contains the secret.
 func TestDoInjectionMatrix(t *testing.T) {
 	const secret = "s3cret-v4lue"
 	tests := []struct {
@@ -130,6 +130,6 @@ func TestValidKind(t *testing.T) {
 		}
 	}
 	if ValidKind("api-key") {
-		t.Error("legacy api-key kind accepted — it became kind header (plan 04 K1)")
+		t.Error("legacy api-key kind accepted — it became kind header")
 	}
 }

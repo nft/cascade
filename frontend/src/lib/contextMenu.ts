@@ -1,4 +1,4 @@
-// Context menu contents per kind (plan 03 §2), data-driven so tests can assert entries.
+// Context menu contents per kind, data-driven so tests can assert entries.
 import type { LibraryLinkState } from './library'
 import type { NodeType } from './model'
 
@@ -70,7 +70,7 @@ export function menuItems(
     isRunning: boolean
     hasResponse?: boolean
     nodeType?: NodeType
-    /** Library link of an http node; drives the collection entries (plan 08 B3). */
+    /** Library link of an http node; drives the collection entries. */
     library?: LibraryLinkState
     /** Edge menu: whether the connection lives inside a For container. */
     insideLoop?: boolean
@@ -110,7 +110,7 @@ export function menuItems(
                 title: opts.hasResponse ? undefined : NO_RESPONSE_TITLE,
               },
             ]),
-        // Library flows (plan 08 B3) are http-only; the update entry hides
+        // Library flows are http-only; the update entry hides
         // entirely on a dangling/absent requestRef (provenance only).
         ...(opts.nodeType === 'http'
           ? [
@@ -140,7 +140,7 @@ export function menuItems(
   }
 }
 
-// --- collections tree menus (plan 08 B2) -------------------------------------
+// --- collections tree menus -------------------------------------
 
 /** Row kinds in the sidebar collections tree. The root folder uses 'collection'. */
 export type LibraryMenuKind = 'collection' | 'folder' | 'request'

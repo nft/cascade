@@ -40,7 +40,7 @@ func main() {
 	}
 	dataDir := filepath.Join(configDir, appDataDirName)
 	// OS keychain when available; otherwise the encrypted-file fallback in
-	// the data dir (plan 04 K4).
+	// the data dir.
 	secrets, err := store.NewSecretStore(dataDir)
 	if err != nil {
 		log.Fatalf("open secret store: %v", err)

@@ -1,11 +1,11 @@
-// Collection tree helpers (plan 08 B1/B2): pure, immutable operations on the
+// Collection tree helpers: pure, immutable operations on the
 // folder tree inside a CollectionDef, kept out of components like graph.ts.
 // All mutations return a new root (or null when the target does not exist or
 // an invariant would break) — callers persist the result.
 import type { BoardNodeJSON, CollectionDef, CollectionFolder, RequestDef } from './model'
 import { isRequestRef } from './board'
 
-/** Folder nesting cap (plan 08 B1): root is depth 0, at most 3 named levels below. */
+/** Folder nesting cap: root is depth 0, at most 3 named levels below. */
 export const MAX_FOLDER_DEPTH = 3
 
 /** The unnamed root folder's fixed id. */
@@ -186,7 +186,7 @@ export function requestMatches(request: RequestDef, query: string): boolean {
 /**
  * Nodes in the given boards whose requestRef points into the collection
  * (optionally one specific request) — drives the "boards reference it"
- * delete warning (plan 08 B2).
+ * delete warning.
  */
 export function requestRefCount(
   nodes: readonly Pick<BoardNodeJSON, 'data'>[],

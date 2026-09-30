@@ -1,5 +1,5 @@
 // Package exec runs a graph node by node in ExecutionOrder, dispatching per
-// node type (plan 06 T2): http nodes are built from their spec and sent
+// node type: http nodes are built from their spec and sent
 // through the injected Transport, transform nodes run in-process via
 // core/transform, and note nodes are never scheduled. The HTTP pipeline lives
 // in core/httpcall and reaches this package only through Transport, so exec
@@ -76,8 +76,7 @@ type Record struct {
 	HTTP *CallDetail
 	// InputNodes are the direct upstream keys consumed (transform records only).
 	InputNodes []string
-	// Output is the produced body (transform and mock records only; M8
-	// decides retention).
+	// Output is the produced body (transform and mock records only).
 	Output any
 	// Iteration is the loop iteration index for records emitted inside a
 	// for node's body; -1 outside any loop.

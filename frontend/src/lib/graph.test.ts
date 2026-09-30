@@ -30,7 +30,7 @@ const mkNode = (id: string, status: NodeStatus): AppNode => ({
 
 const mkEdge = (source: string, target: string): AppEdge => ({ id: `${source}->${target}`, source, target })
 
-describe('decorateEdges (plan 03 §3)', () => {
+describe('decorateEdges', () => {
   it('animates an edge iff its target node is running', () => {
     const nodes = [mkNode('a', 'success'), mkNode('b', 'running'), mkNode('c', 'idle')]
     const edges = [mkEdge('a', 'b'), mkEdge('b', 'c')]
@@ -112,7 +112,7 @@ describe('decorateEdges value labels', () => {
   })
 })
 
-describe('decorateEdges log-hover highlight (plan 10 §2)', () => {
+describe('decorateEdges log-hover highlight', () => {
   it('marks exactly the incident edges of the highlighted node, both directions', () => {
     const nodes = [mkNode('a', 'success'), mkNode('b', 'success'), mkNode('c', 'success'), mkNode('d', 'success')]
     const edges = [mkEdge('a', 'b'), mkEdge('b', 'c'), mkEdge('a', 'd')]
@@ -142,7 +142,7 @@ describe('decorateEdges log-hover highlight (plan 10 §2)', () => {
   })
 })
 
-describe('assertKnownNodeTypes (plan 06 T1)', () => {
+describe('assertKnownNodeTypes', () => {
   const registered = new Set(['http'])
   const node = (id: string, type?: string) => ({ id, type })
 
@@ -161,7 +161,7 @@ describe('assertKnownNodeTypes (plan 06 T1)', () => {
   })
 })
 
-describe('run target sets (plan 03 §4)', () => {
+describe('run target sets', () => {
   // Diamond a -> b, a -> c, b -> d, c -> d, plus a disconnected chain x -> y.
   const edges = [mkEdge('a', 'b'), mkEdge('a', 'c'), mkEdge('b', 'd'), mkEdge('c', 'd'), mkEdge('x', 'y')]
 
@@ -184,7 +184,7 @@ describe('run target sets (plan 03 §4)', () => {
   })
 })
 
-describe('slice geometry (plan 03 §5 v2)', () => {
+describe('slice geometry', () => {
   it('detects crossing segments', () => {
     expect(segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }, { x: 10, y: 0 })).toBe(true)
   })
@@ -215,7 +215,7 @@ describe('slice geometry (plan 03 §5 v2)', () => {
   })
 })
 
-describe('run target sets against the shared engine fixture (plan 11 D11)', () => {
+describe('run target sets against the shared engine fixture', () => {
   const vectors = JSON.parse(vectorsSource) as {
     graphs: Record<
       string,

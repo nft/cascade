@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Credential create/edit/rotate dialog (plan 04 K2). The secret input only
+  // Credential create/edit/rotate dialog. The secret input only
   // exists in create and rotate mode and always starts empty — a stored value
   // never travels back to the frontend, so there is nothing to repopulate.
   import { rotateCredentialSecret } from '../../credentialActions.svelte'

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { libraryMenuItems, menuItems } from './contextMenu'
 
-describe('context menu contents (plan 03 §2)', () => {
+describe('context menu contents', () => {
   it('pane menu offers every add-node entry, paste and fit view', () => {
     const items = menuItems('pane', { isRunning: false })
     expect(items.map((i) => i.label)).toEqual([
@@ -15,11 +15,11 @@ describe('context menu contents (plan 03 §2)', () => {
       'Paste',
       'Fit view',
     ])
-    // Paste is live since plan 07 E3.
+    // Paste is enabled.
     expect(items.find((i) => i.action === 'paste')?.disabled).toBeUndefined()
   })
 
-  it('note node menu is annotation-only: duplicate and delete (plan 06 T6)', () => {
+  it('note node menu is annotation-only: duplicate and delete', () => {
     const items = menuItems('node', { isRunning: false, nodeType: 'note' })
     expect(items.map((i) => i.action)).toEqual(['duplicate', 'delete-node'])
   })
@@ -41,19 +41,19 @@ describe('context menu contents (plan 03 §2)', () => {
       'Use last response as schema',
       'Delete',
     ])
-    // Copy is live since plan 07 E2; paste stays disabled until the import pipeline (E3).
+    // Copy is enabled.
     expect(items.find((i) => i.action === 'copy')?.disabled).toBeUndefined()
     expect(items.find((i) => i.action === 'run-node')?.disabled).toBe(false)
   })
 
-  it('schema pin is disabled until the node has a captured response (plan 05 §8)', () => {
+  it('schema pin is disabled until the node has a captured response', () => {
     const without = menuItems('node', { isRunning: false })
     expect(without.find((i) => i.action === 'use-as-schema')?.disabled).toBe(true)
     const withResponse = menuItems('node', { isRunning: false, hasResponse: true })
     expect(withResponse.find((i) => i.action === 'use-as-schema')?.disabled).toBe(false)
   })
 
-  it('http node menu offers the library flows (plan 08 B3)', () => {
+  it('http node menu offers the library flows', () => {
     const unlinked = menuItems('node', { isRunning: false, nodeType: 'http', library: 'none' })
     expect(unlinked.some((i) => i.action === 'save-to-collection')).toBe(true)
     // The update entry hides entirely without a resolvable requestRef.
@@ -98,7 +98,7 @@ describe('context menu contents (plan 03 §2)', () => {
   })
 })
 
-describe('collections tree menus (plan 08 B2)', () => {
+describe('collections tree menus', () => {
   it('collection and folder menus offer new request/folder, rename and delete', () => {
     for (const kind of ['collection', 'folder'] as const) {
       const items = libraryMenuItems(kind)
@@ -120,7 +120,7 @@ describe('collections tree menus (plan 08 B2)', () => {
     ])
   })
 
-  it('new request is live now that the editor dialog exists (plan 08 C7)', () => {
+  it('new request is live now that the editor dialog exists', () => {
     expect(libraryMenuItems('collection').find((i) => i.action === 'new-request')?.disabled).toBeUndefined()
   })
 

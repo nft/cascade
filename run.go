@@ -41,7 +41,7 @@ type RunCapture struct {
 // one: saving is debounced and can be rejected, so the file may lag.
 type RunRequest struct {
 	RunID string `json:"runId"`
-	// BoardID scopes emitted events (plan 11 D17). The run holds its own copy
+	// BoardID scopes emitted events. The run holds its own copy
 	// of the board, so it outlives a board switch, and node ids collide across
 	// projects by construction.
 	BoardID string      `json:"boardId"`

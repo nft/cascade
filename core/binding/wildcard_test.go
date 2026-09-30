@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// [*] array-map goldens (plan 06 T3): each case is one accessor path
+// [*] array-map goldens: each case is one accessor path
 // resolved against the same captured output.
 func TestWildcardPaths(t *testing.T) {
 	out := &Output{

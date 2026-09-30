@@ -1,4 +1,4 @@
-// Guards that UI style maps stay exhaustive as unions grow (plan 08 C1) —
+// Guards that UI style maps stay exhaustive as unions grow —
 // the Record types already enforce this at compile time; this keeps the
 // failure visible in test output too, like icons.guard.test.ts.
 import { describe, expect, it } from 'vitest'

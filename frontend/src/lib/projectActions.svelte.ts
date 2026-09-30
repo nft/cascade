@@ -1,4 +1,4 @@
-// Project-settings write flows (plan 11 W8), kept out of state.svelte.ts the
+// Project-settings write flows, kept out of state.svelte.ts the
 // same way the environment and credential flows are — and, like those, called
 // directly by components rather than re-exported as AppState methods.
 import { api } from './api'

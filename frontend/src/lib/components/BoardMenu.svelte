@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Board overflow menu in the top bar (plan 07): file export/import and
+  // Board overflow menu in the top bar: file export/import and
   // copy-as-JSON for chat-sized boards. Copy feedback is inline — the row
   // flips to "Copied" briefly — since there is no toast infrastructure yet.
   import { capturesResponses } from '../board'

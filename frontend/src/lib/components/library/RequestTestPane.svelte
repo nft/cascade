@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The request editor's Test tab (plan 08 B4/C9): one-off execution through
+  // The request editor's Test tab: one-off execution through
   // the SendTestRequest binding — no board, no run, no log entries. The
   // response can be parsed into an editable schema draft and saved onto the
   // request (replace or merge with what's already there).
@@ -22,7 +22,7 @@
 
   const NO_CREDENTIAL = ''
 
-  // Project defaults pre-select (plan 08 B4); the URL being absolute makes
+  // Project defaults pre-select; the URL being absolute makes
   // the environment irrelevant, but picking one is still harmless.
   // Initial picks only — the pane remounts with the dialog, so capturing the
   // current defaults once is intended.

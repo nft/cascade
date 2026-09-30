@@ -1,10 +1,10 @@
-// The run wire protocol (plan 11 D13): one Wails event name carrying a
+// The run wire protocol: one Wails event name carrying a
 // discriminated payload, so "events arrive in emission order" is structural
 // rather than something the frontend has to reason about, and there is one
 // subscription and one teardown.
 //
 // Every type here mirrors a Go DTO in runlog.go / run.go. The log row is
-// model.ts's own `LogEntry` union on purpose (D14): Go builds exactly that
+// model.ts's own `LogEntry` union on purpose: Go builds exactly that
 // shape, and a parallel type would be the drift this decision exists to
 // prevent.
 import { EventsOn } from '../../wailsjs/runtime/runtime'
@@ -46,9 +46,9 @@ export interface RunTarget {
 /** One board run (main.RunRequest). */
 export interface RunRequest {
   runId: string
-  /** Scopes every emitted event (D17); the run holds its own copy of the board. */
+  /** Scopes every emitted event; the run holds its own copy of the board. */
   boardId: string
-  /** The LIVE canvas, not the stored board — saving is debounced and can be rejected (D1). */
+  /** The LIVE canvas, not the stored board — saving is debounced and can be rejected. */
   board: BoardJSON
   target?: RunTarget
   /** Captures for nodes outside the run set, so a targeted run resolves bindings. */
@@ -58,7 +58,7 @@ export interface RunRequest {
 /**
  * The terminal reconciliation (main.RunResult). Per-node data travels as
  * events; this is the backstop, so an event the Wails bus drops cannot leave
- * the canvas wrong (D12).
+ * the canvas wrong.
  */
 export interface RunResult {
   runId: string

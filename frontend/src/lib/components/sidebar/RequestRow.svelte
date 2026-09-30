@@ -1,7 +1,7 @@
 <script lang="ts">
-  // One collection-request row (plan 08 B2): method badge, name, url tooltip.
+  // One collection-request row: method badge, name, url tooltip.
   // ws requests render disabled — the protocol is a reserved stub until
-  // WebSocket lands (plan 08 B1).
+  // WebSocket lands.
   import type { RequestDef } from '../../model'
   import { methodBadge } from '../../ui'
 

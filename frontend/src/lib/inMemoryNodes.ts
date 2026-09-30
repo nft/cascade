@@ -27,7 +27,7 @@ import { BODY_KEY_PREFIX } from './request'
 import type { RunStatus } from './runEvents'
 import { executeTransform, setKeyPath } from './transform'
 
-/** The loop scope a node runs under (plan 09 N7): iteration index and, in each mode, the element. */
+/** The loop scope a node runs under: iteration index and, in each mode, the element. */
 export interface LoopScope {
   /** 0-based loop iteration; undefined outside a loop. */
   iteration?: number
@@ -37,10 +37,10 @@ export interface LoopScope {
 
 export const TOP_SCOPE: LoopScope = { hasItem: false }
 
-/** Captured response bodies above this JSON size are dropped (plan 05 §8). */
+/** Captured response bodies above this JSON size are dropped. */
 const RESPONSE_BODY_CAP_BYTES = 256 * 1024
 
-/** Demo delays sleep for real but capped — a 5-minute delay must not wedge the demo (plan 09 N7). */
+/** Demo delays sleep for real but capped — a 5-minute delay must not wedge the demo. */
 export const SIM_DELAY_CAP_MS = 3000
 
 /** Fabricated http status; the demo's one deliberate failure answers 422. */
@@ -94,7 +94,7 @@ function pseudoUuid(): string {
   return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, hex)
 }
 
-/** A capture with the plan 05 §8 body cap applied. */
+/** A capture with the body cap applied. */
 export function capture(
   status: number,
   body: unknown,
@@ -211,7 +211,7 @@ async function runTransformNode(
   }
 }
 
-/** Parses the authored JSON and emits it under the configured status (plan 09 N2). */
+/** Parses the authored JSON and emits it under the configured status. */
 function runMockNode(node: MockNode, runId: string, scope: LoopScope): NodeOutcome {
   const row = {
     ...rowBase(node, runId, scope),
@@ -256,8 +256,8 @@ async function runDelayNode(
 }
 
 /**
- * Fabricate the node's response: body.* fields (or the raw body in raw mode,
- * plan 10 §3c) resolve against upstream captures — so bindings, res sugar,
+ * Fabricate the node's response: body.* fields (or the raw body in raw
+ * mode) resolve against upstream captures — so bindings, res sugar,
  * templates and {{i}} behave like the real engine — over a server-shaped
  * id/created_at stub.
  */
@@ -286,7 +286,7 @@ function fabricateFieldsBody(fields: readonly NodeField[], ctx: ResolveContext):
 }
 
 /**
- * Raw mode (plan 10 §3c): resolve {{…}} templates in the text, then echo a
+ * Raw mode: resolve {{…}} templates in the text, then echo a
  * JSON object merged over the id/created_at stub (user keys win, so a payload
  * without an id still supports the standard body.id binding demos), other
  * JSON values as-is, and non-JSON text as the string itself — truer than

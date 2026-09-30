@@ -1,4 +1,4 @@
-// Pure graph helpers over the canvas node/edge arrays (plan 03 §3–4).
+// Pure graph helpers over the canvas node/edge arrays.
 import type { AppEdge, AppNode } from './model'
 import { formatEdgeLabel, nodeSendKeys } from './nodeIO'
 import type { RunScope } from './state.svelte'
@@ -11,7 +11,7 @@ import type { RunScope } from './state.svelte'
  * they may still carry a status from an earlier run. Failed targets get a
  * distinct class. Styling for both classes lives in src/style.css.
  *
- * `highlightNodeId` (hovered log row, plan 10 §2) marks every incident edge —
+ * `highlightNodeId` (hovered log row) marks every incident edge —
  * incoming fed the call, outgoing consumed it; together they pin the node.
  * Precedence: a live run wins over the hover highlight, the hover highlight
  * wins over failed (the panel already shows the red; the canvas shows where).
@@ -64,7 +64,7 @@ export function decorateEdges(
  * Every node must carry a type registered in the xyflow nodeTypes map: xyflow
  * silently renders unknown types with its default node, which would let an
  * unregistered type (a newer board's node, a typo) masquerade as a working
- * node. Fail loudly instead (plan 06 T1).
+ * node. Fail loudly instead.
  */
 export function assertKnownNodeTypes(
   nodes: ReadonlyArray<{ id: string; type?: string }>,

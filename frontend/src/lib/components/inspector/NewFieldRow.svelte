@@ -5,7 +5,7 @@
   import { app } from '../../state.svelte'
   import Input from '../ui/Input.svelte'
 
-  // The trailing ghost row (plan 10 §3b): always-present empty key/value pair
+  // The trailing ghost row: always-present empty key/value pair
   // replacing the old "name + Add" control. Typing a name commits a real
   // field; the row then resets to empty for the next one.
   let {

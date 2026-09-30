@@ -1,5 +1,5 @@
 <script lang="ts">
-  // "Save to collection…" picker (plan 08 B3): choose collection + folder +
+  // "Save to collection…" picker: choose collection + folder +
   // name for a canvas node; saving strips board wiring (library.ts) and
   // links the node back via requestRef.
   import { createCollection } from '../../collectionActions.svelte'

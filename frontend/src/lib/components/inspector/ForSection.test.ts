@@ -64,7 +64,7 @@ afterEach(() => {
   app.selectedNodeId = null
 })
 
-describe('For inspector (plan 09 N6)', () => {
+describe('For inspector', () => {
   it('clamps the count field to the allowed range', () => {
     setCount('0')
     expect(forNode().data.count).toBe(FOR_MIN_COUNT)

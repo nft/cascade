@@ -50,7 +50,7 @@ const tabButton = (label: string) =>
   )
 
 // Displayed field names on the visible tab: read-only path keys render as
-// text, everything else as a key input (plan 10 §3b).
+// text, everything else as a key input.
 const rowKeys = () => [
   ...[...document.querySelectorAll<HTMLElement>('p[title^="name comes from"]')].map((p) =>
     p.textContent?.trim(),
@@ -87,7 +87,7 @@ afterEach(() => {
   instance = null
 })
 
-describe('RequestSection (plan 08 A2)', () => {
+describe('RequestSection', () => {
   it('groups prefixed fields into Params/Headers/Body tabs with counts', () => {
     mountWith(mkNode())
     expect(tabButton('Params')?.textContent).toContain('2') // placeholder id + query.limit
@@ -121,7 +121,7 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(ghostKeyInput().value).toBe('')
   })
 
-  it('the ghost row routes a params name matching a placeholder to path.* (plan 10 §3b)', () => {
+  it('the ghost row routes a params name matching a placeholder to path.*', () => {
     const node = mkNode({ fields: [] })
     mountWith(node)
     setInput(ghostKeyInput(), 'id')
@@ -132,7 +132,7 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(updated.data.fields).toEqual([{ key: 'path.id', source: 'literal', value: 'u_42' }])
   })
 
-  it('placeholder-derived path rows have read-only keys (plan 10 §3b)', () => {
+  it('placeholder-derived path rows have read-only keys', () => {
     mountWith(mkNode())
     expect(keyInput('id')).toBeNull()
     expect(document.querySelector('p[title^="name comes from"]')?.textContent?.trim()).toBe('id')
@@ -140,7 +140,7 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(keyInput('limit')).not.toBeNull()
   })
 
-  it('renaming a field keeps its value and row position (plan 10 §3b)', () => {
+  it('renaming a field keeps its value and row position', () => {
     const node = mkNode({
       fields: [
         { key: 'header.A', source: 'literal', value: '1' },
@@ -181,7 +181,7 @@ describe('RequestSection (plan 08 A2)', () => {
     expect(updated.data.fields).toEqual([{ key: 'path.id', source: 'literal', value: 'u_1' }])
   })
 
-  it('raw → fields → raw round-trips the payload through the session stash (plan 10 §3c)', () => {
+  it('raw → fields → raw round-trips the payload through the session stash', () => {
     const node = mkNode({
       fields: [],
       rawBody: { contentType: 'application/json', text: '{"answer": 42}' },
@@ -223,7 +223,7 @@ describe('RequestSection (plan 08 A2)', () => {
   })
 })
 
-describe('RequestSection over a library draft (plan 08 B3)', () => {
+describe('RequestSection over a library draft', () => {
   const mkDraft = (draft: Partial<RequestDef> = {}): RequestDef => ({
     id: 'req-1',
     name: 'Create invoice',
@@ -234,7 +234,7 @@ describe('RequestSection over a library draft (plan 08 B3)', () => {
     ...draft,
   })
 
-  it('is literal-only: no binding pickers, but raw bodies are allowed (plan 10 §3c)', () => {
+  it('is literal-only: no binding pickers, but raw bodies are allowed', () => {
     const draft = mkDraft()
     mountDraft(draft)
     expect(document.querySelector('[aria-label^="Insert reference"]')).toBeNull()

@@ -85,7 +85,7 @@ export class AppState {
   nodes = $state.raw<AppNode[]>([])
   edges = $state.raw<AppEdge[]>([])
   logs = $state<LogEntry[]>([])
-  /** Last successful response per node id; persisted in the board layout (plan 05 §8). */
+  /** Last successful response per node id; persisted in the board layout. */
   responses = $state<Record<string, CapturedResponse>>({})
   projects = $state<ProjectInfo[]>([])
   /** The open project's working set; null until init() resolves. */
@@ -106,7 +106,7 @@ export class AppState {
   runId = $state<string | null>(null)
   /** Node ids in the currently running subgraph; null when idle. Drives edge animation. */
   activeRunIds = $state<ReadonlySet<string> | null>(null)
-  /** Node id of the hovered log row; rings the node and tints its edges on the canvas (plan 10 §2). */
+  /** Node id of the hovered log row; rings the node and tints its edges on the canvas. */
   logHoverNodeId = $state<string | null>(null)
   contextMenu = $state<ContextMenuState | null>(null)
   canvasTool = $state<CanvasTool>('select')
@@ -163,8 +163,8 @@ export class AppState {
 
   /** Swap the active board in place (project open, board import; tabs later). */
   async openBoard(board: BoardJSON | undefined) {
-    // A run outlives the switch — it holds its own copy of the board (plan 11
-    // D1) — so it is cancelled first. Its flags are cleared here regardless:
+    // A run outlives the switch — it holds its own copy of the board — so it
+    // is cancelled first. Its flags are cleared here regardless:
     // leaving them set would disable Run on the new board forever and leave
     // stale `running` paint on whatever node ids happen to collide.
     await this.stopRun()
@@ -309,7 +309,7 @@ export class AppState {
     )
   }
 
-  /** Ad-hoc request node (plan 08 A3) — hand-configured, credential none. */
+  /** Ad-hoc request node — hand-configured, credential none. */
   addCustomHttpNode(position?: { x: number; y: number }): string {
     const defaults = this.project?.project.defaults
     return this.insertNode(
@@ -360,7 +360,7 @@ export class AppState {
     removeNodeRequest(this, id)
   }
 
-  /** Loop membership on drop (plan 09 N5): re-parent into or out of a For container. */
+  /** Loop membership on drop: re-parent into or out of a For container. */
   dropNode(id: string) {
     dropNode(this, id)
   }
@@ -407,7 +407,7 @@ export class AppState {
     setField(this, nodeId, field)
   }
 
-  /** Rename a field in place, keeping its row position (plan 10 §3b). */
+  /** Rename a field in place, keeping its row position. */
   renameField(nodeId: string, oldKey: string, newKey: string) {
     renameField(this, nodeId, oldKey, newKey)
   }
@@ -421,7 +421,7 @@ export class AppState {
     this.updateNodeData(nodeId, { exports })
   }
 
-  /** Pin the schema inferred from the node's last captured response (plan 05 §8). */
+  /** Pin the schema inferred from the node's last captured response. */
   useLastResponseAsSchema(nodeId: string) {
     useLastResponseAsSchema(this, nodeId)
   }
@@ -475,7 +475,7 @@ export class AppState {
     await stopRun(this)
   }
 
-  // --- credentials (plan 04 K2): flow bodies live in credentialActions.svelte.ts
+  // --- credentials: flow bodies live in credentialActions.svelte.ts
 
   saveCredential(def: CredentialDef, secret?: string): Promise<string | null> {
     return saveCredential(this, def, secret)
@@ -497,7 +497,7 @@ export class AppState {
     return [...saved, ...this.nodes.map((n) => ({ data: n.data as Record<string, unknown> }))]
   }
 
-  // --- collections (plan 08 B1/B2): tree flows live in collectionActions.svelte.ts
+  // --- collections: tree flows live in collectionActions.svelte.ts
 
   get collections(): CollectionDef[] {
     return this.project?.collections ?? []
@@ -525,7 +525,7 @@ export class AppState {
     return true
   }
 
-  /** Instantiate a collection request as a canvas node (plan 08 B3). */
+  /** Instantiate a collection request as a canvas node. */
   addNodeFromRequest(collectionId: string, request: RequestDef, position?: { x: number; y: number }) {
     if (request.protocol !== 'http') return
     const defaults = this.project?.project.defaults

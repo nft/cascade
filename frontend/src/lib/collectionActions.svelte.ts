@@ -1,4 +1,4 @@
-// Collection tree CRUD (plan 08 B1/B2), kept out of state.svelte.ts the same
+// Collection tree CRUD, kept out of state.svelte.ts the same
 // way credentialActions.svelte.ts holds the credential flows — and, like
 // environmentActions.svelte.ts, called straight from components instead of
 // being re-exported as AppState methods, which that file has no room left for.

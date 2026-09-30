@@ -43,7 +43,7 @@ func (r Ref) Binding() binding.Ref {
 }
 
 // Dangling records what a field was bound to before selection export cut the
-// reference (plan 07). The engine ignores it; it exists so the receiving side
+// reference. The engine ignores it; it exists so the receiving side
 // can offer a re-bind.
 type Dangling struct {
 	OriginalKey string `json:"originalKey"`

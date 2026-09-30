@@ -7,7 +7,7 @@ import (
 )
 
 // TestRequest is one one-off request execution from the request editor's Test
-// tab (plan 08 B4/C9): fully resolved literal values, no board, no run. The
+// tab: fully resolved literal values, no board, no run. The
 // frontend never sees secret values — only the credential *name* travels.
 type TestRequest struct {
 	Protocol   string            `json:"protocol,omitempty"`

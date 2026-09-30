@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Shared option list for environment selects (plan 11 W7), the twin of
+  // Shared option list for environment selects, the twin of
   // CredentialOptions: a first-class None entry, the project's environments,
   // and — when the current value names a deleted one — that name kept visible
   // as a disabled entry, so the select never displays None over stale data.

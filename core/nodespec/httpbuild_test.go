@@ -77,7 +77,7 @@ func TestBuildRequest(t *testing.T) {
 		},
 	}, {
 		// Sorted keys, no HTML escaping, ECMA-262 number rendering — these are
-		// wire bytes, so the D16 format governs rather than json.Marshal's
+		// wire bytes, so the Stringify format governs rather than json.Marshal's
 		// defaults.
 		name: "a header bound to an object is stringified as JSON",
 		spec: HTTPSpec{

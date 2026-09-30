@@ -214,7 +214,7 @@ export function createInMemoryApi(): StoreApi {
     async runTransformScript(req) {
       return runScriptInBrowser(req)
     },
-    // Canned on purpose (plan 08 B5): no project state is involved, so tests
+    // Canned on purpose: no project state is involved, so tests
     // that assemble app state by hand can send without registering a project.
     async sendTestRequest(_projectId, request) {
       return cannedTestResponse(request)
@@ -223,7 +223,7 @@ export function createInMemoryApi(): StoreApi {
 }
 
 /**
- * Dev/vitest stand-in for the SendTestRequest binding (plan 08 B5): echoes
+ * Dev/vitest stand-in for the SendTestRequest binding: echoes
  * the resolved request shape as a JSON success so the Test tab's send → view
  * → parse-to-schema flow is exercisable without the Go side. Mirrors the
  * redaction rule: a named credential never surfaces a value.

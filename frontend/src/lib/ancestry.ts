@@ -7,7 +7,7 @@ type EdgeLike = { source: string; target: string }
 
 /**
  * A node's transitive ancestors and, for a loop child, its For's — they ran
- * before the loop and hold still across iterations (plan 09). The For itself
+ * before the loop and hold still across iterations. The For itself
  * is not one: its output is the aggregate the body is still producing.
  */
 export function readableAncestors(

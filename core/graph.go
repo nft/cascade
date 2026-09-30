@@ -9,11 +9,11 @@ import "fmt"
 // NodeID uniquely identifies a node within a graph.
 type NodeID string
 
-// NodeType discriminates what a node is (plan 06). Only http nodes make
+// NodeType discriminates what a node is. Only http nodes make
 // requests; transform nodes reshape upstream data in-process; note nodes are
-// canvas annotations and never execute. Plan 09 adds mock (emits
-// user-authored static JSON), delay (holds its branch for a duration), and
-// for (a container that runs its child nodes repeatedly). The discriminator
+// canvas annotations and never execute; mock nodes emit user-authored
+// static JSON, delay nodes hold their branch for a duration, and for nodes
+// are containers that run their child nodes repeatedly. The discriminator
 // plus per-type executor dispatch is the extension point for future types
 // (condition, …).
 type NodeType string
@@ -36,13 +36,12 @@ func (t NodeType) valid() bool {
 }
 
 // Node is a single step in the graph. For http nodes that is one API call
-// bound to an environment and a credential. Operation reference, form values,
-// bindings, and per-node log settings are added as M1+ progresses.
+// bound to an environment and a credential.
 type Node struct {
 	ID   NodeID   `json:"id"`
 	Type NodeType `json:"type,omitempty"`
 	Name string   `json:"name,omitempty"`
-	// Parent is the For container this node lives in (plan 09); empty means
+	// Parent is the For container this node lives in; empty means
 	// top level.
 	Parent NodeID `json:"parent,omitempty"`
 }

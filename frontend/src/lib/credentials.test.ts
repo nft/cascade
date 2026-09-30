@@ -43,7 +43,7 @@ describe('injectionPreview', () => {
 })
 
 describe('validateCredentialDraft', () => {
-  it('accepts the plan 04 done-when credential', () => {
+  it('accepts a header credential with a token template', () => {
     const d = draft({ kind: 'header', header: 'X-Internal-Token', template: 'Token {secret}' })
     expect(validateCredentialDraft(d, none)).toBeNull()
   })

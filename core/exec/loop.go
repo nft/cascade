@@ -1,4 +1,4 @@
-// For-node execution (plan 09): a for node is a container whose children
+// For-node execution: a for node is a container whose children
 // form a loop body; runFor drives that body's sub-order through the same
 // per-node dispatch the top level uses — one executor, two scopes.
 package exec
@@ -152,7 +152,7 @@ func (r *runner) ancestorIDs(id core.NodeID) map[core.NodeID]bool {
 
 // loopRefError renames a missing-output failure when the referenced node
 // exists but is neither an ancestor of the loop nor part of its body: the
-// stored ref escaped the loop's scope (plan 09 — e.g. the user cut an
+// stored ref escaped the loop's scope (e.g. the user cut an
 // edge), and the named error says so. Genuine not-run errors (forward ref
 // to a later sibling) pass through untouched.
 func (r *runner) loopRefError(err error, forID core.NodeID, ancestors map[core.NodeID]bool) error {

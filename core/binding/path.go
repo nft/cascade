@@ -8,17 +8,16 @@ import (
 	"strings"
 )
 
-// Accessor prefixes that always win over body keys and export names
-// (plan 05 §9a): a body field literally named "status" stays reachable as
-// "body.status".
+// Accessor prefixes that always win over body keys and export names: a body
+// field literally named "status" stays reachable as "body.status".
 const (
 	prefixStatus  = "status"
 	prefixHeaders = "headers"
-	// prefixHeader is the M1 WP3 singular spelling, kept as an accepted alias.
+	// prefixHeader is the original singular spelling, kept as an accepted alias.
 	prefixHeader = "header"
 	prefixBody   = "body"
-	// prefixResponse is the M1 canonical path root ("response.body.id");
-	// plan 05 accessor paths omit it, so a leading "response." is skipped.
+	// prefixResponse is the original canonical path root ("response.body.id");
+	// accessor paths omit it, so a leading "response." is skipped.
 	prefixResponse = "response"
 )
 
@@ -30,8 +29,8 @@ const hintKeyCap = 8
 // the misleading "value is a JSON null and has no sub-fields".
 const hintTruncated = "the response was too large to capture"
 
-// wildcardSegment is the bracket content of the [*] array-map extension
-// (plan 06 T3): "orgs[*].id" maps the rest of the path over every element.
+// wildcardSegment is the bracket content of the [*] array-map extension:
+// "orgs[*].id" maps the rest of the path over every element.
 const wildcardSegment = "*"
 
 // segment is one step of a parsed accessor path: an object key, an array

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The COLLECTIONS half of the requests tree (plan 08 B2): user-editable
+  // The COLLECTIONS half of the requests tree: user-editable
   // request library with nestable folders, row context menus, inline rename,
   // and click-to-instantiate. Folder recursion is a snippet so all tree
   // interaction state stays in this one component.

@@ -29,7 +29,7 @@ const mkNode = (id: string, selected = false): AppNode => ({
   },
 })
 
-describe('selectionForCopy (plan 07 E2)', () => {
+describe('selectionForCopy', () => {
   it('returns the multi-selection when there is no anchor', () => {
     expect(selectionForCopy([mkNode('a', true), mkNode('b'), mkNode('c', true)])).toEqual(['a', 'c'])
   })
@@ -47,7 +47,7 @@ describe('selectionForCopy (plan 07 E2)', () => {
   })
 })
 
-describe('copy/export flows (plan 07 E2)', () => {
+describe('copy/export flows', () => {
   beforeEach(() => {
     app.project = {
       project: { id: 'p1', name: 'Proj', defaults: {} },
@@ -129,7 +129,7 @@ const payload = (): EnvelopePayload => ({
   requires: { environments: [], credentials: [], sources: [] },
 })
 
-describe('paste/import flows (plan 07 E3)', () => {
+describe('paste/import flows', () => {
   beforeEach(() => {
     app.project = {
       project: { id: 'p1', name: 'Proj', defaults: {} },
@@ -162,7 +162,7 @@ describe('paste/import flows (plan 07 E3)', () => {
     expect(app.selectedNodeId).toBeNull() // group paste keeps the inspector closed
   })
 
-  it('opens the mapping wizard over the pasted nodes when requires do not match (E4)', async () => {
+  it('opens the mapping wizard over the pasted nodes when requires do not match', async () => {
     const withRequires = {
       ...payload(),
       requires: { environments: ['prod'], credentials: [], sources: [] },
@@ -203,7 +203,7 @@ describe('paste/import flows (plan 07 E3)', () => {
     expect(app.nodes).toHaveLength(2)
   })
 
-  it('runs the mapping step over an imported file (E4)', async () => {
+  it('runs the mapping step over an imported file', async () => {
     const board: BoardJSON = { ...envelopeBoard(), id: 'nb1', name: 'Signup chain' }
     vi.spyOn(api, 'importBoardFromFile').mockResolvedValue({
       cancelled: false,

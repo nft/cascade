@@ -41,7 +41,7 @@ const nodes = [
   httpNode('create-org-1', 'Create Org', 'createOrg'),
 ]
 
-describe('node key slugs (plan 05 §9a)', () => {
+describe('node key slugs', () => {
   it('derives camelCase slugs from names', () => {
     expect(slugifyKey('Create User')).toBe('createUser')
     expect(slugifyKey('create-org')).toBe('createOrg')
@@ -67,7 +67,7 @@ describe('node key slugs (plan 05 §9a)', () => {
   })
 })
 
-describe('key rename safety (plan 05 scope guard)', () => {
+describe('key rename safety (scope guard)', () => {
   const binding: NodeField = {
     key: 'body.owner_id',
     source: 'binding',
@@ -302,7 +302,7 @@ describe('resolveField (mirrors core/binding resolution)', () => {
   })
 })
 
-describe('{{item}} loop scope (plan 09 N7, mirrors core/binding)', () => {
+describe('{{item}} loop scope (mirrors core/binding)', () => {
   const ctx: ResolveContext = {
     outputs: {},
     exports: {},
@@ -335,7 +335,7 @@ describe('{{item}} loop scope (plan 09 N7, mirrors core/binding)', () => {
   })
 })
 
-describe('[*] array map (plan 06 T3, mirrors core/binding goldens)', () => {
+describe('[*] array map (mirrors core/binding goldens)', () => {
   const outputs: Record<string, CapturedResponse> = {
     'create-org-1': {
       status: 201,
@@ -377,7 +377,7 @@ describe('[*] array map (plan 06 T3, mirrors core/binding goldens)', () => {
   })
 })
 
-// --- shared golden vectors (plan 11 D16) -------------------------------------
+// --- shared golden vectors -------------------------------------
 
 interface VectorOutput {
   status: number
@@ -413,7 +413,7 @@ function jsonTypeName(v: unknown): string {
   return typeof v
 }
 
-describe('binding vectors (plan 11 D16 — shared with core/binding)', () => {
+describe('binding vectors (shared with core/binding)', () => {
   const vectors = JSON.parse(vectorsSource) as VectorFile
   const captureTime = '2026-07-06T14:02:00Z'
   const outputs: Record<string, CapturedResponse> = {}

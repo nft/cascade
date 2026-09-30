@@ -5,7 +5,7 @@
   let { id, data, selected = false }: { id: string; data: NoteNodeData; selected?: boolean } = $props()
 </script>
 
-<!-- Note sticky (plan 06 T6): free text, no handles — it is an annotation,
+<!-- Note sticky: free text, no handles — it is an annotation,
      not a step, so nothing can connect to it and it never runs. -->
 <div
   class="w-48 rounded-lg border bg-amber-100/95 p-2 shadow-lg {selected

@@ -1,4 +1,4 @@
-// Demo dataset (plan 01): seeds the in-memory API fallback (inMemoryApi.ts,
+// Demo dataset: seeds the in-memory API fallback (inMemoryApi.ts,
 // used by vitest and plain-browser dev) and mirrors the Go-side Default
 // project seed in seed/default.json — keep the two in sync, except for the
 // request target. The seed points at localhost with no credential so a real
@@ -41,7 +41,7 @@ export const credentials: CredentialDef[] = [
   { name: 'sandbox-service', kind: 'basic', username: 'sandbox', createdAt: '2026-07-02' },
 ]
 
-/** Mirrors the seeded collection in seed/default.json (plan 08 B1). */
+/** Mirrors the seeded collection in seed/default.json. */
 export const demoCollection: CollectionDef = {
   formatVersion: 1,
   id: 'demo-collection',

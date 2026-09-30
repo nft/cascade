@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Shared option list for credential selects (plan 04 K5): a first-class
+  // Shared option list for credential selects: a first-class
   // None entry, credentials grouped by kind, and — when the current value
   // references a deleted credential — that name kept visible as a disabled
   // entry, so the select never displays None over stale data.

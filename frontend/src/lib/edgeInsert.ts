@@ -18,7 +18,7 @@ export function centeredNodePosition(point: XY): XY {
 
 /**
  * The loop scope a connection lives in, or null for a top-level one. Both
- * endpoints share it — edges may never cross a For boundary (plan 09).
+ * endpoints share it — edges may never cross a For boundary.
  */
 export function edgeScope(nodes: readonly AppNode[], edge: AppEdge): string | null {
   return nodes.find((n) => n.id === edge.source)?.parentId ?? null

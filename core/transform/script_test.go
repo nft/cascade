@@ -58,8 +58,7 @@ func TestScriptSeesResAndIndex(t *testing.T) {
 	}
 }
 
-// The done-when criterion: an infinite loop fails the node in ~1s instead of
-// hanging the run.
+// An infinite loop fails the node in ~1s instead of hanging the run.
 func TestScriptInfiniteLoopInterrupted(t *testing.T) {
 	start := time.Now()
 	_, err := Execute(Spec{Mode: ModeScript, Script: `while (true) {}`}, scriptInput())

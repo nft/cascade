@@ -63,7 +63,7 @@ afterEach(() => {
   dialogs.requestEditor = null
 })
 
-describe('RequestEditorDialog (plan 08 C7)', () => {
+describe('RequestEditorDialog', () => {
   it('creates a new request in the target folder, ws stays disabled', () => {
     mountDialog({ collectionId: demoCollection.id, folderId: 'billing' })
     expect(document.body.textContent).toContain('New request')
@@ -134,7 +134,7 @@ describe('RequestEditorDialog (plan 08 C7)', () => {
     expect(billing?.requests).toHaveLength(2) // replaced, not duplicated
   })
 
-  it('Schemas tab edits the response schema on the draft and save persists it (plan 08 C8)', () => {
+  it('Schemas tab edits the response schema on the draft and save persists it', () => {
     mountDialog({ collectionId: demoCollection.id, folderId: 'root' })
     setInput(document.querySelector<HTMLInputElement>('input[placeholder="Create invoice"]')!, 'Ping')
     setInput(byLabel<HTMLInputElement>('Request URL')!, '/ping')
@@ -156,7 +156,7 @@ describe('RequestEditorDialog (plan 08 C7)', () => {
     expect(created?.responseSchema).toEqual({ type: 'object', properties: { id: { type: 'string' } } })
   })
 
-  it('Test tab sends, parses the response to a schema, and saves both schemas (plan 08 C9)', async () => {
+  it('Test tab sends, parses the response to a schema, and saves both schemas', async () => {
     mountDialog({
       collectionId: demoCollection.id,
       folderId: 'billing',

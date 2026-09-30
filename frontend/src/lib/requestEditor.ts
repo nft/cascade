@@ -1,4 +1,4 @@
-// The editing surface the A2 section components render over (plan 08 B3):
+// The editing surface the inspector's section components render over:
 // an adapter instead of an HttpNode, so the request editor dialog can reuse
 // RequestSection/FieldRow unchanged over a draft RequestDef.
 import type { HttpMethod, HttpNode, NodeField, RawBody, RequestDef } from './model'

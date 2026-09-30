@@ -1,4 +1,4 @@
-// xyflow node registry, keyed by NodeType (plan 06 T1). GraphCanvas refuses
+// xyflow node registry, keyed by NodeType. GraphCanvas refuses
 // to render nodes whose type is not in this map (assertKnownNodeTypes) so an
 // unknown type fails loudly instead of falling back to xyflow's default node.
 import type { NodeTypes } from '@xyflow/svelte'

@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Library-first request editing (plan 08 B3): the exact A2 sectioned
-  // editor rendered over a draft RequestDef via the adapter, plus the two
-  // library-only tabs — Schemas (C8) and Test (C9). Nothing touches the
+  // Library-first request editing: the inspector's sectioned editor
+  // rendered over a draft RequestDef via the adapter, plus the two
+  // library-only tabs — Schemas and Test. Nothing touches the
   // canvas; save writes the definition into the collection.
   import { findRequest, libraryId } from '../../collections'
   import { dialogs, type RequestEditorContext } from '../../dialogs.svelte'

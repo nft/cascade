@@ -23,7 +23,7 @@
 
   /**
    * Runs the transform against the upstreams' last captured responses
-   * (plan 05 capture) and shows the result inline — no state is mutated.
+   * and shows the result inline — no state is mutated.
    */
   async function test() {
     testing = true

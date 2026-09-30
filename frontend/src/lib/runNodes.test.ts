@@ -43,7 +43,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('response capture and schema pinning (plan 05)', () => {
+describe('response capture and schema pinning', () => {
   const withFields = (id: string, fields: HttpNode['data']['fields']): AppNode => {
     const node = mkNode(id) as HttpNode
     node.data.fields = fields
@@ -75,7 +75,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     expect(app.responses['u1'].status).toBe(201)
   })
 
-  it('a targeted run resolves bindings against the previous run captures (plan 11 D10)', async () => {
+  it('a targeted run resolves bindings against the previous run captures', async () => {
     vi.useFakeTimers()
     app.responses = {}
     app.nodes = [
@@ -101,7 +101,7 @@ describe('response capture and schema pinning (plan 05)', () => {
     expect((app.responses['o1'].body as Record<string, unknown>).owner_id).toBe(seededUserId)
   })
 
-  it('ignores a seeded capture for a node inside the run set (plan 11 D10)', async () => {
+  it('ignores a seeded capture for a node inside the run set', async () => {
     vi.useFakeTimers()
     // A binding to a node that is in the run set but has not run yet must
     // fail, not silently read the previous run's value. No edge, so nothing
@@ -158,7 +158,7 @@ describe('response capture and schema pinning (plan 05)', () => {
   })
 })
 
-describe('transform nodes in the sim (plan 06 T2)', () => {
+describe('transform nodes in the sim', () => {
   const mkTransform = (id: string, script: string): AppNode => ({
     id,
     type: 'transform',
@@ -232,7 +232,7 @@ describe('transform nodes in the sim (plan 06 T2)', () => {
   })
 })
 
-describe('raw-body sim capture (plan 10 §3c)', () => {
+describe('raw-body sim capture', () => {
   const rawNode = (id: string, text: string, contentType = 'application/json'): HttpNode => {
     const node = mkNode(id) as HttpNode
     node.data.fields = []
@@ -284,7 +284,7 @@ describe('raw-body sim capture (plan 10 §3c)', () => {
   })
 })
 
-describe('mock nodes in the sim (plan 09 N2)', () => {
+describe('mock nodes in the sim', () => {
   beforeEach(() => {
     app.responses = {}
   })
@@ -329,7 +329,7 @@ describe('mock nodes in the sim (plan 09 N2)', () => {
   })
 })
 
-describe('delay nodes in the sim (plan 09 N3)', () => {
+describe('delay nodes in the sim', () => {
   beforeEach(() => {
     app.responses = {}
   })

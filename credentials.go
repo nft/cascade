@@ -8,8 +8,8 @@ import (
 	"cascade/store"
 )
 
-// SaveCredentials replaces the project's credential metadata list (plan 04
-// K2). Only metadata travels — secret values go through SetCredentialSecret
+// SaveCredentials replaces the project's credential metadata list. Only
+// metadata travels — secret values go through SetCredentialSecret
 // and never appear in store.Credential.
 func (a *App) SaveCredentials(projectID string, credentials []store.Credential) error {
 	p, err := a.store.Project(projectID)

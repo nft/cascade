@@ -32,7 +32,7 @@ afterEach(() => {
   instance = null
 })
 
-describe('SchemaEditor (plan 08 C8)', () => {
+describe('SchemaEditor', () => {
   it('empty state offers an empty object start', () => {
     const onChange = mountEditor(undefined)
     buttonByText('Start with an empty object')!.click()

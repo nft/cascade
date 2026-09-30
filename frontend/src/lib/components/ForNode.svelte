@@ -29,7 +29,7 @@
   let modeChip = $derived(data.mode === 'count' ? `×${data.count}` : `each: ${sourceLabel}`)
   let hasChildren = $derived(app.nodes.some((n) => n.parentId === id))
 
-  // Config-tier warnings (plan 09): these fail only this node at run time,
+  // Config-tier warnings: these fail only this node at run time,
   // but the container flags them live while editing.
   let configWarning = $derived.by(() => {
     if (!hasChildren) return 'Empty loop — drag nodes inside; it will fail when run'
@@ -56,7 +56,7 @@
   }
 </script>
 
-<!-- For container (plan 09 N5): a resizable group node children render
+<!-- For container: a resizable group node children render
      inside. Membership changes on drop, handled by the canvas. -->
 <NodeResizer isVisible={selected} minWidth={MIN_WIDTH} minHeight={MIN_HEIGHT} />
 <div

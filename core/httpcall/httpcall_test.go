@@ -67,7 +67,7 @@ func TestBuildURLErrors(t *testing.T) {
 func TestDoValidation(t *testing.T) {
 	ctx := context.Background()
 	if _, err := Do(ctx, nil, Request{Protocol: "ws", Method: "GET", EnvBase: "https://x.io"}, nil); err == nil {
-		t.Error("ws protocol accepted (plan 08 C10)")
+		t.Error("ws protocol accepted")
 	}
 	if _, err := Do(ctx, nil, Request{Method: "YEET", EnvBase: "https://x.io"}, nil); err == nil {
 		t.Error("unknown method accepted")

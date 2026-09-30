@@ -20,7 +20,7 @@
   <ProjectSwitcher />
 
   <div class="ml-auto flex items-center gap-2">
-    <Button variant="secondary" title="Import an OpenAPI / Swagger document (wired in M2)">
+    <Button variant="secondary" title="Import an OpenAPI / Swagger document (not available yet)">
       <Icon name="upload_file" size={14} />
       Import schema
     </Button>

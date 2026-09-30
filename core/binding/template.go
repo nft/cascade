@@ -8,11 +8,11 @@ import (
 const (
 	templateOpen  = "{{"
 	templateClose = "}}"
-	// refIndex is the fan-out iteration index reference (M6): {{i}}.
+	// refIndex is the fan-out iteration index reference: {{i}}.
 	refIndex = "i"
 	// refRes is the single-direct-upstream sugar: {{res.name}}.
 	refRes = "res"
-	// refItem is the each-mode loop element (plan 09): {{item}} / {{item.name}}.
+	// refItem is the each-mode loop element: {{item}} / {{item.name}}.
 	refItem = "item"
 )
 

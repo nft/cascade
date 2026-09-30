@@ -1,8 +1,8 @@
 <script module lang="ts">
   import type { RawBody } from '../../model'
 
-  // Session-local stash of raw payloads while the fields view is showing
-  // (plan 10 §3c): toggling raw→fields must not delete the typed text.
+  // Session-local stash of raw payloads while the fields view is showing:
+  // toggling raw→fields must not delete the typed text.
   // Deliberately NOT persisted into node data — deserializeBoard whitelists
   // keys, so a draft key would hit the board file yet be dropped on the next
   // load. Reload commits whichever mode is visible; that's the contract.
@@ -22,7 +22,7 @@
   import NewFieldRow from './NewFieldRow.svelte'
   import RawBodyEditor from './RawBodyEditor.svelte'
 
-  // Renders over the adapter, not an HttpNode (plan 08 B3), so the request
+  // Renders over the adapter, not an HttpNode, so the request
   // editor dialog reuses the exact same sections over a library draft.
   let { target }: { target: RequestEditorTarget } = $props()
 
@@ -117,7 +117,7 @@
       {/each}
     {:else}
       {#if supportsRaw}
-        <!-- raw leads (plan 10 §3c): the JSON editor is the primary body experience. -->
+        <!-- raw leads: the JSON editor is the primary body experience. -->
         <div class="flex items-center gap-1">
           <button
             class="rounded px-1.5 py-0.5 text-[10px] {rawMode

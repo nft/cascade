@@ -91,7 +91,7 @@ func (s HTTPSpec) BuildRequest(env *binding.Env, baseURL BaseURLFunc) (httpcall.
 		if err != nil {
 			return httpcall.Request{}, err
 		}
-		// These three sections are wire bytes, so D16's format governs, not
+		// These three sections are wire bytes, so Stringify's format governs, not
 		// fmt.Sprint (which renders a map as map[…] where template
 		// interpolation renders JSON, for the same value in the same request).
 		text, err := binding.Stringify(value)

@@ -1,4 +1,4 @@
-// Schema editing operations (plan 08 B4/C8): pure, immutable transforms over
+// Schema editing operations: pure, immutable transforms over
 // SchemaJSON, addressed by a path of property/items steps. SchemaEditor.svelte
 // renders the tree; every edit routes through these so the result is always a
 // valid SchemaJSON that round-trips through schemaTree().
@@ -135,8 +135,8 @@ export function setNullableAt(root: SchemaJSON, path: SchemaPath, nullable: bool
 }
 
 /**
- * Merges a freshly inferred schema into a user-edited one (plan 08 B4's
- * "merge with existing"): the existing schema wins every conflict — type,
+ * Merges a freshly inferred schema into a user-edited one ("merge with
+ * existing"): the existing schema wins every conflict — type,
  * format, nullable, and any property it already describes keep the user's
  * edits (deliberately stricter than mergeSchemas, which unions types) —
  * while properties/items only the new inference knows are added.

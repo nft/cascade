@@ -94,7 +94,7 @@ func TestSendTestRequestCredentialErrors(t *testing.T) {
 	}
 }
 
-// The plan 04 done-when at the backend level: a header-kind credential with a
+// The credential scenario at the backend level: a header-kind credential with a
 // template sends exactly <Header>: Token <secret>, the response redacts it,
 // and no file under the store root contains the secret value.
 func TestSendTestRequestWithStoredCredential(t *testing.T) {
@@ -171,6 +171,6 @@ func TestSendTestRequestRejectsWS(t *testing.T) {
 		Protocol: "ws", Method: "GET", EnvBase: "https://x.io", Path: "/events",
 	})
 	if err == nil || !strings.Contains(err.Error(), "ws") {
-		t.Errorf("ws request: err = %v, want a protocol rejection (plan 08 C10)", err)
+		t.Errorf("ws request: err = %v, want a protocol rejection", err)
 	}
 }

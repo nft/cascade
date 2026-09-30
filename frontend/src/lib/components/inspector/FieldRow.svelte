@@ -17,10 +17,10 @@
     orphan = false,
     removable = true,
   }: {
-    /** The node or library draft being edited (plan 08 B3). */
+    /** The node or library draft being edited. */
     target: RequestEditorTarget
     field: NodeField
-    /** Small path/query chip on Params rows (plan 08 A2). */
+    /** Small path/query chip on Params rows. */
     kindBadge?: 'path' | 'query'
     /** Placeholder-backed row that must be filled before the request can run. */
     required?: boolean
@@ -40,7 +40,7 @@
   const keyName = $derived(fieldKeyName(field.key))
   // Placeholder-derived rows' names are owned by the path text; orphans lost
   // that owner, so renaming them (back to a placeholder, or into a query
-  // param) is their rescue path (plan 10 §3b).
+  // param) is their rescue path.
   const keyReadonly = $derived(kindBadge === 'path' && !orphan)
 
   let inputEl = $state<HTMLInputElement | null>(null)
@@ -70,7 +70,7 @@
     target.renameField(field.key, next)
   }
 
-  /** Insert picker text at the cursor of this field's value input (plan 05 V4). */
+  /** Insert picker text at the cursor of this field's value input. */
   function insert(text: string) {
     pickerOpen = false
     const el = inputEl

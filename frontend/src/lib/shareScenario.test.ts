@@ -1,4 +1,4 @@
-// The plan 07 done-when, frontend half: user A copies a three-node chain and
+// The sharing scenario, frontend half: user A copies a three-node chain and
 // sends the text over chat; user B — empty project, none of A's environments
 // or credentials — pastes it. Nodes appear with bindings intact, the wizard
 // prompts to create the `staging` / `staging-admin` placeholders, and after
@@ -109,7 +109,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('plan 07 done-when: chat-shared chain onto an empty project', () => {
+describe('sharing scenario: chat-shared chain onto an empty project', () => {
   it('paste → wizard placeholders → chain ready to run once a value is entered', async () => {
     vi.spyOn(api, 'readClipboardEnvelope').mockResolvedValue({ found: true, payload: chainEnvelope() })
 
@@ -147,7 +147,7 @@ describe('plan 07 done-when: chat-shared chain onto an empty project', () => {
     // The nodes' references resolve as-is — placeholders carry the names.
     expect(pasted.every((n) => n.data.environment === 'staging')).toBe(true)
 
-    // B enters the real credential value (Rotate) — the last done-when step
+    // B enters the real credential value (Rotate) — the last step
     // before the chain runs green.
     const secretSpy = vi.spyOn(api, 'setCredentialSecret').mockResolvedValue()
     expect(await rotateCredentialSecret('pB', 'staging-admin', 'real-token')).toBeNull()

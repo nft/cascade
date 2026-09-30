@@ -63,7 +63,7 @@
     }),
   )
 
-  // Stale-highlight guard (plan 10 §2): pointerleave never fires when the
+  // Stale-highlight guard: pointerleave never fires when the
   // hovered row disappears out from under the pointer (filter typed, status
   // filter changed, panel collapsed) — reset whenever no rendered row carries
   // the highlighted node id.

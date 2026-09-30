@@ -36,7 +36,7 @@ beforeEach(() => {
   app.canvasTool = 'select'
   app.nodes = []
   app.edges = []
-  // The add-node palette lists the open project's operations (plan 01).
+  // The add-node palette lists the open project's operations.
   app.project = {
     project: { id: 'test-project', name: 'Test' },
     sources: [{ id: 'src-test', title: 'demo-api', operations }],
@@ -55,7 +55,7 @@ afterEach(() => {
   instance = null
 })
 
-describe('ContextMenu component (plan 03 §2)', () => {
+describe('ContextMenu component', () => {
   it('is hidden until a menu is opened', () => {
     expect(menuEl()).toBeNull()
   })

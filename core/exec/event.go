@@ -5,10 +5,10 @@ import (
 	"cascade/core/binding"
 )
 
-// Live run events (plan 11 D12). M1's "drop everything except state
-// transitions under backpressure" is amended here: skipped nodes emit a status
-// but no Record, and per-node log rows travel as events, so dropping is
-// dropping exactly what the user debugs with.
+// Live run events. Delivery is lossless rather than dropping everything but
+// state transitions under backpressure: skipped nodes emit a status but no
+// Record, and per-node log rows travel as events, so dropping would drop
+// exactly what the user debugs with.
 type EventKind string
 
 const (

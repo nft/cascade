@@ -3,7 +3,7 @@ package main
 import "cascade/store"
 
 // SaveEnvironments replaces the project's environment list. Its consumers are
-// the environments editor and the import mapping step (plan 07 E4), which
+// the environments editor and the import mapping step, which
 // creates placeholder environments for unmatched requires.
 func (a *App) SaveEnvironments(projectID string, environments []store.Environment) error {
 	p, err := a.store.Project(projectID)

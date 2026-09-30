@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Environments tab body (plan 11 W7), the environment twin of
+  // Environments tab body, the environment twin of
   // CredentialsPanel. The project default is shown and movable here because
   // it is what every new node is born targeting: left implicit, it goes stale
   // the moment its environment is deleted.

@@ -11,7 +11,7 @@ import (
 
 // Stringify renders a resolved value as the bytes that go on the wire: a
 // query value, a header value, a raw body, or one interpolated chunk of a
-// template. It is a specified format (plan 11 D16), not "whatever
+// template. It is a specified format, not "whatever
 // json.Marshal happens to do", because this package and
 // frontend/src/lib/refs.ts must render the same value identically — JSON with
 // sorted keys and no HTML escaping, numbers per ECMA-262 Number::toString.

@@ -30,7 +30,7 @@
   const resultStale = $derived(isResultStale(captured, data.transformEditedAt))
 </script>
 
-<!-- Transform card (plan 06 T5): function icon, no method badge and no
+<!-- Transform card: function icon, no method badge and no
      env/credential row — a transform has no target, it only reshapes. -->
 <div
   class="group w-56 rounded-lg border bg-zinc-900 shadow-lg {selected

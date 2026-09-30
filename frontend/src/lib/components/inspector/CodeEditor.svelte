@@ -15,10 +15,10 @@
   }: {
     value: string
     onChange: (value: string) => void
-    /** Transform scripts are JS; raw JSON bodies get JSON highlighting (plan 10 §3c). */
+    /** Transform scripts are JS; raw JSON bodies get JSON highlighting. */
     language?: 'javascript' | 'json'
     /**
-     * Squiggle JSON parse errors inline (plan 09 N2, json only). Opt-in:
+     * Squiggle JSON parse errors inline (json only). Opt-in:
      * raw bodies also use json mode but may hold {{…}} templates that are
      * not parseable JSON by design.
      */
@@ -32,7 +32,7 @@
 
   /**
    * Insert at the current selection via a transaction — CodeMirror state is
-   * immutable, so native-input selection APIs don't apply here (plan 10 §3c).
+   * immutable, so native-input selection APIs don't apply here.
    */
   export function insertText(text: string) {
     if (!view) return

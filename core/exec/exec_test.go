@@ -11,7 +11,7 @@ import (
 	"cascade/core/nodespec"
 )
 
-// The plan's done-when chain, engine-side: Create Org → [transform: active
+// An end-to-end chain, engine-side: Create Org → [transform: active
 // member emails] → Invite Member. The transform (script mode) filters the org
 // response and Invite Member binds through the transform's synthetic output —
 // bindings resolve end-to-end with zero special cases.
@@ -85,8 +85,8 @@ func TestTransformBetweenTwoHTTPNodes(t *testing.T) {
 	}
 }
 
-// Pick mode between the same nodes produces identical output to the script
-// (the plan's parity criterion), using the [*] map extension.
+// Pick mode between the same nodes produces identical output to the script,
+// using the [*] map extension.
 func TestPickScriptParity(t *testing.T) {
 	g := &core.Graph{
 		Nodes: []core.Node{
@@ -181,7 +181,7 @@ func TestFailureSkipsDownstream(t *testing.T) {
 
 // A mock node seeds a chain: its parsed JSON is a first-class output that a
 // downstream http node binds against, same zero-special-case path as
-// transform (plan 09 N2).
+// transform.
 func TestMockNodeFeedsDownstreamBinding(t *testing.T) {
 	g := &core.Graph{
 		Nodes: []core.Node{
@@ -293,7 +293,7 @@ func TestDelayNodeWithoutUpstreamOutputsNull(t *testing.T) {
 	}
 }
 
-// Cancelling mid-wait interrupts a sleeping delay immediately — an M7 stop
+// Cancelling mid-wait interrupts a sleeping delay immediately — a stop
 // must never wait a delay out.
 func TestDelayNodeCancelInterruptsWait(t *testing.T) {
 	g := &core.Graph{Nodes: []core.Node{{ID: "wait", Type: core.NodeTypeDelay}}}

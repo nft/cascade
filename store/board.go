@@ -6,7 +6,7 @@ import (
 	"cascade/core"
 )
 
-// BoardFormatVersion tracks core.FormatVersion: a board file is the M1 graph
+// BoardFormatVersion tracks core.FormatVersion: a board file is the core graph
 // format plus a sibling layout key the engine ignores.
 const BoardFormatVersion = core.FormatVersion
 
@@ -43,10 +43,10 @@ type BoardEdge struct {
 type BoardLayout struct {
 	Positions map[string]Position `json:"positions"`
 	// Sizes holds explicit node dimensions; only resizable For containers
-	// (plan 09) have one, so most nodes are absent here.
+	// have one, so most nodes are absent here.
 	Sizes    map[string]Size `json:"sizes,omitempty"`
 	Viewport *Viewport       `json:"viewport,omitempty"`
-	// Responses holds each node's last successful response (plan 05 §8) for
+	// Responses holds each node's last successful response for
 	// schema inference and picker previews; written by the frontend.
 	Responses map[string]CapturedResponse `json:"responses,omitempty"`
 }

@@ -28,7 +28,7 @@ const httpNode = (id: string, x = 10, y = 20): AppNode => ({
 
 const edge = (source: string, target: string): AppEdge => ({ id: `${source}->${target}`, source, target })
 
-describe('serializeBoard (plan 01 P5)', () => {
+describe('serializeBoard', () => {
   it('produces the wire format: id/type/name per node, from/to edges, positions in layout', () => {
     const board = serializeBoard('b1', 'Main', [httpNode('a'), httpNode('b', 300, 40)], [edge('a', 'b')])
 
@@ -65,7 +65,7 @@ describe('serializeBoard (plan 01 P5)', () => {
   })
 })
 
-describe('deserializeBoard (plan 01 P5)', () => {
+describe('deserializeBoard', () => {
   it('round-trips a board back into canvas state with idle statuses', () => {
     const nodes = [httpNode('a'), httpNode('b', 300, 40)]
     const { nodes: loaded, edges } = deserializeBoard(serializeBoard('b1', 'Main', nodes, [edge('a', 'b')]))
@@ -81,7 +81,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(edges).toEqual([{ id: 'a->b', source: 'a', target: 'b' }])
   })
 
-  it('round-trips origin, rawBody, and requestRef (plan 08 C1)', () => {
+  it('round-trips origin, rawBody, and requestRef', () => {
     const node = httpNode('a')
     node.data = {
       ...node.data,
@@ -115,7 +115,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(ids[0]).toBe('transform-1')
   })
 
-  it('drops malformed plan-08 fields instead of loading garbage', () => {
+  it('drops malformed request fields instead of loading garbage', () => {
     const board: BoardJSON = {
       formatVersion: 1,
       id: 'b1',
@@ -162,7 +162,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(edges[0].id).toBeTruthy()
   })
 
-  it('ignores the retired repeat key on old boards and never writes it back (plan 10 §3a)', () => {
+  it('ignores the retired repeat key on old boards and never writes it back', () => {
     const board: BoardJSON = {
       formatVersion: 1,
       id: 'b1',
@@ -177,7 +177,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(JSON.stringify(rewritten)).not.toContain('"repeat"')
   })
 
-  it('backfills missing node keys from names, board-uniquely (plan 05 §9a)', () => {
+  it('backfills missing node keys from names, board-uniquely', () => {
     const board: BoardJSON = {
       formatVersion: 1,
       id: 'b1',
@@ -198,7 +198,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     ])
   })
 
-  it('migrates pre-plan-05 display-string bindings to ID-backed refs', () => {
+  it('migrates legacy display-string bindings to ID-backed refs', () => {
     const board: BoardJSON = {
       formatVersion: 1,
       id: 'b1',
@@ -238,7 +238,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(org.data.fields[2].source).toBe('literal')
   })
 
-  it('backfills body. onto unprefixed request field keys (plan 11 D6)', () => {
+  it('backfills body. onto unprefixed request field keys', () => {
     const board: BoardJSON = {
       formatVersion: 1,
       id: 'b1',
@@ -277,7 +277,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
     expect(shape.data.pick[0].key).toBe('amount')
   })
 
-  it('round-trips captured responses through the layout sidecar (plan 05 §8)', () => {
+  it('round-trips captured responses through the layout sidecar', () => {
     const responses = {
       a: { status: 201, body: { id: 'u1' }, at: '2026-07-06T14:02:00Z' },
       ghost: { status: 200, body: null, at: '2026-07-06T14:02:00Z' },
@@ -320,7 +320,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
   })
 
   it('infers a schema for a capture saved before schemas were persisted', () => {
-    // Reopened pre-W8 board: body, no schema. Turning capture off must not
+    // Reopened older board: body, no schema. Turning capture off must not
     // drop the body without leaving something behind to read.
     const responses = { a: { status: 200, body: { id: 'u1' }, at: '2026-07-06T14:02:00Z' } }
     const stripped = withoutResponseData(responses)
@@ -360,7 +360,7 @@ describe('deserializeBoard (plan 01 P5)', () => {
   })
 })
 
-describe('transform nodes round-trip (plan 06)', () => {
+describe('transform nodes round-trip', () => {
   const transformNode: AppNode = {
     id: 't1',
     type: 'transform',
@@ -411,7 +411,7 @@ describe('transform nodes round-trip (plan 06)', () => {
   })
 })
 
-describe('mock/delay/for nodes round-trip (plan 09 N1)', () => {
+describe('mock/delay/for nodes round-trip', () => {
   const mockNode: AppNode = {
     id: 'm1',
     type: 'mock',
@@ -489,7 +489,7 @@ describe('mock/delay/for nodes round-trip (plan 09 N1)', () => {
     expect(nodes.map((n) => n.id)).toEqual(['f1', 'c1'])
   })
 
-  it('round-trips the resized container dimensions through layout.sizes (N5)', () => {
+  it('round-trips the resized container dimensions through layout.sizes', () => {
     const sized: AppNode = { ...forNode, width: 520, height: 300 }
     const board = serializeBoard('b1', 'Main', [mockNode, sized], [])
     expect(board.layout.sizes).toEqual({ f1: { width: 520, height: 300 } })

@@ -7,7 +7,7 @@
 
   let { id, data, selected = false }: { id: string; data: MockNodeData; selected?: boolean } = $props()
 
-  // Config-tier warning (plan 09): an unparseable body only fails this node
+  // Config-tier warning: an unparseable body only fails this node
   // at run time, but the card flags it live while editing.
   let parses = $derived.by(() => {
     try {
@@ -19,7 +19,7 @@
   })
 </script>
 
-<!-- Mock card (plan 09 N2): data icon, no method badge and no env/credential
+<!-- Mock card: data icon, no method badge and no env/credential
      row — a mock has no target, it just emits its authored JSON. -->
 <div
   class="group w-56 rounded-lg border bg-zinc-900 shadow-lg {selected

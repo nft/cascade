@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Deleting a For container deletes its children with it (plan 09 N5) —
+  // Deleting a For container deletes its children with it —
   // silent orphan-and-unparent would surprise more than it helps, so the
   // destructive path is confirmed. Dragging nodes out first is the rescue.
   import { dialogs } from '../dialogs.svelte'

@@ -30,7 +30,7 @@ export async function startRun(app: AppState, targetId?: string, scope: RunScope
   const request: RunRequest = {
     runId,
     boardId,
-    // The live canvas, not the saved board (plan 11 D1): saving is debounced
+    // The live canvas, not the saved board: saving is debounced
     // and can be rejected, so the file may lag what the user is looking at.
     board: serializeBoard(boardId, app.boardName, app.nodes, app.edges, undefined, app.responses),
     ...(targetId ? { target: { node: targetId, scope } } : {}),
@@ -48,7 +48,7 @@ export async function startRun(app: AppState, targetId?: string, scope: RunScope
       app.runId = null
       app.isRunning = false
       app.activeRunIds = null
-      // Captured responses persist in the board layout (plan 05 §8).
+      // Captured responses persist in the board layout.
       app.scheduleBoardSave()
     }
   }
@@ -64,7 +64,7 @@ export async function stopRun(app: AppState) {
  * Paints the run set and clears last run's statuses, synchronously — before
  * the first await, so the canvas responds on the click rather than a round
  * trip later. `runSet` is the engine's own rule, so the `run.started` that
- * replaces this set (plan 11 D11) confirms it rather than correcting it.
+ * replaces this set confirms it rather than correcting it.
  */
 function preflight(app: AppState, runId: string, targetId: string | undefined, scope: RunScope) {
   app.isRunning = true

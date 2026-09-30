@@ -1,11 +1,11 @@
 import type { Edge, Node } from '@xyflow/svelte'
 
 /**
- * Node type discriminator (plan 06). Only `http` nodes make requests;
+ * Node type discriminator. Only `http` nodes make requests;
  * `transform` reshapes upstream data in-process; `note` is a canvas
- * annotation that never executes. Plan 09 adds `mock` (emits user-authored
- * static JSON), `delay` (holds its branch for a duration), and `for` (a
- * container that runs its child nodes repeatedly). Mirrors `core.NodeType`
+ * annotation that never executes; `mock` emits user-authored static JSON,
+ * `delay` holds its branch for a duration, and `for` is a container that
+ * runs its child nodes repeatedly. Mirrors `core.NodeType`
  * on the Go side.
  */
 export const NODE_TYPES = ['http', 'transform', 'note', 'mock', 'delay', 'for'] as const
@@ -33,7 +33,7 @@ export interface Operation {
 }
 
 /**
- * How a request field gets its value (plan 05 §9a): a literal, a single
+ * How a request field gets its value: a literal, a single
  * structured reference to an upstream output, or a template interpolating
  * one or more {{…}} references into text.
  */
@@ -62,14 +62,14 @@ export type NodeField = {
   value: string
   ref?: FieldRef
   /**
-   * Written by selection export (plan 07) when the field's reference left
+   * Written by selection export when the field's reference left
    * the selection: what it was bound to, by the upstream's key, so the
    * receiving side can show "was bound to createUser.body.id" and re-bind.
    */
   dangling?: { originalKey: string; path: string }
 }
 
-/** A named alias a node declares for a value of its own response (plan 05 §9b). */
+/** A named alias a node declares for a value of its own response. */
 export interface NodeExport {
   key: string
   path: string
@@ -85,7 +85,7 @@ export interface SchemaJSON {
 }
 
 /**
- * A node's last successful response (plan 05 §8), persisted in the board's
+ * A node's last successful response, persisted in the board's
  * layout sidecar — enough for schema inference and picker previews without
  * keeping run history.
  */
@@ -93,7 +93,7 @@ export interface CapturedResponse {
   status: number
   headers?: Record<string, string>
   /**
-   * Absent on a board saved with response capture off (plan 11 W8) — read it
+   * Absent on a board saved with response capture off — read it
    * through `capturedSchema`/`capturedBodyShape` rather than directly, so a
    * bodyless capture still answers what shape the response had.
    */
@@ -113,12 +113,12 @@ export type RunnableNodeData = {
   key: string
   status: NodeStatus
   note?: string
-  /** Named aliases this node declares for values of its own output (plan 05 §9b). */
+  /** Named aliases this node declares for values of its own output. */
   exports?: NodeExport[]
 }
 
 /**
- * Raw request body escape hatch (plan 08 A1) for non-JSON/exact-bytes
+ * Raw request body escape hatch for non-JSON/exact-bytes
  * payloads. When set, `body.*` fields are ignored; {{…}} templates
  * interpolate in `text`.
  */
@@ -127,15 +127,15 @@ export interface RawBody {
   text: string
 }
 
-/** Provenance link to the collection request a node was created from (plan 08 B3). */
+/** Provenance link to the collection request a node was created from. */
 export interface RequestRef {
   collectionId: string
   requestId: string
 }
 
 /**
- * Wire protocols a request definition can use (plan 08 B1). Only 'http'
- * executes in P0; 'ws' is a reserved discriminator so collections/boards
+ * Wire protocols a request definition can use. Only 'http'
+ * executes; 'ws' is a reserved discriminator so collections/boards
  * never need a format break when WebSocket lands.
  */
 export const REQUEST_PROTOCOLS = ['http', 'ws'] as const
@@ -145,7 +145,7 @@ export function isRequestProtocol(value: unknown): value is RequestProtocol {
   return REQUEST_PROTOCOLS.includes(value as RequestProtocol)
 }
 
-/** Request-side schemas are per-section so the editor tabs map 1:1 (plan 08 B4). */
+/** Request-side schemas are per-section so the editor tabs map 1:1. */
 export interface RequestSchema {
   /** Path+query, flat. */
   params?: Record<string, SchemaJSON>
@@ -154,7 +154,7 @@ export interface RequestSchema {
   body?: SchemaJSON
 }
 
-/** One reusable request definition inside a collection (plan 08 B1). */
+/** One reusable request definition inside a collection. */
 export interface RequestDef {
   /** Random short id — rename-safe; requestRefs point at it. */
   id: string
@@ -172,15 +172,15 @@ export interface RequestDef {
    * are board concepts and don't belong in a library.
    */
   defaults?: NodeField[]
-  /** Raw-body request definition (plan 10 §3c); copied onto instantiated nodes. */
+  /** Raw-body request definition; copied onto instantiated nodes. */
   rawBody?: RawBody
   requestSchema?: RequestSchema
-  /** Hand-written or inferred from a test request (plan 08 B4). */
+  /** Hand-written or inferred from a test request. */
   responseSchema?: SchemaJSON
   description?: string
 }
 
-/** One nestable folder of request definitions; depth is capped (plan 08 B1). */
+/** One nestable folder of request definitions; depth is capped. */
 export interface CollectionFolder {
   id: string
   name: string
@@ -201,7 +201,7 @@ export type OperationNodeData = RunnableNodeData & {
   method: HttpMethod
   path: string
   /**
-   * Absolute base URL overriding the environment for this node (plan 08 A1).
+   * Absolute base URL overriding the environment for this node.
    * Empty/absent ⇒ resolve against the environment's baseUrl. Normalized on
    * save: scheme+host required, no trailing slash.
    */
@@ -215,7 +215,7 @@ export type OperationNodeData = RunnableNodeData & {
   responseSchema?: SchemaJSON
 }
 
-/** How a transform node computes its output (plan 06): declarative Pick rows or a sandboxed script. */
+/** How a transform node computes its output: declarative Pick rows or a sandboxed script. */
 export const TRANSFORM_MODES = ['pick', 'script'] as const
 export type TransformMode = (typeof TRANSFORM_MODES)[number]
 
@@ -238,16 +238,16 @@ export type TransformNodeData = RunnableNodeData & {
   transformEditedAt?: string
 }
 
-/** Free-text sticky; not executable, no handles (plan 06 T6). */
+/** Free-text sticky; not executable, no handles. */
 export type NoteNodeData = {
   text: string
 }
 
-/** Default mock output status, so downstream `status` bindings behave like a real call (plan 09). */
+/** Default mock output status, so downstream `status` bindings behave like a real call. */
 export const MOCK_DEFAULT_STATUS = 200
 
 /**
- * A pure data source (plan 09): running the node emits the authored JSON as
+ * A pure data source: running the node emits the authored JSON as
  * its output body. `body` is JSON *text* (authoring format; parsed at run
  * time) and strictly literal — {{…}} templates are not resolved; reshaping
  * upstream data is what transform nodes are for. Named `statusCode` (the
@@ -261,10 +261,10 @@ export type MockNodeData = RunnableNodeData & {
 
 export const DELAY_DEFAULT_MS = 1000
 export const DELAY_MIN_MS = 1
-/** 5 min — a typo'd huge delay must not wedge a run for hours (plan 09). */
+/** 5 min — a typo'd huge delay must not wedge a run for hours. */
 export const DELAY_MAX_MS = 300_000
 
-/** A timed gate (plan 09): waits `durationMs`, then releases its downstream. */
+/** A timed gate: waits `durationMs`, then releases its downstream. */
 export type DelayNodeData = RunnableNodeData & {
   durationMs: number
 }
@@ -278,7 +278,7 @@ export const FOR_MAX_ITERATIONS = 10_000
 export const FOR_DEFAULT_COUNT = 3
 
 /**
- * The For container (plan 09): runs the child nodes placed inside it N times
+ * The For container: runs the child nodes placed inside it N times
  * (`count` mode) or once per element of an upstream array (`each` mode). Its
  * output aggregates every child's output, keyed by child key, one array
  * element per iteration.
@@ -332,11 +332,11 @@ export interface EnvironmentDef {
   baseUrl: string
 }
 
-/** The credential injection matrix (plan 04): each kind is a rule for where the secret enters a request. */
+/** The credential injection matrix: each kind is a rule for where the secret enters a request. */
 export const CREDENTIAL_KINDS = ['bearer', 'basic', 'header', 'query'] as const
 export type CredentialKind = (typeof CREDENTIAL_KINDS)[number]
 
-/** Credential metadata only — values live in the OS keychain (plan 04), never in the frontend. */
+/** Credential metadata only — values live in the OS keychain, never in the frontend. */
 export interface CredentialDef {
   name: string
   kind: CredentialKind
@@ -371,8 +371,8 @@ export interface ProjectMeta {
   createdAt?: string
   defaults?: ProjectDefaults
   /**
-   * Whether response bodies may be written into this project's board files
-   * (plan 11 W8). Absent means yes — read it through `capturesResponses`.
+   * Whether response bodies may be written into this project's board files.
+   * Absent means yes — read it through `capturesResponses`.
    */
   captureResponses?: boolean
 }
@@ -396,7 +396,7 @@ export interface ProjectBundle {
 }
 
 /**
- * On-disk/wire board format (mirrors store.Board): the M1 graph JSON plus a
+ * On-disk/wire board format (mirrors store.Board): the core graph JSON plus a
  * canvas-only `layout` key the engine ignores. Conversions to/from canvas
  * state live in board.ts.
  */
@@ -404,7 +404,7 @@ export interface BoardNodeJSON {
   id: string
   type?: string
   name?: string
-  /** For container this node lives in (plan 09); absent means top level. */
+  /** For container this node lives in; absent means top level. */
   parent?: string
   data?: Record<string, unknown>
 }
@@ -423,7 +423,7 @@ export interface BoardViewport {
 
 export interface BoardLayoutJSON {
   positions: Record<string, { x: number; y: number }>
-  /** Explicit node sizes (resizable For containers only, plan 09 N5). */
+  /** Explicit node sizes (resizable For containers only). */
   sizes?: Record<string, { width: number; height: number }>
   viewport?: BoardViewport
   /** Last successful response per node id (canvas-only; the engine ignores layout). */
@@ -439,7 +439,7 @@ export interface BoardJSON {
   layout: BoardLayoutJSON
 }
 
-// --- share envelope (plan 07): mirrors share/envelope.go ---------------------
+// --- share envelope: mirrors share/envelope.go ---------------------
 
 export interface EnvelopeRequires {
   environments: string[]
@@ -467,9 +467,9 @@ export interface ClipboardEnvelope {
 export interface ImportBoardResult {
   cancelled: boolean
   board: BoardJSON
-  /** Envelope requires, driving the mapping step (plan 07 E4); absent when cancelled. */
+  /** Envelope requires, driving the mapping step; absent when cancelled. */
   requires?: EnvelopeRequires
-  /** Embedded request definitions to merge into the project's library (E5). */
+  /** Embedded request definitions to merge into the project's library. */
   collections?: CollectionDef[]
 }
 
@@ -478,7 +478,7 @@ interface LogEntryBase {
   runId: string
   time: string
   node: string
-  /** Originating node id — advisory: the node may have been deleted since the run (plan 10 §2). */
+  /** Originating node id — advisory: the node may have been deleted since the run. */
   nodeId: string
   durationMs: number
   error?: string
@@ -499,7 +499,7 @@ export type HttpLogEntry = LogEntryBase & {
   response?: string
 }
 
-/** Transform log rows record input/output instead of request/response (plan 06). */
+/** Transform log rows record input/output instead of request/response. */
 export type TransformLogEntry = LogEntryBase & {
   kind: 'transform'
   /** Keys of the direct upstream nodes consumed. */
@@ -508,14 +508,14 @@ export type TransformLogEntry = LogEntryBase & {
   output?: string
 }
 
-/** Whole-loop summary row closing each For run (plan 09) — the anchor its iteration rows group under. */
+/** Whole-loop summary row closing each For run — the anchor its iteration rows group under. */
 export type ForLogEntry = LogEntryBase & {
   kind: 'for'
   /** Iterations that completed — short of the plan when the loop failed fast. */
   iterations: number
 }
 
-/** Mock rows record the configured status and the emitted body (plan 09 N7). */
+/** Mock rows record the configured status and the emitted body. */
 export type MockLogEntry = LogEntryBase & {
   kind: 'mock'
   status: number
@@ -531,7 +531,7 @@ export type DelayLogEntry = LogEntryBase & {
 export type LogEntry = HttpLogEntry | TransformLogEntry | ForLogEntry | MockLogEntry | DelayLogEntry
 
 /**
- * One-off request execution outside any board run (plan 08 B4, mirrors
+ * One-off request execution outside any board run (mirrors
  * main.TestRequest): everything is pre-resolved — literal values only, no
  * bindings. `origin` (from an absolute request URL) takes precedence over
  * `envBase`; the Go side joins, injects the named credential, and sends.
@@ -583,7 +583,7 @@ export interface ScriptRunRequest {
   /** The single direct upstream, when there is exactly one (`res`). */
   res?: ScriptUpstream
   index: number
-  /** Each-mode loop element (`item` inside the script); hasItem gates it (plan 09). */
+  /** Each-mode loop element (`item` inside the script); hasItem gates it. */
   item?: unknown
   hasItem?: boolean
 }

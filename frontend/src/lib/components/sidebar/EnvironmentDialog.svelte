@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Environment create/edit dialog (plan 11 W7), the environment twin of
+  // Environment create/edit dialog, the environment twin of
   // CredentialDialog — simpler, because neither field is a secret, so edit
   // mode repopulates both instead of leaving one write-only.
   import { dialogs, type EnvironmentDialogContext } from '../../dialogs.svelte'

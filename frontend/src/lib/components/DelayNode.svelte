@@ -18,9 +18,9 @@
 
   let duration = $derived(fmtMs(data.durationMs))
 
-  // Countdown of the *configured* wait while running (plan 09 N3). The demo
+  // Countdown of the *configured* wait while running. The demo
   // sim caps its actual sleep, so the countdown may end early — it disappears
-  // the moment the node completes, and matches exactly once M1 wires in.
+  // the moment the node completes, and matches exactly under the Go engine.
   let remainingMs = $state(0)
   $effect(() => {
     if (data.status !== 'running') return
@@ -33,7 +33,7 @@
   })
 </script>
 
-<!-- Delay card (plan 09 N3): timer icon and the configured duration as the
+<!-- Delay card: timer icon and the configured duration as the
      subtitle — a timed gate, nothing to configure beyond the wait. -->
 <div
   class="group w-56 rounded-lg border bg-zinc-900 shadow-lg {selected

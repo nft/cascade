@@ -9,13 +9,13 @@ import (
 	"cascade/store"
 )
 
-// TestDoneWhenScenario walks plan 01's done-when criteria through the same
+// TestProjectsScenario walks project handling end to end through the same
 // App methods the frontend calls: two projects with different sources,
 // environments, and credentials; switching swaps the whole bundle; an app
 // "restart" (fresh Manager/App over the same root) reopens the last-open
 // project with identical state; deleting a project leaves no files and no
 // index entry.
-func TestDoneWhenScenario(t *testing.T) {
+func TestProjectsScenario(t *testing.T) {
 	root := t.TempDir()
 	manager := store.NewManager(root, nil)
 	if err := bootstrapDefaultProject(manager); err != nil {

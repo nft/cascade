@@ -29,7 +29,7 @@ type fakeTransport struct {
 func (f *fakeTransport) do(_ context.Context, req httpcall.Request, _ string) (httpcall.Response, error) {
 	f.sent = append(f.sent, req)
 	if f.err != nil {
-		// A failing transport still reports what it attempted (W0), so the
+		// A failing transport still reports what it attempted, so the
 		// failure record can name the URL and the elapsed time.
 		return httpcall.Response{URL: req.Path, DurationMs: 1}, f.err
 	}

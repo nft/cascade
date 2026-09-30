@@ -1,6 +1,6 @@
 <script lang="ts">
   // Publishes flow-instance helpers to code outside the SvelteFlow context:
-  // keyboard paste (plan 07 E3) needs the canvas center as a flow position,
+  // keyboard paste needs the canvas center as a flow position,
   // but useSvelteFlow only works inside <SvelteFlow>. Renders nothing.
   import { useSvelteFlow } from '@xyflow/svelte'
   import { app } from '../state.svelte'

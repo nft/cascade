@@ -1,4 +1,4 @@
-// The loop executor's contracts (plan 09 N7), driven end to end through the
+// The loop executor's contracts, driven end to end through the
 // run event stream. Per-node behaviour lives in runNodes.test.ts and the
 // event-application rules in applyRunEvent.test.ts; this file covers For
 // iteration: scope, aggregation, progress, fail-fast and config tiering.
@@ -17,7 +17,7 @@ const forData = (id: string) => {
   const node = app.nodes.find((n) => n.id === id)
   return node && isForNode(node) ? node.data : undefined
 }
-describe('For loops in the sim (plan 09 N7)', () => {
+describe('For loops in the sim', () => {
   const mkMockNode = (id: string, key: string, body: string, parentId?: string): AppNode => ({
     id,
     type: 'mock',
@@ -80,7 +80,7 @@ describe('For loops in the sim (plan 09 N7)', () => {
     await run
   }
 
-  it('runs the done-when chain: each-mode scope, aggregation, [*] downstream', async () => {
+  it('runs the end-to-end chain: each-mode scope, aggregation, [*] downstream', async () => {
     app.nodes = [
       mkMockNode('seed', 'seedUsers', '{"org":"acme","users":[{"name":"ada"},{"name":"lin"}]}'),
       mkForNode('loop', 'loop', { mode: 'each', source: { nodeId: 'seed', path: 'body.users' } }),

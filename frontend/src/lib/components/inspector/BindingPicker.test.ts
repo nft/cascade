@@ -54,7 +54,7 @@ function openPicker() {
   flushSync()
 }
 
-describe('binding picker (plan 05 V4)', () => {
+describe('binding picker', () => {
   it('shows the ancestor with an inferred tree when the spec has no response schema', () => {
     openPicker()
     const picker = document.querySelector('[data-testid="binding-picker"]')!

@@ -56,7 +56,7 @@ type Manager struct {
 }
 
 // NewManager returns a Manager rooted at dir (created lazily on first write).
-// secrets may be nil until the keychain-backed SecretStore lands (plan 04).
+// secrets may be nil until the keychain-backed SecretStore lands.
 func NewManager(dir string, secrets SecretStore) *Manager {
 	if secrets == nil {
 		secrets = NoopSecretStore{}

@@ -29,7 +29,7 @@
     return { x: p?.clientX ?? 0, y: p?.clientY ?? 0 }
   }
 
-  // Scissors slice gesture (plan 03 §5 v2): left-drag draws a trace; on release
+  // Scissors slice gesture: left-drag draws a trace; on release
   // every edge whose rendered path crosses it is cut, then the trace fades out.
   const EDGE_SAMPLES = 24
   const MIN_TRACE_STEP = 4
@@ -120,7 +120,7 @@
     nodesConnectable={interactive}
     isValidConnection={(conn) => sameScope(app.nodes, conn.source, conn.target)}
     onnodedragstop={({ nodes: dragged }) => {
-      // Loop membership is decided on drop, not during the drag (plan 09 N5).
+      // Loop membership is decided on drop, not during the drag.
       for (const node of dragged) app.dropNode(node.id)
     }}
     onbeforedelete={async ({ nodes: doomed }) => {

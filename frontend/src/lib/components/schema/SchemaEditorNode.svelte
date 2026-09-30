@@ -1,5 +1,5 @@
 <script lang="ts">
-  // One editable row of the schema tree (plan 08 B4): rename, type, format,
+  // One editable row of the schema tree: rename, type, format,
   // nullable, delete, add-child. Every edit is a pure schemaEdit op applied
   // to the root via `edit`, so the tree re-renders from the new root.
   import type { SchemaJSON } from '../../model'

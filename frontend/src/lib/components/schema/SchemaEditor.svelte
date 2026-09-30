@@ -1,9 +1,9 @@
 <script lang="ts">
-  // Editable schema tree (plan 08 B4/C8), grown from the read-only
+  // Editable schema tree, grown from the read-only
   // SchemaTree: controlled — the owner holds the SchemaJSON, every edit
   // arrives via onChange (undefined clears the schema). Manual editing never
-  // requires writing JSON Schema by hand: "Paste example JSON" runs the
-  // plan-05 inferSchema over a sample instead.
+  // requires writing JSON Schema by hand: "Paste example JSON" runs
+  // inferSchema over a sample instead.
   import type { SchemaJSON } from '../../model'
   import { inferSchema } from '../../schema'
   import Icon from '../Icon.svelte'

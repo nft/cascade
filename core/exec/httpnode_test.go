@@ -306,7 +306,7 @@ func TestEnvBaseResolvesOnlyWhenNeeded(t *testing.T) {
 	}
 }
 
-// --- targeted runs (D10) -----------------------------------------------------
+// --- targeted runs -----------------------------------------------------------
 
 func targetGraph() *core.Graph {
 	return &core.Graph{
@@ -323,9 +323,10 @@ func targetGraph() *core.Graph {
 	}
 }
 
-// The core of D10: a downstream run starts at a node whose upstream is not in
-// the run set. Without the runSet exemption in skipped(), the very node the
-// user clicked Play on is marked skipped and the cascade takes the rest.
+// The core of a targeted run: a downstream run starts at a node whose
+// upstream is not in the run set. Without the runSet exemption in skipped(),
+// the very node the user clicked Play on is marked skipped and the cascade
+// takes the rest.
 func TestDownstreamTargetWithSeedRunsTheTarget(t *testing.T) {
 	transport := transportOf(nil)
 	res, err := Run(context.Background(), targetGraph(), Options{

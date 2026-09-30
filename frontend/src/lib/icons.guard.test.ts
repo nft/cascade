@@ -4,8 +4,8 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-// Plan 02 (docs/plans/02-icons.md) WP I3: all Material Symbols usage goes
-// through Icon.svelte, and no replaced unicode glyphs survive in markup.
+// All Material Symbols usage goes through Icon.svelte, and no replaced
+// unicode glyphs survive in markup.
 
 const SRC_DIR = fileURLToPath(new URL('..', import.meta.url))
 
@@ -25,7 +25,7 @@ const files = sourceFiles(SRC_DIR).map((path) => ({
   content: readFileSync(path, 'utf8'),
 }))
 
-describe('icon conventions (plan 02, I3)', () => {
+describe('icon conventions', () => {
   it('finds the source tree', () => {
     expect(files.length).toBeGreaterThan(0)
   })

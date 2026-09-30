@@ -50,7 +50,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('addNode placement (plan 03 §2)', () => {
+describe('addNode placement', () => {
   it('places the node at the given flow position (add-at-cursor)', () => {
     app.addNode(operations[0], { x: 123, y: 456 })
     const added = app.nodes.at(-1)!
@@ -95,7 +95,7 @@ describe('duplicateNode', () => {
   })
 })
 
-describe('scissors cut (plan 03 §5)', () => {
+describe('scissors cut', () => {
   it('removeEdge removes only the clicked edge and never nodes', () => {
     app.nodes = [mkNode('a'), mkNode('b'), mkNode('c')]
     app.edges = [mkEdge('a', 'b'), mkEdge('b', 'c')]
@@ -118,7 +118,7 @@ describe('scissors cut (plan 03 §5)', () => {
   })
 })
 
-describe('escape priority (plan 03 §1)', () => {
+describe('escape priority', () => {
   it('closes the context menu first, then the scissors tool, then the inspector', () => {
     app.selectedNodeId = 'a'
     app.canvasTool = 'scissors'
@@ -140,7 +140,7 @@ describe('escape priority (plan 03 §1)', () => {
   })
 })
 
-describe('targeted run (plan 03 §4)', () => {
+describe('targeted run', () => {
   it('runs exactly the ancestor set; a disconnected chain never leaves its previous status', async () => {
     vi.useFakeTimers()
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('b1'), mkNode('b2')]
@@ -230,7 +230,7 @@ describe('targeted run (plan 03 §4)', () => {
   })
 })
 
-describe('run control (plan 11)', () => {
+describe('run control', () => {
   it('stopRun ends the run between nodes, leaving what it already did', async () => {
     vi.useFakeTimers()
     app.nodes = [mkNode('a1'), mkNode('a2'), mkNode('a3')]
@@ -267,7 +267,7 @@ describe('run control (plan 11)', () => {
     await run
 
     // Scoped by (project, board), not by node id: the ids collide across
-    // boards by design, so nothing from b1's run may land on b2 (plan 11 D17).
+    // boards by design, so nothing from b1's run may land on b2.
     expect(app.isRunning).toBe(false)
     expect(app.logs).toEqual([])
     expect(app.responses).toEqual({})
@@ -278,7 +278,7 @@ describe('run control (plan 11)', () => {
     app.nodes = [mkNode('a1'), mkNode('a2')]
     app.edges = [mkEdge('a1', 'a2')]
     // The engine's channel is lossless, but the Wails bus across the webview
-    // boundary has no delivery guarantee (plan 11 D12) — so this is a run
+    // boundary has no delivery guarantee — so this is a run
     // whose entire event stream failed to arrive.
     const subscribe = vi.spyOn(api, 'onRunEvent').mockReturnValue(() => {})
 
@@ -314,7 +314,7 @@ describe('run control (plan 11)', () => {
   })
 })
 
-describe('node keys (plan 05 §9a)', () => {
+describe('node keys', () => {
   it('addNode derives a board-unique key from the operation summary', () => {
     const op = operations[0] // "Create a user"
     app.nodes = []
@@ -342,7 +342,7 @@ describe('node keys (plan 05 §9a)', () => {
   })
 })
 
-describe('clearLogs (plan 10 §1)', () => {
+describe('clearLogs', () => {
   it('empties logs and touches nothing else', async () => {
     vi.useFakeTimers()
     app.nodes = [mkNode('a')]
@@ -365,7 +365,7 @@ describe('clearLogs (plan 10 §1)', () => {
   })
 })
 
-describe('renameField (plan 10 §3b)', () => {
+describe('renameField', () => {
   const fields = (): HttpNode['data']['fields'] => [
     { key: 'query.a', source: 'literal', value: '1' },
     { key: 'query.b', source: 'binding', value: 'n1.body.id', ref: { nodeId: 'n1', path: 'body.id' } },
@@ -391,7 +391,7 @@ describe('renameField (plan 10 §3b)', () => {
   })
 })
 
-describe('For containment on the canvas (plan 09 N5)', () => {
+describe('For containment on the canvas', () => {
   const mkFor = (id: string, x = 0, y = 0): AppNode => ({
     id,
     type: 'for',

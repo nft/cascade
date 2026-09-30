@@ -1,9 +1,9 @@
 <script lang="ts">
-  // Requires-mapping wizard (plan 07 E4): one row per unmatched environment /
+  // Requires-mapping wizard: one row per unmatched environment /
   // credential of a pasted or imported envelope. Default is creating a
   // placeholder with the required name; picking an existing entry rewrites
   // the imported nodes instead; leaving a row unmapped keeps the reference
-  // as-is (plan-04 dangling badges flag it). Closing applies nothing.
+  // as-is (dangling-credential badges flag it). Closing applies nothing.
   import { applyImportMappings } from '../importActions.svelte'
   import type { RequirementResolution } from '../importMapping'
   import { dialogs, type ImportMappingContext } from '../dialogs.svelte'

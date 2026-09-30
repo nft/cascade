@@ -18,7 +18,7 @@
   let { node }: { node: ForNode } = $props()
 
   // Each-mode sources must come from the For's own upstreams: those outputs
-  // exist before the loop starts and are constant across iterations (plan 09).
+  // exist before the loop starts and are constant across iterations.
   const ancestors = $derived(ancestorNodes(app.nodes, app.edges, node.id))
   const sourceKey = $derived.by(() => {
     const src = node.data.source

@@ -1,5 +1,5 @@
 // Conversions between canvas state (AppNode/AppEdge) and the on-disk board
-// format (plan 01 P5). The wire format is the M1 graph JSON (id/type/name per
+// format. The wire format is the core graph JSON (id/type/name per
 // node, from/to per edge) with node form data carried opaquely under `data`
 // and canvas-only layout (positions, viewport, last responses) in a sibling
 // `layout` key.
@@ -38,9 +38,9 @@ const FALLBACK_POSITION = { x: 0, y: 0 }
 
 const FIELD_SOURCES: ReadonlySet<string> = new Set(['literal', 'binding', 'template'])
 
-/** Separator of the pre-plan-05 display-string binding format ("Create User → response.body.id"). */
+/** Separator of the legacy display-string binding format ("Create User → response.body.id"). */
 const LEGACY_BINDING_SEPARATOR = ' → '
-/** Pre-plan-05 iteration-index placeholder in literals; now the {{i}} template reference. */
+/** Legacy iteration-index placeholder in literals; now the {{i}} template reference. */
 const LEGACY_INDEX_TOKEN = '{i}'
 
 /**
@@ -52,7 +52,7 @@ const LEGACY_INDEX_TOKEN = '{i}'
  * *schedule* yet still reached disk on the next unrelated edit.
  *
  * Last responses do persist (in layout) — they power schema inference and
- * picker previews on machines that never ran the board (plan 05 §8).
+ * picker previews on machines that never ran the board.
  */
 export const TRANSIENT_NODE_KEYS: ReadonlySet<string> = new Set(['status', 'note', 'progress'])
 
@@ -107,7 +107,7 @@ export function serializeBoard(
 }
 
 /**
- * Whether this project's board files may carry response bodies (plan 11 W8).
+ * Whether this project's board files may carry response bodies.
  * Absent means yes: every project written before the setting existed omits it,
  * and the default is the permissive one so nothing changes silently.
  */
@@ -156,7 +156,7 @@ export function deserializeBoard(board: BoardJSON): {
     const position = board.layout?.positions?.[wire.id] ?? FALLBACK_POSITION
     const data = wire.data ?? {}
     const key = typeof data.key === 'string' ? data.key : ''
-    // Containment (plan 09): only the loop-body allowlist may carry a parent;
+    // Containment: only the loop-body allowlist may carry a parent;
     // anything else (note, nested for, hand-edited junk) loads unparented
     // rather than failing the board.
     const parented =
@@ -331,7 +331,7 @@ function dedupeIds(nodes: AppNode[]): void {
 }
 
 /**
- * Every runnable node needs a board-unique key (plan 05 §9a). Boards saved
+ * Every runnable node needs a board-unique key. Boards saved
  * before keys existed have none — derive from the node name, deduplicating in
  * declaration order so re-opening the same board yields the same keys.
  */
@@ -350,7 +350,7 @@ function assignKeys(nodes: AppNode[]): void {
 }
 
 /**
- * Rewrites pre-plan-05 field shapes in place: display-string bindings
+ * Rewrites legacy field shapes in place: display-string bindings
  * ("Create User → response.body.id") become structured ID-backed refs, and
  * literals carrying the old {i} placeholder become {{i}} templates. Unknown
  * shapes degrade to literals — a load must never throw over a field.
@@ -371,7 +371,7 @@ function migrateLegacyFields(nodes: AppNode[]): void {
 
 /**
  * A request field key must name its section: the engine rejects an unprefixed
- * one (plan 11 D6) and the sectioned editor cannot display it either, so a
+ * one and the sectioned editor cannot display it either, so a
  * legacy board's bare `amount` would be a field the user believes is set,
  * silently absent from the request and invisible in the inspector. Only http
  * nodes reach here — a transform's pick keys are output names, not sections.

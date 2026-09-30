@@ -61,7 +61,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('ImportMappingDialog (plan 07 E4)', () => {
+describe('ImportMappingDialog', () => {
   it('renders one row per unmatched requirement, defaulting to placeholder creation', () => {
     expect(selects()).toHaveLength(2)
     expect(selects().every((s) => s.value === 'create')).toBe(true)

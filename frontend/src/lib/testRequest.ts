@@ -1,4 +1,4 @@
-// Test-request assembly (plan 08 B4/C9): turns a library RequestDef draft
+// Test-request assembly: turns a library RequestDef draft
 // into the fully-resolved TestRequest the SendTestRequest binding executes.
 // Library defaults are literal-only, so no binding resolution happens here —
 // just grouping the prefixed rows and validating what must be present.
@@ -18,7 +18,7 @@ export function buildTestRequest(
   envBaseUrl: string,
   credential: string,
 ): BuildTestRequestResult {
-  // The ws stub never executes (plan 08 C10) — reject before the wire.
+  // The ws stub never executes — reject before the wire.
   if (request.protocol !== 'http') {
     return { error: `${request.protocol} requests cannot be sent yet — only http executes` }
   }
@@ -59,7 +59,7 @@ export function buildTestRequest(
   if (Object.keys(pathParams).length > 0) built.pathParams = pathParams
   if (Object.keys(query).length > 0) built.query = query
   if (Object.keys(headers).length > 0) built.headers = headers
-  // GET/HEAD never carry a body (plan 08 A1) — drop it instead of failing.
+  // GET/HEAD never carry a body — drop it instead of failing.
   if (methodAllowsBody(method)) {
     // Raw mode (`rawBody !== undefined`, the editor's own mode switch)
     // replaces the field body outright: httpcall.Do rejects a request that

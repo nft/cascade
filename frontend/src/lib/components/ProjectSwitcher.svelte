@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Project switcher chip in the top bar (plan 01 P3): dropdown listing all
+  // Project switcher chip in the top bar: dropdown listing all
   // projects plus create / rename / delete. Switching is instant — saves are
   // per-mutation, so there is no unsaved state to guard.
   import { app } from '../state.svelte'

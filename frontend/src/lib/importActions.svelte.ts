@@ -1,4 +1,4 @@
-// Post-import flows (plan 07 E4/E5), shared by clipboard paste and file
+// Post-import flows, shared by clipboard paste and file
 // import: merge envelope-embedded collections into the library, then open
 // the requires-mapping wizard for whatever didn't auto-match by name. Pure
 // logic lives in importMapping.ts; this module owns the state/API side.
@@ -39,7 +39,7 @@ export async function finishEnvelopeImport(
  * required names (a placeholder credential has no value — runs error with an
  * actionable message until one is entered via Rotate), map-to-existing
  * rewrites the imported nodes' references, skipped rows change nothing (the
- * plan-04 dangling badges keep flagging them). Returns a user-facing error
+ * dangling-credential badges keep flagging them). Returns a user-facing error
  * message, or null on success.
  */
 export async function applyImportMappings(

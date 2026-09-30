@@ -1,4 +1,4 @@
-// Node keys and output references (plan 05). Stored bindings/templates use
+// Node keys and output references. Stored bindings/templates use
 // node **IDs** inside refs; the UI renders node **keys** and parses keys back
 // to IDs on edit, so renaming a key rewrites nothing stored. `res` (single
 // direct upstream) and `i` (fan-out index) are reserved reference roots and
@@ -12,7 +12,7 @@ import type { AppNode, CapturedResponse, FieldRef, NodeExport, NodeField } from 
 
 export const REF_RES = 'res'
 export const REF_INDEX = 'i'
-/** Each-mode loop element ({{item}} / {{item.path}}), plan 09. */
+/** Each-mode loop element ({{item}} / {{item.path}}). */
 export const REF_ITEM = 'item'
 export const RESERVED_REF_ROOTS: ReadonlySet<string> = new Set([REF_RES, REF_INDEX, REF_ITEM])
 
@@ -396,7 +396,7 @@ function resolveExpr(expr: string, ctx: ResolveContext): unknown {
 /**
  * Renders a resolved value as the bytes that go on the wire — a query value,
  * a header value, a raw body, or one interpolated chunk of a template. This
- * is a specified format (plan 11 D16) that must match Go's
+ * is a specified format that must match Go's
  * `binding.Stringify` byte for byte; `core/testdata/binding_vectors.json`
  * pins both sides. `String(v)` on a number already *is* ECMA-262
  * `Number::toString`, which is the rule Go now implements.
@@ -430,7 +430,7 @@ function resolveOutputPath(
   allowExports = true,
 ): unknown {
   let p = path
-  // M1's canonical paths carry a `response.` root; plan 05 accessors omit it.
+  // The original canonical paths carry a `response.` root; accessor paths omit it.
   if (p === 'response') p = ''
   else if (p.startsWith('response.')) p = p.slice('response.'.length)
   if (p === '') return bodyOf(out, path)
@@ -480,7 +480,7 @@ function bodyOf(out: CapturedResponse, path: string): unknown {
 
 type PathSegment = { key: string } | { index: number } | { wildcard: true }
 
-/** Bracket content of the [*] array-map extension (plan 06 T3). */
+/** Bracket content of the [*] array-map extension. */
 const WILDCARD_SEGMENT = '*'
 
 function parsePathSegments(path: string): PathSegment[] {

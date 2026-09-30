@@ -8,7 +8,7 @@ import "fmt"
 //
 //   - note nodes take no edges in either direction — they are annotations,
 //     not steps, and have no output to bind;
-//   - containment (plan 09): a parent must be a for node; only http,
+//   - containment: a parent must be a for node; only http,
 //     transform, mock, and delay nodes may be children; no edge may cross a
 //     For boundary — the For node is the loop's single interface.
 //

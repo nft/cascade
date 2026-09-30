@@ -1,5 +1,5 @@
 // The Go side's half of the run wire contract, replayed through the real
-// applier (plan 11 W6).
+// applier.
 //
 // testdata/run_wire.json is written by runwire_test.go from an actual engine
 // run. Every other DTO on this boundary is checked by the Wails binding

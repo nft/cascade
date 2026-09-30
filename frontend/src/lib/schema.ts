@@ -1,4 +1,4 @@
-// Response-schema inference (plan 05 §8) — the TypeScript mirror of Go's
+// Response-schema inference — the TypeScript mirror of Go's
 // core/schema/infer, sharing its wire shape (SchemaJSON) and rules: sorted
 // keys, depth cap, array item schemas merged across elements (union of keys,
 // nullable where absent/null), strict format guesses. The frontend infers
@@ -150,7 +150,7 @@ export function schemaTree(schema: SchemaJSON, basePath = 'body'): SchemaTreeNod
 /**
  * A capture carrying its schema. Inference happens once, when the capture
  * arrives, because the body may not reach disk: a project with response
- * capture off persists the schema alone (plan 11 W8).
+ * capture off persists the schema alone.
  */
 export function withInferredSchema(captured: CapturedResponse): CapturedResponse {
   if (captured.schema || captured.truncated || captured.body === undefined) return captured

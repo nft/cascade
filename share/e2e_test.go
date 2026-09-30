@@ -8,7 +8,7 @@ import (
 	"cascade/store"
 )
 
-// TestCrossProjectRoundTrip is the plan 07 done-when at the format level:
+// TestCrossProjectRoundTrip is the sharing scenario at the format level:
 // machine A exports a board; machine B — a different store root, empty
 // project, no shared keychain — imports it, creates the placeholders the
 // mapping wizard offers for the requires it can satisfy, and re-exports.
@@ -60,7 +60,7 @@ func TestCrossProjectRoundTrip(t *testing.T) {
 	if err := b.SaveCredentials(creds); err != nil {
 		t.Fatalf("B SaveCredentials: %v", err)
 	}
-	// The embedded-collections merge (E5): B's project is empty, so the
+	// The embedded-collections merge: B's project is empty, so the
 	// trimmed collections import as-is.
 	for _, col := range payload.Collections {
 		if err := b.SaveCollection(col); err != nil {

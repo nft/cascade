@@ -1,4 +1,4 @@
-// Backend access layer (plan 01): the Wails-bound Go store when running
+// Backend access layer: the Wails-bound Go store when running
 // inside the app, an in-memory fallback seeded from mock.ts otherwise
 // (vitest, plain-browser `bun run dev`).
 import * as GoApp from '../../wailsjs/go/main/App'
@@ -29,38 +29,38 @@ export interface CascadeApi {
   saveBoard(projectId: string, board: BoardJSON): Promise<void>
   saveCollection(projectId: string, collection: CollectionDef): Promise<void>
   deleteCollection(projectId: string, id: string): Promise<void>
-  /** Replaces the environment list; first used by import placeholder creation (plan 07 E4). */
+  /** Replaces the environment list; first used by import placeholder creation. */
   saveEnvironments(projectId: string, environments: EnvironmentDef[]): Promise<void>
   /** Replaces the environment/credential a newly added node is born with. */
   setProjectDefaults(projectId: string, defaults: ProjectDefaults): Promise<void>
 
   /** Gates writing response bodies into this project's board files. */
   setCaptureResponses(projectId: string, capture: boolean): Promise<void>
-  /** Replaces the credential metadata list (plan 04 K2) — never carries values. */
+  /** Replaces the credential metadata list — never carries values. */
   saveCredentials(projectId: string, credentials: CredentialDef[]): Promise<void>
   /** Removes one credential's metadata and its stored secret. */
   deleteCredential(projectId: string, name: string): Promise<void>
   /** Stores or rotates a secret value; write-only — nothing reads it back. */
   setCredentialSecret(projectId: string, name: string, value: string): Promise<void>
-  /** Board export via save dialog (plan 07 E2); resolves with the chosen path, '' when cancelled. */
+  /** Board export via save dialog; resolves with the chosen path, '' when cancelled. */
   exportBoardToFile(projectId: string, boardId: string): Promise<string>
   /** Puts the whole saved board's envelope on the system clipboard. */
   copyBoardJSON(projectId: string, boardId: string): Promise<void>
   /** Puts a selection envelope (nodes + edges between them) on the system clipboard. */
   copySelection(projectId: string, board: BoardJSON, nodeIds: string[]): Promise<void>
-  /** Probes the clipboard for a Cascade envelope (plan 07 E3); non-envelopes report found=false. */
+  /** Probes the clipboard for a Cascade envelope; non-envelopes report found=false. */
   readClipboardEnvelope(): Promise<ClipboardEnvelope>
   /** Imports an envelope file as a new board of the project (never a silent merge). */
   importBoardFromFile(projectId: string): Promise<ImportBoardResult>
   /** Runs one transform script in the Go goja sandbox; resolves with the result body. */
   runTransformScript(req: ScriptRunRequest): Promise<unknown>
-  /** One-off request execution for the Test tab (plan 08 B4) — no board, no run. */
+  /** One-off request execution for the Test tab — no board, no run. */
   sendTestRequest(projectId: string, request: TestRequest): Promise<TestResponse>
   /** Executes the board, streaming events until it finishes; resolves with the terminal statuses. */
   runBoard(projectId: string, request: RunRequest): Promise<RunResult>
   /** Cancels the identified run; an unknown or already-finished id is a no-op. */
   stopRun(runId: string): Promise<void>
-  /** Subscribes to the run event stream (plan 11 D13); returns the unsubscribe. */
+  /** Subscribes to the run event stream; returns the unsubscribe. */
   onRunEvent(handler: (event: RunEvent) => void): () => void
 }
 

@@ -1,4 +1,4 @@
-// Event application (plan 11 §6): scripted event arrays, no timers, no
+// Event application: scripted event arrays, no timers, no
 // promises, no backend — every rule about how a run repaints the canvas is
 // decided here, so this is where they are pinned.
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -179,7 +179,7 @@ describe('applyRunEvent', () => {
   })
 })
 
-describe('run scoping (plan 11 D17)', () => {
+describe('run scoping', () => {
   // Node ids are board-scoped by design, so a shared board imported twice —
   // or any two projects seeded from seed/default.json — carries the same ids.
   // An id match therefore proves nothing, and only the (project, board) pair
@@ -215,7 +215,7 @@ describe('run scoping (plan 11 D17)', () => {
   })
 })
 
-describe('applyRunResult (plan 11 D12)', () => {
+describe('applyRunResult', () => {
   const result = (statuses: Record<string, RunStatus>, extra: Partial<RunResult> = {}): RunResult => ({
     runId: RUN_ID,
     projectId: PROJECT_ID,

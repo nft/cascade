@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// vectorsPath is the hand-authored cross-language contract (plan 11 D16),
+// vectorsPath is the hand-authored cross-language contract,
 // read verbatim by frontend/src/lib/refs.test.ts as well. A case that only
 // passes here has not proved anything the file exists for.
 const vectorsPath = "../testdata/binding_vectors.json"

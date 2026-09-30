@@ -11,7 +11,7 @@ import (
 	"cascade/core/nodespec"
 )
 
-// The plan's done-when chain, engine-side: a mock array feeds an each-mode
+// An end-to-end chain, engine-side: a mock array feeds an each-mode
 // loop; inside, an http child binds {{i}}, {{item.name}} and a loop
 // ancestor; downstream of the loop a [*] wildcard maps over the aggregate.
 func TestForEachModeAggregatesPerChild(t *testing.T) {

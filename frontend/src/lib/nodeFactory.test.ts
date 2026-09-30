@@ -12,7 +12,7 @@ import type { RequestDef } from './model'
 const defaults = { environment: 'staging', credential: 'staging-admin' }
 const at = { x: 0, y: 0 }
 
-describe('makeHttpNodeFromRequest (plan 08 B3)', () => {
+describe('makeHttpNodeFromRequest', () => {
   it('copies the request shape, materializes defaults, and links back via requestRef', () => {
     const request: RequestDef = {
       id: 'create-invoice',
@@ -55,7 +55,7 @@ describe('makeHttpNodeFromRequest (plan 08 B3)', () => {
   })
 })
 
-describe('raw-JSON-first bodies (plan 10 §3c)', () => {
+describe('raw-JSON-first bodies', () => {
   it('makeCustomHttpNode seeds an empty raw JSON body', () => {
     const node = makeCustomHttpNode('n1', [], defaults, at)
     if (node.type !== 'http') throw new Error('expected an http node')
@@ -90,7 +90,7 @@ describe('raw-JSON-first bodies (plan 10 §3c)', () => {
   })
 })
 
-describe('makeMockNode (plan 09 N2)', () => {
+describe('makeMockNode', () => {
   it('seeds an empty JSON body with the default status and a board-unique key', () => {
     const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
     const existing = [makeMockNode('mock-1', [], { x: 0, y: 0 })]
@@ -101,7 +101,7 @@ describe('makeMockNode (plan 09 N2)', () => {
   })
 })
 
-describe('makeForNode (plan 09 N5)', () => {
+describe('makeForNode', () => {
   it('seeds a sized count-mode container with a board-unique key', () => {
     const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
     const existing = [makeForNode('for-1', [], { x: 0, y: 0 })]
@@ -114,7 +114,7 @@ describe('makeForNode (plan 09 N5)', () => {
   })
 })
 
-describe('makeDelayNode (plan 09 N3)', () => {
+describe('makeDelayNode', () => {
   it('seeds the default duration and a board-unique key', () => {
     const keyOf = (n: { data: Record<string, unknown> }) => n.data.key
     const existing = [makeDelayNode('delay-1', [], { x: 0, y: 0 })]

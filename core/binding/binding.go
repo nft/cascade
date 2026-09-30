@@ -1,12 +1,12 @@
-// Package binding resolves node input values from upstream node outputs
-// (M1 WP3, extended by plan 05). A Source is a literal, a structured
-// reference to one upstream value, or a template string interpolating
-// {{…}} references. References use node IDs — the UI renders user-facing
-// node keys, but keys never reach the engine, so key renames are free.
+// Package binding resolves node input values from upstream node outputs.
+// A Source is a literal, a structured reference to one upstream value, or a
+// template string interpolating {{…}} references. References use node IDs —
+// the UI renders user-facing node keys, but keys never reach the engine, so
+// key renames are free.
 //
 // Accessor paths are resolved against a captured Output with this
-// precedence (plan 05 §9a/9b): the explicit prefixes "status", "headers"
-// (or M1's "header") and "body" always win; otherwise the first segment is
+// precedence: the explicit prefixes "status", "headers"
+// (or its alias "header") and "body" always win; otherwise the first segment is
 // tried as a named export of the referenced node; otherwise the whole path
 // is a body path ("name" ≡ "body.name").
 package binding
@@ -80,9 +80,9 @@ type Env struct {
 	// Upstreams lists the direct upstream node IDs of the node being
 	// resolved; the res sugar requires exactly one.
 	Upstreams []string
-	// Index is the fan-out iteration index, exposed as {{i}} (M6).
+	// Index is the fan-out iteration index, exposed as {{i}}.
 	Index int
-	// Item is the current each-mode loop element (plan 09), exposed as
+	// Item is the current each-mode loop element, exposed as
 	// {{item}} / {{item.path}} to nodes inside a for body. HasItem gates it
 	// so a stray {{item}} elsewhere fails with a named error instead of
 	// silently resolving to nil.

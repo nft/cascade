@@ -1,4 +1,4 @@
-// Copy/export flows (plan 07 E2). The envelope itself is built on the Go
+// Copy/export flows. The envelope itself is built on the Go
 // side (share/); this module only decides what to send and reports success,
 // so callers can render feedback. Failures follow the board-save policy:
 // logged, never taking down the canvas.
@@ -65,7 +65,7 @@ export async function exportBoardToFile(app: AppState): Promise<string | null> {
   }
 }
 
-// --- import side (plan 07 E3) ------------------------------------------------
+// --- import side ------------------------------------------------
 
 /** Paste target when the canvas cannot provide one. */
 const FALLBACK_PASTE_POSITION = { x: 240, y: 240 }

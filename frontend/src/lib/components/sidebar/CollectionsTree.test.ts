@@ -38,7 +38,7 @@ afterEach(() => {
   instance = null
 })
 
-describe('CollectionsTree (plan 08 B2)', () => {
+describe('CollectionsTree', () => {
   it('renders collections, folders and requests as an expanded tree', () => {
     mountTree()
     expect(document.body.textContent).toContain('Internal APIs')
@@ -112,7 +112,7 @@ describe('CollectionsTree (plan 08 B2)', () => {
     expect(app.collections[0].root.requests).toHaveLength(0)
   })
 
-  it('"New request" on a folder opens the editor dialog aimed at that folder (plan 08 C7)', () => {
+  it('"New request" on a folder opens the editor dialog aimed at that folder', () => {
     mountTree()
     rowByText('Billing')!.dispatchEvent(
       new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }),
@@ -127,7 +127,7 @@ describe('CollectionsTree (plan 08 B2)', () => {
     expect(dialogs.requestEditor).toEqual({ collectionId: demoCollection.id, folderId: 'billing' })
   })
 
-  it('"Edit request…" on a request row opens the editor dialog for it (plan 08 C7)', () => {
+  it('"Edit request…" on a request row opens the editor dialog for it', () => {
     mountTree()
     rowByText('Create invoice')!.dispatchEvent(
       new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }),

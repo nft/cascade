@@ -12,7 +12,7 @@
 
   let { node }: { node: HttpNode } = $props()
 
-  // Binding-blind divergence hint (plan 08 B3): only shows when the node's
+  // Binding-blind divergence hint: only shows when the node's
   // shape actually moved away from its library request — a clean or unlinked
   // node renders nothing.
   const linkState = $derived(libraryLinkState(app.collections, node.data))
@@ -38,7 +38,7 @@
     draft = { nodeId: node.id, value: originDraft, error: originError, open: !showOrigin }
   }
 
-  // Cross-origin credential warning (plan 08 A1): a credential is injected
+  // Cross-origin credential warning: a credential is injected
   // wherever the node points — deliberately — so the protection is making
   // "this secret leaves the environment's host" impossible to miss.
   const envHost = $derived(

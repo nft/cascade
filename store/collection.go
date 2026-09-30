@@ -5,11 +5,11 @@ import "fmt"
 // CollectionFormatVersion is the on-disk format version of a collection file.
 const CollectionFormatVersion = 1
 
-// maxFolderDepth caps folder nesting inside a collection (plan 08 B1): the
+// maxFolderDepth caps folder nesting inside a collection: the
 // root folder is depth 0, so at most three named folder levels below it.
 const maxFolderDepth = 3
 
-// Request protocols (plan 08 B1). Only http executes today; ws is a reserved
+// Request protocols. Only http executes today; ws is a reserved
 // discriminator so collection/board files never need a format break when
 // WebSocket support lands.
 const (
@@ -30,9 +30,9 @@ type RequestDef struct {
 	URL string `json:"url"`
 	// Defaults are literal field rows copied onto new nodes; opaque here.
 	Defaults []map[string]any `json:"defaults,omitempty"`
-	// RawBody is a raw-body request definition (plan 10 §3c); opaque here.
+	// RawBody is a raw-body request definition; opaque here.
 	RawBody map[string]any `json:"rawBody,omitempty"`
-	// RequestSchema / ResponseSchema are JSON-schema shapes (plan 08 B4);
+	// RequestSchema / ResponseSchema are JSON-schema shapes;
 	// opaque here.
 	RequestSchema  map[string]any `json:"requestSchema,omitempty"`
 	ResponseSchema map[string]any `json:"responseSchema,omitempty"`
@@ -47,7 +47,7 @@ type CollectionFolder struct {
 	Requests []RequestDef       `json:"requests"`
 }
 
-// Collection is a project-scoped library of request definitions (plan 08 B1),
+// Collection is a project-scoped library of request definitions,
 // persisted as collections/<id>.json — versioned, diff-friendly, secret-free.
 type Collection struct {
 	FormatVersion int    `json:"formatVersion"`

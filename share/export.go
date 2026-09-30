@@ -345,7 +345,7 @@ func rewriteCutTokens(
 	if err != nil {
 		// A template Go cannot parse has no well-formed reference to dangle,
 		// and refusing the export would be a new failure for input every
-		// previous build accepted. §7 leaves Go's strictness to a later plan.
+		// previous build accepted, so Go stays lenient here for now.
 		return value, nil
 	}
 	var rewritten strings.Builder
@@ -418,9 +418,9 @@ func deriveRequires(
 }
 
 // embedCollections gathers the request definitions referenced by the nodes'
-// requestRef provenance links (plan 08's requirement on this plan), trimmed
-// to the referenced requests and flattened into each collection's root — the
-// link is by request id, so folder placement need not survive the trip.
+// requestRef provenance links, trimmed to the referenced requests and
+// flattened into each collection's root — the link is by request id, so
+// folder placement need not survive the trip.
 func embedCollections(
 	p *store.Project,
 	nodes []store.BoardNode,

@@ -1,5 +1,5 @@
-// App-wide keyboard handling (plan 03): Escape priority chain, canvas tool
-// keys, and clipboard copy/paste (plan 07).
+// App-wide keyboard handling: Escape priority chain, canvas tool
+// keys, and clipboard copy/paste.
 import { copyNodes, pasteFromClipboard, selectionForCopy } from './shareActions'
 import { app } from './state.svelte'
 

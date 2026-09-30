@@ -70,7 +70,7 @@ const existingNode = (id: string, key: string): AppNode => ({
 
 const makeId = (i: number) => `p${i}`
 
-describe('buildPaste (plan 07 E3)', () => {
+describe('buildPaste', () => {
   it('assigns fresh ids, remaps edges and marks everything selected', () => {
     const { nodes, edges } = buildPaste(envelopeBoard(), [], { x: 0, y: 0 }, makeId)
     expect(nodes.map((n) => n.id)).toEqual(['p0', 'p1', 'p2'])

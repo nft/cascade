@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Credentials tab body (plan 04 K2): metadata cards with Rotate / Edit /
+  // Credentials tab body: metadata cards with Rotate / Edit /
   // Delete. Values never render — the card shows a fixed mask, and delete
   // uses a two-step confirm that warns about nodes referencing the name.
   import { injectionPreview, SECRET_MASK } from '../../credentials'

@@ -16,7 +16,7 @@
   const uses = $derived(httpInputRefs(data, keyByNodeId(app.nodes)))
   const shape = $derived(httpBodyShape(data, app.responses[id]))
 
-  // Dangling reference (plan 04 K5): the credential was deleted after this
+  // Dangling reference: the credential was deleted after this
   // node was pointed at it. The run fails loudly Go-side; the badge makes the
   // problem visible before anything is sent.
   const danglingCredential = $derived(isDanglingCredential(app.credentials, data.credential))
@@ -56,7 +56,7 @@
     <p class="truncate font-mono text-[11px] text-zinc-500">{data.path}</p>
     <div class="flex items-center gap-1.5">
       {#if data.origin}
-        <!-- Origin override (plan 08 A1): "this node talks elsewhere" must be visible on the canvas. -->
+        <!-- Origin override: "this node talks elsewhere" must be visible on the canvas. -->
         <span
           class="flex min-w-0 items-center gap-0.5 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-300"
           title={data.origin}

@@ -1,4 +1,4 @@
-// Environment CRUD flows (plan 11 W7), kept out of state.svelte.ts the same
+// Environment CRUD flows, kept out of state.svelte.ts the same
 // way credentialActions.svelte.ts holds the credential ones — and, unlike
 // those, not re-exported as AppState methods: that file is already at the
 // 600-line limit, so components call these directly, exactly as

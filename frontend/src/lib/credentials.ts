@@ -1,4 +1,4 @@
-// Credential form helpers (plan 04 K2): injection preview and draft
+// Credential form helpers: injection preview and draft
 // validation, mirroring the Go-side rules (core/httpcall + store) so bad
 // metadata is caught before it round-trips to a rejected save.
 import type { BoardNodeJSON } from './model'
@@ -106,7 +106,7 @@ export function groupCredentialsByKind(
 }
 
 /**
- * True when `name` references a credential that no longer exists (plan 04 K5)
+ * True when `name` references a credential that no longer exists
  * — e.g. it was deleted after nodes were pointed at it. Such references must
  * surface as warnings, never silently fall back to unauthenticated.
  */

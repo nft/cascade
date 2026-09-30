@@ -59,7 +59,7 @@
     </div>
   </Field>
 
-  <!-- Honest limitation (plan 09): the M1 executor is sequential, so today a
+  <!-- Honest limitation: the executor is sequential, so today a
        delay also postpones independent branches ordered after it. -->
   <p class="mt-2 text-[10px] leading-relaxed text-zinc-600">
     Holds this node's downstream for the configured wait, then passes its single upstream's

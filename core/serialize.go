@@ -6,7 +6,7 @@ import (
 )
 
 // FormatVersion is the current graph serialization format version. Graph JSON
-// carries it from day one (M1) so a newer format is rejected cleanly instead
+// carries it from day one so a newer format is rejected cleanly instead
 // of being misread; adding the node type discriminator did not bump it
 // because absent types default to http.
 const FormatVersion = 1

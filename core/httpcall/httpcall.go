@@ -1,4 +1,4 @@
-// Package httpcall executes one fully-resolved HTTP request (plan 08 C2/C9).
+// Package httpcall executes one fully-resolved HTTP request.
 // It is the request build path the executor shares: origin precedence, URL
 // join normalization, path-parameter substitution, JSON/raw bodies, method
 // rules, credential injection with redaction, and capped response capture.
@@ -20,20 +20,20 @@ import (
 )
 
 // ProtocolHTTP is the only wire protocol that executes; anything else (the
-// plan 08 C10 'ws' stub) is rejected before touching the network.
+// reserved 'ws' stub) is rejected before touching the network.
 const ProtocolHTTP = "http"
 
-// MaxCaptureBytes caps how much of a response body is kept (plan 05's cap).
+// MaxCaptureBytes caps how much of a response body is kept.
 const MaxCaptureBytes = 256 << 10
 
 // DefaultTimeout bounds a call when the caller supplies no client.
 const DefaultTimeout = 30 * time.Second
 
 // RedactedValue replaces credential-injected header values in any material
-// that leaves this package (plan 08 B4: secrets never appear in logs/UI).
+// that leaves this package (secrets never appear in logs or the UI).
 const RedactedValue = "•••"
 
-// methods is the full supported set (plan 08 A1).
+// methods is the full supported set.
 var methods = map[string]bool{
 	http.MethodGet: true, http.MethodPost: true, http.MethodPut: true, http.MethodPatch: true,
 	http.MethodDelete: true, http.MethodHead: true, http.MethodOptions: true,
@@ -54,7 +54,7 @@ func SupportedMethod(method string) bool { return methods[method] }
 // a GET seeded with an empty raw body.
 func MethodAllowsBody(method string) bool { return !bodylessMethods[method] }
 
-// RawBody is a verbatim request body (plan 08 A1's escape hatch).
+// RawBody is a verbatim request body that overrides the body.* fields.
 type RawBody struct {
 	ContentType string `json:"contentType"`
 	Text        string `json:"text"`

@@ -29,7 +29,7 @@ const mkMock = (id: string, x: number, y: number, parentId?: string): AppNode =>
   data: { name: id, key: `key_${id}`, status: 'idle', body: '{}', statusCode: 200 },
 })
 
-describe('containment geometry (plan 09 N5)', () => {
+describe('containment geometry', () => {
   it('absolutePosition adds the container offset for children', () => {
     const loop = mkFor('loop', 100, 50)
     const child = mkMock('m1', 30, 40, 'loop')
