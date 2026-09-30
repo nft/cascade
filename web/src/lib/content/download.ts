@@ -26,7 +26,7 @@ export const LINUX_FOLDER = 'cascade-linux-x64'
 
 export const INSTALL = {
   title: 'Install',
-  lead: 'Builds are not code-signed yet, so macOS and Windows ask before the first launch. Here is how to get past that.',
+  lead: 'The macOS build is signed and notarized by Apple, so it opens like any other app. The Windows build is not code-signed yet, so SmartScreen may ask before its first launch.',
 } as const
 
 export const INSTALL_GUIDES: readonly InstallGuide[] = [
@@ -34,8 +34,7 @@ export const INSTALL_GUIDES: readonly InstallGuide[] = [
     platform: 'macos',
     steps: [
       'Open the disk image and drag **Cascade** into Applications.',
-      'macOS blocks the first launch of an app that is not notarized. Open **System Settings**, then **Privacy & Security**, and choose **Open Anyway** next to the message about Cascade.',
-      'Or clear the quarantine flag in a terminal: `xattr -dr com.apple.quarantine /Applications/Cascade.app`.',
+      'The first time you open it, macOS confirms the notarization with Apple and asks whether to open an app downloaded from the internet. Choose **Open**.',
     ],
   },
   {

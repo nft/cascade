@@ -139,7 +139,7 @@ export const TROUBLESHOOTING_SECTION: DocSection = {
     },
     {
       kind: 'text',
-      text: 'If macOS says Cascade cannot be opened, or Windows SmartScreen stops it, the install notes show the way past. On Linux, an error about `libwebkit2gtk-4.1` means WebKitGTK 4.1 needs installing.',
+      text: 'If Windows SmartScreen stops Cascade, the install notes show the way past. On Linux, an error about `libwebkit2gtk-4.1` means WebKitGTK 4.1 needs installing.',
     },
     { kind: 'links', items: [{ label: 'Install notes', href: ROUTES.download, hash: ANCHORS.install }] },
     {

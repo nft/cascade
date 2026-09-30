@@ -30,6 +30,7 @@ graph that seeds an environment with connected data.
 
 - Credential values live in the OS keychain, or an encrypted file where no keychain exists. They never enter project or export files and are redacted from logs, test responses and transport errors.
 - Board files keep each node's last response for binding suggestions. A project can leave them out, for boards that talk to sensitive APIs; the inferred schemas are saved either way.
+- The macOS build is signed with a Developer ID and notarized by Apple, and the disk image carries its notarization ticket.
 
 ### Known limitations
 
@@ -38,7 +39,7 @@ graph that seeds an environment with connected data.
 - The canvas does not stop you drawing a cycle. A board with one stops saving and cannot run until you cut one of its connections.
 - Each project shows a single board, with no way yet to add, rename or switch boards. Importing a board adds a second one, and once the project is reopened only one of the two can be reached.
 - There is no undo; board edits save automatically as you make them.
-- Builds are not code-signed, so macOS and Windows warn on first launch.
+- The Windows build is not code-signed, so SmartScreen warns on first launch.
 - The Windows and Linux builds come from CI and have had little testing.
 
 [Unreleased]: https://github.com/nft/cascade/compare/v0.1.0...HEAD

@@ -12,7 +12,7 @@ export const INSTALL_SECTION: DocSection = {
     },
     {
       kind: 'text',
-      text: 'The builds are not code-signed yet, so macOS and Windows ask for confirmation the first time you open Cascade. The download page shows how to get past that on each platform, and how to check your file against its published checksum.',
+      text: 'The macOS build is signed and notarized by Apple. The Windows build is not code-signed yet, so SmartScreen may stop its first launch. The download page shows what to expect on each platform, and how to check your file against its published checksum.',
     },
     {
       kind: 'links',
