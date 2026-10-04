@@ -7,7 +7,6 @@
   import EnvironmentsPanel from './sidebar/EnvironmentsPanel.svelte'
   import OperationsList from './sidebar/OperationsList.svelte'
   import SidebarRail from './sidebar/SidebarRail.svelte'
-  import IconButton from './ui/IconButton.svelte'
   import Input from './ui/Input.svelte'
 
   const KEYBOARD_RESIZE_STEP_PX = 16
@@ -45,14 +44,8 @@
       class="relative flex w-(--sidebar-w) shrink-0 flex-col border-r border-zinc-800 bg-surface"
       style="--sidebar-w:{app.sidebarWidth}px"
     >
-      <header class="flex h-9 shrink-0 items-center justify-between border-b border-zinc-800 pr-1.5 pl-3">
+      <header class="flex h-9 shrink-0 items-center border-b border-zinc-800 px-3">
         <h2 class="truncate text-xs font-medium text-zinc-200">{sidebarTabLabel(app.sidebarTab)}</h2>
-        <IconButton
-          icon="left_panel_close"
-          label="Collapse sidebar"
-          title="Collapse sidebar"
-          onclick={() => app.toggleSidebar()}
-        />
       </header>
 
       {#if app.sidebarTab === 'operations'}

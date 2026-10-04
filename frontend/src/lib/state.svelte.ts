@@ -56,7 +56,7 @@ import {
 import { startRun, stopRun } from './runner'
 import type { SidebarTab } from './sidebarTabs'
 
-export type CanvasTool = 'select' | 'scissors'
+export type CanvasTool = 'select' | 'pan' | 'scissors'
 
 export type RunScope = 'upstream' | 'downstream' | 'component'
 

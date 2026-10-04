@@ -203,6 +203,12 @@
     --xy-edge-stroke: var(--color-rose-500);
     --xy-edge-stroke-width: 2.5;
   }
+  /* The select tool box-selects on pane drag, which xyflow signals with a
+     pointer cursor; an arrow tool should keep the arrow. Its stylesheet is
+     unlayered, so only !important outranks it from here. */
+  .svelte-flow__pane.selection {
+    cursor: default !important;
+  }
 
   /* CodeMirror: third-party DOM, styled here via @theme tokens
      instead of a forked theme. Syntax colors target the tok-* classes the

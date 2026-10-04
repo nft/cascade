@@ -97,6 +97,33 @@ describe('SettingsDialog', () => {
   })
 })
 
+describe('SettingsDialog keyboard', () => {
+  it('takes focus on open so Escape closes it even when opened from a button', () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    dialogs.settings = { section: 'general' }
+    open()
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    flushSync()
+    expect(dialogs.settings).toBeNull()
+    unmount(instance!)
+    instance = null
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('keeps global shortcuts from firing while it is open', () => {
+    const windowSpy = vi.fn()
+    window.addEventListener('keydown', windowSpy)
+    open()
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }))
+    window.removeEventListener('keydown', windowSpy)
+    expect(windowSpy).not.toHaveBeenCalled()
+  })
+})
+
 describe('SettingsDialog project section', () => {
   it('says what response capture costs, rather than being a bare label', () => {
     open('project')

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Background, BackgroundVariant, MiniMap, SvelteFlow } from '@xyflow/svelte'
+  import { Background, BackgroundVariant, MiniMap, SelectionMode, SvelteFlow } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
   import { sameScope } from '../containment'
   import { assertKnownNodeTypes, decorateEdges, polylinesIntersect, type Point } from '../graph'
@@ -21,6 +21,14 @@
 
   const scissors = $derived(app.canvasTool === 'scissors')
   const interactive = $derived(!scissors && !app.canvasLocked)
+
+  // Tools: the arrow box-selects on pane drag, the hand pans, and scissors
+  // leaves pane drags to the slice gesture below. The middle button pans
+  // with every tool, and holding Option/Alt (or Space) pans while selecting.
+  const MOUSE_MIDDLE_BUTTON = 1
+  const PAN_ACTIVATION_KEYS = ['Alt', 'Space']
+  const panOnDrag = $derived(app.canvasTool === 'pan' ? true : [MOUSE_MIDDLE_BUTTON])
+  const selectionOnDrag = $derived(app.canvasTool === 'select' && interactive)
   const displayEdges = $derived(
     decorateEdges(app.nodes, app.edges, app.activeRunIds, app.logHoverNodeId, app.contextEdgeId),
   )
@@ -131,7 +139,10 @@
     colorMode={settings.resolvedTheme}
     fitView
     deleteKey={['Backspace', 'Delete']}
-    panOnDrag={!scissors}
+    {panOnDrag}
+    {selectionOnDrag}
+    selectionMode={SelectionMode.Partial}
+    panActivationKey={PAN_ACTIVATION_KEYS}
     elementsSelectable={interactive}
     nodesDraggable={interactive}
     nodesConnectable={interactive}

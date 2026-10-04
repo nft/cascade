@@ -4,6 +4,7 @@
 const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent)
 
 export const MOD_KEY = IS_MAC ? '⌘' : 'Ctrl'
+export const ALT_KEY = IS_MAC ? 'Option' : 'Alt'
 
 export interface Shortcut {
   keys: string[]
@@ -27,8 +28,12 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     title: 'Canvas',
     shortcuts: [
-      { keys: ['V'], label: 'Select tool' },
+      { keys: ['V'], label: 'Select tool: drag on the canvas to box-select' },
+      { keys: ['H'], label: 'Pan tool: drag to move the canvas' },
       { keys: ['X'], label: 'Scissors tool: click an edge, or drag across edges, to cut' },
+      { keys: [ALT_KEY, 'drag'], label: 'Pan while the select tool is active' },
+      { keys: ['Shift', 'drag'], label: 'Box-select while the pan tool is active' },
+      { keys: ['Middle button', 'drag'], label: 'Pan with any tool' },
       { keys: ['Backspace'], label: 'Delete the selected nodes and edges' },
       { keys: [MOD_KEY, 'C'], label: 'Copy the selected nodes' },
       { keys: [MOD_KEY, 'V'], label: 'Paste nodes at the canvas center' },

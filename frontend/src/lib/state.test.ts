@@ -106,6 +106,13 @@ describe('scissors cut', () => {
     expect(app.nodes).toHaveLength(3)
   })
 
+  it('h picks the pan tool and Escape drops it', () => {
+    handleGlobalKeydown(new KeyboardEvent('keydown', { key: 'h' }))
+    expect(app.canvasTool).toBe('pan')
+    handleGlobalKeydown(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(app.canvasTool).toBe('select')
+  })
+
   it('x toggles the scissors tool, v and Escape return to select', () => {
     handleGlobalKeydown(new KeyboardEvent('keydown', { key: 'x' }))
     expect(app.canvasTool).toBe('scissors')

@@ -41,5 +41,7 @@ export function handleGlobalKeydown(event: KeyboardEvent) {
     app.canvasTool = app.canvasTool === 'scissors' ? 'select' : 'scissors'
   } else if (event.key === 'v' || event.key === 'V') {
     app.canvasTool = 'select'
+  } else if (event.key === 'h' || event.key === 'H') {
+    app.canvasTool = 'pan'
   }
 }

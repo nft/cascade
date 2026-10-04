@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { ALT_KEY } from '../shortcuts'
   import { app, type CanvasTool } from '../state.svelte'
   import Icon from './Icon.svelte'
 
   const tools: { id: CanvasTool; icon: string; label: string; key: string }[] = [
-    { id: 'select', icon: 'arrow_selector_tool', label: 'Select', key: 'V' },
+    { id: 'select', icon: 'arrow_selector_tool', label: `Select — drag to box-select, hold ${ALT_KEY} to pan`, key: 'V' },
+    { id: 'pan', icon: 'pan_tool', label: 'Pan — drag to move the canvas', key: 'H' },
     { id: 'scissors', icon: 'content_cut', label: 'Scissors — click an edge to cut it', key: 'X' },
   ]
 </script>
