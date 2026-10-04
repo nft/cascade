@@ -88,7 +88,7 @@ Three behaviours differ silently in that mode: board runs are simulated by `src/
 
 Regenerating the bindings in `frontend/wailsjs/` uses `wails generate module` — note that it compiles and briefly runs `main()`, which touches the real app data directory.
 
-The app reads its own version from the embedded `wails.json`. `CASCADE_UPDATE_VERSION=0.0.1 wails dev` makes a dev build believe it is older than the latest release, which is how the update flow is rehearsed end to end: the check finds the release, the download verifies it, and Install replaces the dev bundle under `build/bin`.
+The app reads its own version from the embedded `wails.json`. `CASCADE_UPDATE_VERSION=0.0.1 wails dev` makes a dev build believe it is older than the latest release, which is how the update flow is rehearsed end to end: the check finds the release, the download verifies it, and Install replaces the dev bundle under `build/bin`. The macOS swap alone can be rehearsed without the app: `CASCADE_UPDATE_REHEARSAL_DMG=path/to/Cascade-macOS-universal.dmg go test ./update -run Rehearsal -v` installs a real disk image over a stand-in bundle in a temp dir.
 
 ## Tests and checks
 
