@@ -34,3 +34,20 @@ export function formatDuration(ms: number): string {
   const seconds = Math.round((ms % 60_000) / 1000)
   return `${minutes}m ${seconds}s`
 }
+
+const BYTES_PER_UNIT = 1024
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB'] as const
+/** Sizes below this many units stay fractional ("1.5 MB"); above it they round ("12 MB"). */
+const FRACTION_BELOW = 10
+
+/** "41.3 MB" for a download size; exact bytes below a kilobyte. */
+export function formatBytes(bytes: number): string {
+  let value = Math.max(0, bytes)
+  let unit = 0
+  while (value >= BYTES_PER_UNIT && unit < BYTE_UNITS.length - 1) {
+    value /= BYTES_PER_UNIT
+    unit++
+  }
+  const digits = unit > 0 && value < FRACTION_BELOW ? 1 : 0
+  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}`
+}

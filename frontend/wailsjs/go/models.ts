@@ -19,6 +19,28 @@ export namespace httpcall {
 
 export namespace main {
 	
+	export class AppInfo {
+	    version: string;
+	    os: string;
+	    arch: string;
+	    releasesUrl: string;
+	    websiteUrl: string;
+	    newIssueUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.os = source["os"];
+	        this.arch = source["arch"];
+	        this.releasesUrl = source["releasesUrl"];
+	        this.websiteUrl = source["websiteUrl"];
+	        this.newIssueUrl = source["newIssueUrl"];
+	    }
+	}
 	export class ClipboardEnvelope {
 	    found: boolean;
 	    payload?: share.Payload;
@@ -356,6 +378,85 @@ export namespace main {
 	        this.url = source["url"];
 	        this.sentHeaders = source["sentHeaders"];
 	    }
+	}
+	export class UpdateRelease {
+	    version: string;
+	    tag: string;
+	    notes: string;
+	    url: string;
+	    // Go type: time
+	    publishedAt: any;
+	    assetName?: string;
+	    assetSize?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateRelease(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.tag = source["tag"];
+	        this.notes = source["notes"];
+	        this.url = source["url"];
+	        this.publishedAt = this.convertValues(source["publishedAt"], null);
+	        this.assetName = source["assetName"];
+	        this.assetSize = source["assetSize"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateCheck {
+	    status: string;
+	    release?: UpdateRelease;
+	    plan?: update.Plan;
+	    installBlocker?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCheck(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.release = this.convertValues(source["release"], UpdateRelease);
+	        this.plan = this.convertValues(source["plan"], update.Plan);
+	        this.installBlocker = source["installBlocker"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
@@ -945,6 +1046,27 @@ export namespace store {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace update {
+	
+	export class Plan {
+	    kind: string;
+	    target?: string;
+	    relaunch: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Plan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.target = source["target"];
+	        this.relaunch = source["relaunch"];
+	    }
 	}
 
 }

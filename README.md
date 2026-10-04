@@ -6,6 +6,8 @@ Cascade generates large amounts of complicated, interdependent data against real
 
 Builds for macOS, Windows and Linux are on the [releases page](https://github.com/nft/cascade/releases), with install notes and checksums on the [website](https://nft.github.io/cascade/download). The macOS build is signed and notarized by Apple; the Windows build is not code-signed yet, so SmartScreen asks before its first launch.
 
+Once installed, Cascade asks GitHub for a newer release a few seconds after launch and offers it in the top bar; Settings › About has the manual check and the switch that turns the launch check off. The download is verified against the release's `SHA256SUMS.txt`, and on macOS the new bundle must carry Cascade's Developer ID signature before it replaces the running one. macOS and Linux relaunch into the new version; Windows hands over to the installer.
+
 ## Status
 
 0.1.0 is the first public preview; [CHANGELOG.md](CHANGELOG.md) lists what it does and its known limitations. Runs are real: `App.RunBoard` hands the board to the Go DAG executor ([`core/exec/`](core/exec/)), which streams node states back to the canvas as Wails events, and `StopRun` cancels requests in flight.
@@ -85,6 +87,8 @@ bun run dev    # browser-only, no Go
 Three behaviours differ silently in that mode: board runs are simulated by `src/lib/inMemoryRun.ts` with fabricated responses, test requests return a canned response instead of real HTTP, and transform scripts run through `new Function` in the page rather than the goja sandbox.
 
 Regenerating the bindings in `frontend/wailsjs/` uses `wails generate module` — note that it compiles and briefly runs `main()`, which touches the real app data directory.
+
+The app reads its own version from the embedded `wails.json`. `CASCADE_UPDATE_VERSION=0.0.1 wails dev` makes a dev build believe it is older than the latest release, which is how the update flow is rehearsed end to end: the check finds the release, the download verifies it, and Install replaces the dev bundle under `build/bin`.
 
 ## Tests and checks
 

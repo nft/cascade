@@ -26,7 +26,7 @@ export const LINUX_FOLDER = 'cascade-linux-x64'
 
 export const INSTALL = {
   title: 'Install',
-  lead: 'The macOS build is signed and notarized by Apple, so it opens like any other app. The Windows build is not code-signed yet, so SmartScreen may ask before its first launch.',
+  lead: 'The macOS build is signed and notarized by Apple, so it opens like any other app. The Windows build is not code-signed yet, so SmartScreen may ask before its first launch. Once installed, Cascade checks for a newer release at launch and updates itself from Settings › About.',
 } as const
 
 export const INSTALL_GUIDES: readonly InstallGuide[] = [

@@ -31,12 +31,18 @@ type App struct {
 	// emitRunEvent publishes one run event to the frontend; tests replace it
 	// to capture the DTOs without a Wails runtime.
 	emitRunEvent func(runEvent)
+
+	// updates carries the check → download → install flow between calls.
+	updates *updater
 }
 
 // NewApp creates the application shell over the given project store.
 func NewApp(manager *store.Manager) *App {
 	a := &App{store: manager, client: &http.Client{Timeout: httpcall.DefaultTimeout}}
 	a.emitRunEvent = a.emitToRuntime
+	a.updates = newUpdater(appVersion(), updateCacheDir())
+	a.updates.emit = a.emitUpdateProgress
+	a.updates.quit = a.quitForUpdate
 	return a
 }
 
@@ -44,6 +50,8 @@ func NewApp(manager *store.Manager) *App {
 // the runtime methods.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// A package left over from a previous launch is stale by definition.
+	go a.updates.clearCache()
 }
 
 // ProjectBundle is everything the frontend needs to render a freshly opened

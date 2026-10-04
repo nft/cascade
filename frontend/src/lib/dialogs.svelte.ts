@@ -59,6 +59,8 @@ class DialogsState {
   confirmDeleteFor = $state<{ nodeId: string; childCount: number } | null>(null)
   /** Settings dialog, opened at a section (rail gear, Cmd/Ctrl+,). */
   settings = $state<{ section: SettingsSection } | null>(null)
+  /** Update dialog: release notes, download progress, install. */
+  update = $state(false)
   /** Transient bottom-center toast — refused edits, not errors that need reading. */
   toast = $state<string | null>(null)
 

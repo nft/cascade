@@ -15,13 +15,21 @@
   import SettingsDialog from './lib/components/settings/SettingsDialog.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
+  import UpdateDialog from './lib/components/update/UpdateDialog.svelte'
   import { dialogs } from './lib/dialogs.svelte'
   import { handleGlobalKeydown } from './lib/keyboard'
   import { settings } from './lib/settings.svelte'
   import { app } from './lib/state.svelte'
+  import { updates } from './lib/updates.svelte'
 
   // Load the project index and reopen the last-opened project.
   onMount(() => void app.init())
+
+  // Who we are, then (if allowed) whether someone newer exists.
+  onMount(() => {
+    void updates.loadInfo()
+    return updates.scheduleStartupCheck()
+  })
 
   // Theme and interface scale live on <html> so the stylesheet and every
   // portal-rendered layer see them; 'system' tracks the OS preference live.
@@ -61,6 +69,9 @@
 {/if}
 {#if dialogs.settings}
   <SettingsDialog section={dialogs.settings.section} />
+{/if}
+{#if dialogs.update}
+  <UpdateDialog />
 {/if}
 {#if dialogs.importMapping}
   <ImportMappingDialog context={dialogs.importMapping} />

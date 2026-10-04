@@ -4,6 +4,7 @@
 import * as GoApp from '../../wailsjs/go/main/App'
 import type { main as goMain, store as goStore } from '../../wailsjs/go/models'
 import { createInMemoryApi, createInMemoryRunApi } from './inMemoryApi'
+import { createInMemoryUpdateApi } from './inMemoryUpdates'
 import type {
   BoardJSON,
   ClipboardEnvelope,
@@ -19,6 +20,13 @@ import type {
   TestResponse,
 } from './model'
 import { subscribeRunEvents, type RunEvent, type RunRequest, type RunResult } from './runEvents'
+import {
+  subscribeUpdateProgress,
+  type AppInfo,
+  type UpdateCheck,
+  type UpdatePlan,
+  type UpdateProgress,
+} from './updates'
 
 export interface CascadeApi {
   listProjects(): Promise<ProjectInfo[]>
@@ -62,13 +70,40 @@ export interface CascadeApi {
   stopRun(runId: string): Promise<void>
   /** Subscribes to the run event stream; returns the unsubscribe. */
   onRunEvent(handler: (event: RunEvent) => void): () => void
+
+  /** The running build's version, platform and links. */
+  appInfo(): Promise<AppInfo>
+  /** Asks GitHub for the newest release; no release yet counts as up to date. */
+  checkForUpdate(): Promise<UpdateCheck>
+  /** Downloads and verifies the release the last check found; progress streams via onUpdateProgress. */
+  downloadUpdate(tag: string): Promise<void>
+  /** Stops a download in flight; nothing in flight is a no-op. */
+  cancelUpdateDownload(): Promise<void>
+  /** Applies the verified package and quits; the plan says whether Cascade relaunches by itself. */
+  installUpdate(): Promise<UpdatePlan>
+  /** Opens one of Cascade's own pages in the system browser. */
+  openExternal(url: string): Promise<void>
+  /** Subscribes to download progress; returns the unsubscribe. */
+  onUpdateProgress(handler: (progress: UpdateProgress) => void): () => void
 }
 
 /** The run stream, split out so it can be selected independently of the store. */
 export type RunApi = Pick<CascadeApi, 'runBoard' | 'stopRun' | 'onRunEvent'>
 
-/** Everything but the run stream. */
-export type StoreApi = Omit<CascadeApi, keyof RunApi>
+/** The update flow, which has its own browser stand-in. */
+export type UpdateApi = Pick<
+  CascadeApi,
+  | 'appInfo'
+  | 'checkForUpdate'
+  | 'downloadUpdate'
+  | 'cancelUpdateDownload'
+  | 'installUpdate'
+  | 'openExternal'
+  | 'onUpdateProgress'
+>
+
+/** Everything but the run stream and the update flow. */
+export type StoreApi = Omit<CascadeApi, keyof RunApi | keyof UpdateApi>
 
 // The generated bindings type results as wailsjs model classes; they are the
 // same JSON shapes as our interfaces (modulo string unions), so casts are safe.
@@ -109,6 +144,16 @@ const wailsRunApi: RunApi = {
   onRunEvent: subscribeRunEvents,
 }
 
+const wailsUpdateApi: UpdateApi = {
+  appInfo: () => GoApp.AppInfo(),
+  checkForUpdate: () => GoApp.CheckForUpdate() as unknown as Promise<UpdateCheck>,
+  downloadUpdate: (tag) => GoApp.DownloadUpdate(tag),
+  cancelUpdateDownload: () => GoApp.CancelUpdateDownload(),
+  installUpdate: () => GoApp.InstallUpdate() as unknown as Promise<UpdatePlan>,
+  openExternal: (url) => GoApp.OpenExternal(url),
+  onUpdateProgress: subscribeUpdateProgress,
+}
+
 declare global {
   interface Window {
     /** Injected by the Wails runtime before the app bundle loads. */
@@ -125,4 +170,5 @@ const insideWails = typeof window !== 'undefined' && window.go !== undefined
 export const api: CascadeApi = {
   ...(insideWails ? wailsApi : createInMemoryApi()),
   ...(insideWails ? wailsRunApi : createInMemoryRunApi()),
+  ...(insideWails ? wailsUpdateApi : createInMemoryUpdateApi()),
 }

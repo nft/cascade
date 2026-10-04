@@ -2,8 +2,10 @@ import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../api'
 import { dialogs } from '../../dialogs.svelte'
+import { readJSON } from '../../prefsStorage'
 import { SETTINGS_STORAGE_KEY, settings } from '../../settings.svelte'
-import type { SettingsSection } from '../../settingsSections'
+import { SETTINGS_SECTIONS, type SettingsSection } from '../../settingsSections'
+import { updates } from '../../updates.svelte'
 import { app } from '../../state.svelte'
 import SettingsDialog from './SettingsDialog.svelte'
 
@@ -63,7 +65,7 @@ afterEach(() => {
 describe('SettingsDialog', () => {
   it('lists every section and opens on the requested one', () => {
     open('appearance')
-    expect(document.querySelectorAll('[aria-label="Settings sections"] button')).toHaveLength(4)
+    expect(document.querySelectorAll('[aria-label="Settings sections"] button')).toHaveLength(SETTINGS_SECTIONS.length)
     expect(navButton('Appearance').getAttribute('aria-current')).toBe('true')
     expect(select('Theme')).not.toBeNull()
   })
@@ -159,5 +161,41 @@ describe('SettingsDialog project section', () => {
     app.project = null
     open('project')
     expect(toggle(CAPTURE_LABEL).disabled).toBe(true)
+  })
+})
+
+describe('SettingsDialog about section', () => {
+  it('shows the build, checks on demand and remembers the launch-check switch', async () => {
+    vi.spyOn(api, 'checkForUpdate').mockResolvedValue({ status: 'upToDate' })
+    open('about')
+    expect(document.querySelector('[aria-label="About Cascade"]')?.textContent).toContain('Cascade dev')
+
+    buttonByText('Check for updates').click()
+    await settle()
+    expect(api.checkForUpdate).toHaveBeenCalledOnce()
+    expect(document.querySelector('[role="status"]')?.textContent).toContain("You're on the latest version")
+
+    toggle('Check for updates at launch').click()
+    flushSync()
+    expect(settings.checkForUpdates).toBe(false)
+    expect(readJSON(SETTINGS_STORAGE_KEY)).toMatchObject({ checkForUpdates: false })
+  })
+
+  it('hands an available update over to the update dialog', async () => {
+    vi.spyOn(api, 'checkForUpdate').mockResolvedValue({
+      status: 'available',
+      release: { version: '9.0.0', tag: 'v9.0.0', notes: '', url: '', publishedAt: '2026-10-10T00:00:00Z' },
+      plan: { kind: 'bundle', relaunch: true },
+    })
+    open('about')
+    buttonByText('Check for updates').click()
+    await settle()
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('Version 9.0.0 is available')
+
+    buttonByText('View').click()
+    flushSync()
+    expect(dialogs.settings).toBeNull()
+    expect(dialogs.update).toBe(true)
+    updates.later()
   })
 })

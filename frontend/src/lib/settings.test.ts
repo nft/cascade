@@ -13,8 +13,20 @@ describe('sanitizeSettings', () => {
   })
 
   it('keeps every valid value', () => {
-    const valid = { theme: 'light', uiScale: 1.25, showMinimap: false, canvasGrid: 'none', confirmDeleteWithChildren: false }
+    const valid = {
+      theme: 'light',
+      uiScale: 1.25,
+      showMinimap: false,
+      canvasGrid: 'none',
+      confirmDeleteWithChildren: false,
+      checkForUpdates: false,
+      skippedUpdate: 'v0.2.0',
+    }
     expect(sanitizeSettings(valid)).toEqual(valid)
+  })
+
+  it('drops a skipped version that is not a string', () => {
+    expect(sanitizeSettings({ skippedUpdate: 7, checkForUpdates: 'yes' })).toEqual(DEFAULT_SETTINGS)
   })
 })
 

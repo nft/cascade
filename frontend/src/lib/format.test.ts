@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatClock, formatDuration } from './format'
+import { formatBytes, formatClock, formatDuration } from './format'
 
 // vite.config.ts pins TZ to Asia/Tokyo (UTC+9, no DST) so these are fixed.
 describe('formatClock', () => {
@@ -35,5 +35,15 @@ describe('formatDuration', () => {
   it('renders invalid input as a placeholder', () => {
     expect(formatDuration(-1)).toBe('–')
     expect(formatDuration(Number.NaN)).toBe('–')
+  })
+})
+
+describe('formatBytes', () => {
+  it('keeps bytes exact and scales with one decimal until two digits', () => {
+    expect(formatBytes(0)).toBe('0 B')
+    expect(formatBytes(512)).toBe('512 B')
+    expect(formatBytes(1536)).toBe('1.5 KB')
+    expect(formatBytes(43_300_000)).toBe('41 MB')
+    expect(formatBytes(2.5 * 1024 ** 3)).toBe('2.5 GB')
   })
 })

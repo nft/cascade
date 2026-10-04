@@ -3,6 +3,7 @@
   import { SETTINGS_SECTIONS, type SettingsSection } from '../../settingsSections'
   import Icon from '../Icon.svelte'
   import ModalShell from '../library/ModalShell.svelte'
+  import AboutSection from './AboutSection.svelte'
   import AppearanceSection from './AppearanceSection.svelte'
   import GeneralSection from './GeneralSection.svelte'
   import ProjectSection from './ProjectSection.svelte'
@@ -38,8 +39,10 @@
       <AppearanceSection />
     {:else if section === 'project'}
       <ProjectSection />
-    {:else}
+    {:else if section === 'shortcuts'}
       <ShortcutsSection />
+    {:else}
+      <AboutSection />
     {/if}
   </div>
 </ModalShell>

@@ -8,6 +8,13 @@ GitHub release, so write entries for people using the app.
 
 ## [Unreleased]
 
+### Added
+
+- In-app updates. Cascade checks GitHub for a newer release at launch, shows its notes in the top bar, and can download, verify and install it; Settings › About has the manual check and the switch.
+- A sidebar rail with a resizable, collapsible panel (Cmd/Ctrl+B).
+- A Settings dialog (Cmd/Ctrl+,): dark, light or system theme, interface scale, canvas grid, minimap, delete confirmation, the response-capture switch, and a shortcuts reference.
+- A pan tool (H) beside the selection tool (V). The arrow drags a selection box; Alt/Option or Space pans while held, and the middle mouse button always does.
+
 ## [0.1.0] - 2026-09-29
 
 The first public preview: a desktop canvas for wiring real API calls into a

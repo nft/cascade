@@ -71,7 +71,7 @@ export function fieldClass(size: FieldSize, surface: FieldSurface, tone: FieldTo
     .join(' ')
 }
 
-export type ButtonVariant = 'primary' | 'accent' | 'ghost' | 'secondary' | 'dashed' | 'danger'
+export type ButtonVariant = 'primary' | 'accent' | 'ghost' | 'secondary' | 'dashed' | 'danger' | 'success'
 export type ButtonSize = 'md' | 'sm' | 'xs'
 
 export const BUTTON_BASE = 'inline-flex items-center justify-center disabled:cursor-not-allowed'
@@ -90,6 +90,7 @@ export const BUTTON_VARIANT: Record<ButtonVariant, string> = {
     'rounded-md border border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:text-zinc-700 disabled:hover:bg-transparent',
   dashed: 'rounded-md border border-dashed border-zinc-700 text-zinc-500 hover:text-zinc-300',
   danger: 'rounded-md border border-rose-500/30 text-rose-400 hover:bg-rose-500/10',
+  success: 'rounded-md border border-emerald-500/30 bg-emerald-500/10 font-medium text-emerald-300 hover:bg-emerald-500/20',
 }
 
 export type IconButtonTone = 'default' | 'accent' | 'info' | 'danger' | 'quiet' | 'quiet-danger'

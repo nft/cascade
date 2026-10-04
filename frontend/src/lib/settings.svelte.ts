@@ -23,6 +23,10 @@ export interface Settings {
   canvasGrid: CanvasGrid
   /** Ask before deleting a For container that still holds children. */
   confirmDeleteWithChildren: boolean
+  /** Ask GitHub for a newer release a few seconds after launch. */
+  checkForUpdates: boolean
+  /** A release tag the user chose to skip; the launch check stays quiet about it. */
+  skippedUpdate: string
 }
 
 // Dark stays the default: the light theme is new, and nothing should change
@@ -33,6 +37,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   showMinimap: true,
   canvasGrid: 'dots',
   confirmDeleteWithChildren: true,
+  checkForUpdates: true,
+  skippedUpdate: '',
 }
 
 const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)'
@@ -41,6 +47,8 @@ const oneOf = <T>(options: readonly T[], value: unknown, fallback: T): T =>
   (options as readonly unknown[]).includes(value) ? (value as T) : fallback
 
 const bool = (value: unknown, fallback: boolean): boolean => (typeof value === 'boolean' ? value : fallback)
+
+const str = (value: unknown, fallback: string): string => (typeof value === 'string' ? value : fallback)
 
 /** Coerces anything (stored JSON, a partial patch) into a complete, valid Settings. */
 export function sanitizeSettings(value: unknown): Settings {
@@ -51,6 +59,8 @@ export function sanitizeSettings(value: unknown): Settings {
     showMinimap: bool(obj.showMinimap, DEFAULT_SETTINGS.showMinimap),
     canvasGrid: oneOf(CANVAS_GRIDS, obj.canvasGrid, DEFAULT_SETTINGS.canvasGrid),
     confirmDeleteWithChildren: bool(obj.confirmDeleteWithChildren, DEFAULT_SETTINGS.confirmDeleteWithChildren),
+    checkForUpdates: bool(obj.checkForUpdates, DEFAULT_SETTINGS.checkForUpdates),
+    skippedUpdate: str(obj.skippedUpdate, DEFAULT_SETTINGS.skippedUpdate),
   }
 }
 
@@ -64,6 +74,8 @@ export class SettingsState {
   showMinimap = $state(DEFAULT_SETTINGS.showMinimap)
   canvasGrid = $state<CanvasGrid>(DEFAULT_SETTINGS.canvasGrid)
   confirmDeleteWithChildren = $state(DEFAULT_SETTINGS.confirmDeleteWithChildren)
+  checkForUpdates = $state(DEFAULT_SETTINGS.checkForUpdates)
+  skippedUpdate = $state(DEFAULT_SETTINGS.skippedUpdate)
   /** Mirrors prefers-color-scheme; App.svelte keeps it current via watchSystemTheme. */
   systemDark = $state(systemPrefersDark())
 
@@ -84,6 +96,8 @@ export class SettingsState {
       showMinimap: this.showMinimap,
       canvasGrid: this.canvasGrid,
       confirmDeleteWithChildren: this.confirmDeleteWithChildren,
+      checkForUpdates: this.checkForUpdates,
+      skippedUpdate: this.skippedUpdate,
     }
   }
 
@@ -102,6 +116,8 @@ export class SettingsState {
     this.showMinimap = next.showMinimap
     this.canvasGrid = next.canvasGrid
     this.confirmDeleteWithChildren = next.confirmDeleteWithChildren
+    this.checkForUpdates = next.checkForUpdates
+    this.skippedUpdate = next.skippedUpdate
   }
 }
 

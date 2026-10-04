@@ -5,6 +5,7 @@
   import Logo from './Logo.svelte'
   import ProjectSwitcher from './ProjectSwitcher.svelte'
   import Button from './ui/Button.svelte'
+  import UpdatePill from './update/UpdatePill.svelte'
 </script>
 
 <header class="ui-scaled flex h-12 shrink-0 items-center gap-3 border-b border-zinc-800 bg-surface px-4">
@@ -12,6 +13,7 @@
   <ProjectSwitcher />
 
   <div class="ml-auto flex items-center gap-2">
+    <UpdatePill />
     <Button variant="secondary" title="Import an OpenAPI / Swagger document (not available yet)">
       <Icon name="upload_file" size={14} />
       Import schema
