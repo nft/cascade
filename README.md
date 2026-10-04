@@ -142,7 +142,7 @@ bun run dev    # site only, no Go
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) refuses a tag that disagrees with `wails.json` or has no changelog section, and builds nothing until CI passes on the tagged commit. Then it builds all three platforms, publishes the release with checksums and the changelog section as notes, and rebuilds the website.
 
-The macOS build is signed and notarized, so a release also fails without these repository secrets: `MACOS_CERTIFICATE`, a Developer ID Application certificate with its private key as a base64-encoded `.p12`; `MACOS_CERTIFICATE_PASSWORD`, that file's password; and an App Store Connect API key with the Developer role, split into `NOTARY_KEY` (the `.p8` file, base64-encoded), `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`.
+The macOS build is signed and notarized, so a release also fails without these repository secrets: `MACOS_CERTIFICATE`, a Developer ID Application certificate with its private key as a base64-encoded `.p12`; `MACOS_CERTIFICATE_PASSWORD`, that file's password; and an App Store Connect API key with the Developer role, split into `NOTARY_KEY` (the `.p8` file, base64-encoded), `NOTARY_KEY_ID` (the 10-character key id) and `NOTARY_ISSUER_ID` (the UUID at the top of App Store Connect › Users and Access › Integrations). Notarization also needs the team's Account Holder to have accepted the current Apple Developer Program License Agreement at <https://developer.apple.com/account>; until then Apple answers every submission with HTTP 403 "A required agreement is missing or has expired".
 
 ## License
 

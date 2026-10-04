@@ -83,9 +83,13 @@ pack_dmg() {
   fi
 }
 
-# Prints one field of notarytool's JSON output, or nothing.
+# Prints one field of notarytool's JSON output, or nothing. plutil writes
+# its own complaint to stdout when the input is not JSON (notarytool prints
+# plain text for an HTTP error), so the value is only passed on when it parsed.
 json_field() {
-  plutil -extract "$1" raw -o - - 2>/dev/null || true
+  local value
+  value="$(plutil -extract "$1" raw -o - - 2>/dev/null)" || return 0
+  printf '%s' "$value"
 }
 
 notarize_dmg() {
