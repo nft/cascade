@@ -31,9 +31,12 @@
 
     <div class="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-3">
       {#each PLATFORM_IDS as id, index (id)}
-        <div class="flex *:w-full" {@attach reveal(index * STAGGER_MS)}>
-          <PlatformCard platform={PLATFORMS[id]} {release} detected={detected.current === id} />
-        </div>
+        <PlatformCard
+          platform={PLATFORMS[id]}
+          {release}
+          detected={detected.current === id}
+          {@attach reveal(index * STAGGER_MS)}
+        />
       {/each}
     </div>
 
