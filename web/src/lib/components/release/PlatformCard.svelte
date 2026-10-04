@@ -27,7 +27,9 @@
 
   // The cards sit side by side in a grid and share its row tracks, so the
   // buttons and checksums line up across platforms however long each card's
-  // text is. Every direct child below is one row; the span must match.
+  // text is. Every direct child below is one row; the span must match. The
+  // single column is minmax(0, 1fr) rather than auto, or a long file name in
+  // the checksum list would widen it past the card's padding.
   const ROWS = { compact: 'row-span-5', detailed: 'row-span-7' }
 
   const downloads = $derived(release.status === 'published' ? platformDownloads(release.release, platform.id) : [])
@@ -38,7 +40,7 @@
 <article
   {...rest}
   id={detailed ? platform.id : undefined}
-  class="relative grid grid-rows-subgrid gap-y-0 {detailed
+  class="relative grid grid-cols-1 grid-rows-subgrid gap-y-0 {detailed
     ? ROWS.detailed
     : ROWS.compact} scroll-mt-24 rounded-3xl border bg-surface p-6 shadow-card transition-colors sm:p-8 {detected
     ? 'border-coral-500/50 ring-1 ring-coral-500/25'
