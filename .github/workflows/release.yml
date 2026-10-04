@@ -153,7 +153,10 @@ jobs:
           security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -f pkcs12 \
             -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           curl -fsSL "$DEVELOPER_ID_CA" -o "$RUNNER_TEMP/developer-id-ca.cer"
-          security import "$RUNNER_TEMP/developer-id-ca.cer" -k "$keychain"
+          # A .p12 exported from Keychain Access carries the intermediate
+          # already, and importing it a second time is an error, not a no-op.
+          security import "$RUNNER_TEMP/developer-id-ca.cer" -k "$keychain" 2>/dev/null ||
+            security find-certificate -c "Developer ID Certification Authority" "$keychain" > /dev/null
           # Lets codesign use the private key without a confirmation dialog.
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
             -k "$keychain_password" "$keychain" > /dev/null
