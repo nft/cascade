@@ -142,6 +142,17 @@ jobs:
               exit 1
             fi
           done
+          # notarytool rejects a malformed id only after the build; the ids
+          # have fixed shapes, so check them first. The Issuer ID is the UUID
+          # at the top of App Store Connect › Users and Access › Integrations.
+          if ! [[ "$NOTARY_ISSUER_ID" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]]; then
+            echo "::error::NOTARY_ISSUER_ID is not a UUID; it must be the Issuer ID, not the Key ID or the team"
+            exit 1
+          fi
+          if ! [[ "$NOTARY_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]; then
+            echo "::error::NOTARY_KEY_ID is not a 10-character App Store Connect key id"
+            exit 1
+          fi
 
           keychain="$RUNNER_TEMP/signing.keychain-db"
           keychain_password="$(openssl rand -base64 32)"
