@@ -39,7 +39,7 @@
 </script>
 
 {#if node}
-  <aside class="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-surface">
+  <aside class="ui-scaled flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-surface">
     <div class="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
       {#if isHttpNode(node)}
         <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold {methodBadge[node.data.method]}">{node.data.method}</span>

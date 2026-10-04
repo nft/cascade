@@ -5,6 +5,7 @@
 // reading on their own.
 import { absoluteCenter, containerAt, parentsFirst, positionForParent } from './containment'
 import { dialogs } from './dialogs.svelte'
+import { settings } from './settings.svelte'
 import { isHttpNode, type AppNode, type NodeField } from './model'
 import { isValidKey, takenKeys } from './refs'
 import { normalizeOrigin } from './request'
@@ -28,14 +29,14 @@ export function removeNode(app: AppState, id: string) {
 
 /**
  * Delete with the For safeguard: a container that still holds children asks
- * for confirmation (the dialog calls removeNode on confirm); anything else
- * deletes immediately.
+ * for confirmation (the dialog calls removeNode on confirm) unless the user
+ * turned that off in Settings; anything else deletes immediately.
  */
 export function removeNodeRequest(app: AppState, id: string) {
   const node = app.nodes.find((n) => n.id === id)
   if (!node) return
   const childCount = app.nodes.filter((n) => n.parentId === id).length
-  if (node.type === 'for' && childCount > 0) {
+  if (node.type === 'for' && childCount > 0 && settings.confirmDeleteWithChildren) {
     dialogs.confirmDeleteFor = { nodeId: id, childCount }
     return
   }

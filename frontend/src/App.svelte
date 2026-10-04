@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { applyAppearance, watchSystemTheme } from './lib/appearance'
   import ConfirmDeleteForDialog from './lib/components/ConfirmDeleteForDialog.svelte'
   import GraphCanvas from './lib/components/GraphCanvas.svelte'
   import Inspector from './lib/components/Inspector.svelte'
@@ -11,14 +12,21 @@
   import ImportMappingDialog from './lib/components/ImportMappingDialog.svelte'
   import LogsPanel from './lib/components/LogsPanel.svelte'
   import NoticeDialog from './lib/components/NoticeDialog.svelte'
+  import SettingsDialog from './lib/components/settings/SettingsDialog.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
   import TopBar from './lib/components/TopBar.svelte'
   import { dialogs } from './lib/dialogs.svelte'
   import { handleGlobalKeydown } from './lib/keyboard'
+  import { settings } from './lib/settings.svelte'
   import { app } from './lib/state.svelte'
 
   // Load the project index and reopen the last-opened project.
   onMount(() => void app.init())
+
+  // Theme and interface scale live on <html> so the stylesheet and every
+  // portal-rendered layer see them; 'system' tracks the OS preference live.
+  onMount(() => watchSystemTheme((dark) => (settings.systemDark = dark)))
+  $effect(() => applyAppearance(document.documentElement, settings.resolvedTheme, settings.uiScale))
 </script>
 
 <svelte:window onkeydown={handleGlobalKeydown} />
@@ -26,9 +34,7 @@
 <div class="flex h-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
   <TopBar />
   <div class="flex min-h-0 flex-1">
-    {#if app.sidebarOpen}
-      <Sidebar />
-    {/if}
+    <Sidebar />
     <main class="flex min-w-0 flex-1 flex-col">
       <GraphCanvas />
       <LogsPanel />
@@ -52,6 +58,9 @@
 {/if}
 {#if dialogs.notice}
   <NoticeDialog title={dialogs.notice.title} message={dialogs.notice.message} />
+{/if}
+{#if dialogs.settings}
+  <SettingsDialog section={dialogs.settings.section} />
 {/if}
 {#if dialogs.importMapping}
   <ImportMappingDialog context={dialogs.importMapping} />

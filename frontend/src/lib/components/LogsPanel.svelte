@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatDuration } from '../format'
   import type { LogEntry } from '../model'
+  import { settings } from '../settings.svelte'
   import { app } from '../state.svelte'
   import { HTTP_FAILURE_STATUS, httpStatusClass, methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -25,7 +26,9 @@
     handle.setPointerCapture(event.pointerId)
     const move = (e: PointerEvent) => {
       const max = window.innerHeight * LOGS_MAX_VIEWPORT_FRACTION
-      panelHeight = Math.min(max, Math.max(LOGS_MIN_HEIGHT_PX, startHeight + (startY - e.clientY)))
+      // Pointer deltas are viewport pixels; the panel's height is in its scaled units.
+      const delta = (startY - e.clientY) / settings.uiScale
+      panelHeight = Math.min(max, Math.max(LOGS_MIN_HEIGHT_PX, startHeight + delta))
     }
     const stop = () => {
       handle.removeEventListener('pointermove', move)
@@ -74,7 +77,7 @@
   })
 </script>
 
-<section class="relative shrink-0 border-t border-zinc-800 bg-surface">
+<section class="ui-scaled relative shrink-0 border-t border-zinc-800 bg-surface">
   {#if app.logsOpen}
     <div
       class="absolute inset-x-0 -top-0.5 z-10 h-1 cursor-row-resize hover:bg-emerald-500/40"

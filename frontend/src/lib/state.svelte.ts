@@ -11,6 +11,7 @@ import type { ContextMenuKind } from './contextMenu'
 import { deleteCredential, saveCredential } from './credentialActions.svelte'
 import { credentialRefCount } from './credentials'
 import { adoptEdgeScope, spliceEdge } from './edgeInsert'
+import { clampSidebarWidth, loadLayoutPrefs, saveLayoutPrefs, SIDEBAR_DEFAULT_WIDTH_PX } from './layoutPrefs'
 import {
   isHttpNode,
   type AppEdge,
@@ -53,8 +54,7 @@ import {
   useLastResponseAsSchema,
 } from './nodeActions.svelte'
 import { startRun, stopRun } from './runner'
-
-type SidebarTab = 'operations' | 'environments' | 'credentials'
+import type { SidebarTab } from './sidebarTabs'
 
 export type CanvasTool = 'select' | 'scissors'
 
@@ -70,6 +70,8 @@ export interface ContextMenuState {
 }
 
 const BOARD_SAVE_DEBOUNCE_MS = 400
+
+const layoutPrefs = loadLayoutPrefs()
 
 /** Mirrors the Go-side first-launch bootstrap name (bootstrap.go). */
 const DEFAULT_PROJECT_NAME = 'Default'
@@ -94,7 +96,9 @@ export class AppState {
   boardName = $state('')
   selectedNodeId = $state<string | null>(null)
   sidebarTab = $state<SidebarTab>('operations')
-  sidebarOpen = $state(true)
+  /** Panel visibility and width; the icon rail stays either way. Both persist across launches. */
+  sidebarOpen = $state(layoutPrefs.sidebarOpen)
+  sidebarWidth = $state(layoutPrefs.sidebarWidth)
   logsOpen = $state(true)
   /** Canvas lock (controls toggle): freezes node dragging, connecting and selection; panning stays. */
   canvasLocked = $state(false)
@@ -446,6 +450,35 @@ export class AppState {
   }
 
   /** Escape priority: context menu → scissors tool → inspector (unless typing in a field). */
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen
+    this.persistLayout()
+  }
+
+  /** Rail click: open the panel on that tab, switch to it, or collapse it when it already shows. */
+  selectSidebarTab(tab: SidebarTab) {
+    if (this.sidebarOpen && this.sidebarTab === tab) {
+      this.sidebarOpen = false
+    } else {
+      this.sidebarTab = tab
+      this.sidebarOpen = true
+    }
+    this.persistLayout()
+  }
+
+  setSidebarWidth(px: number) {
+    this.sidebarWidth = clampSidebarWidth(px)
+    this.persistLayout()
+  }
+
+  resetSidebarWidth() {
+    this.setSidebarWidth(SIDEBAR_DEFAULT_WIDTH_PX)
+  }
+
+  private persistLayout() {
+    saveLayoutPrefs({ sidebarOpen: this.sidebarOpen, sidebarWidth: this.sidebarWidth })
+  }
+
   escapePressed(typing = false) {
     if (this.contextMenu) {
       this.contextMenu = null

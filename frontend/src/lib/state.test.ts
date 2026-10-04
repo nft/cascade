@@ -3,7 +3,9 @@ import { api } from './api'
 import { serializeBoard } from './board'
 import { dialogs } from './dialogs.svelte'
 import { handleGlobalKeydown } from './keyboard'
+import { loadLayoutPrefs, SIDEBAR_DEFAULT_WIDTH_PX, SIDEBAR_MIN_WIDTH_PX } from './layoutPrefs'
 import { operations } from './mock'
+import { settings } from './settings.svelte'
 import type { AppEdge, AppNode, HttpNode, NodeStatus } from './model'
 import { app } from './state.svelte'
 
@@ -469,5 +471,69 @@ describe('For containment on the canvas', () => {
 
     app.removeNodeRequest('empty')
     expect(app.nodes.some((n) => n.id === 'empty')).toBe(false)
+  })
+
+  it('removeNodeRequest deletes a populated For directly when the confirmation is off', () => {
+    settings.update({ confirmDeleteWithChildren: false })
+    app.nodes = [mkFor('loop'), mkMockAt('m1', 0, 0, 'loop')]
+    app.removeNodeRequest('loop')
+    expect(dialogs.confirmDeleteFor).toBeNull()
+    expect(app.nodes.some((n) => n.id === 'loop')).toBe(false)
+    settings.reset()
+  })
+})
+
+describe('sidebar rail and panel', () => {
+  beforeEach(() => {
+    app.sidebarOpen = true
+    app.sidebarTab = 'operations'
+  })
+
+  it('selecting another tab switches the open panel to it', () => {
+    app.selectSidebarTab('credentials')
+    expect(app.sidebarTab).toBe('credentials')
+    expect(app.sidebarOpen).toBe(true)
+  })
+
+  it('selecting the tab already showing collapses the panel; selecting it again reopens it', () => {
+    app.selectSidebarTab('operations')
+    expect(app.sidebarOpen).toBe(false)
+    app.selectSidebarTab('operations')
+    expect(app.sidebarOpen).toBe(true)
+    expect(app.sidebarTab).toBe('operations')
+  })
+
+  it('selecting a tab while collapsed opens the panel on that tab', () => {
+    app.sidebarOpen = false
+    app.selectSidebarTab('environments')
+    expect(app.sidebarOpen).toBe(true)
+    expect(app.sidebarTab).toBe('environments')
+  })
+
+  it('clamps the width and restores the default on reset', () => {
+    app.setSidebarWidth(1)
+    expect(app.sidebarWidth).toBe(SIDEBAR_MIN_WIDTH_PX)
+    app.resetSidebarWidth()
+    expect(app.sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH_PX)
+  })
+
+  it('persists the layout so the next launch restores it', () => {
+    app.setSidebarWidth(333)
+    app.toggleSidebar()
+    expect(loadLayoutPrefs()).toEqual({ sidebarOpen: false, sidebarWidth: 333 })
+  })
+
+  it('Cmd/Ctrl+, opens the settings dialog at its first section', () => {
+    dialogs.settings = null
+    handleGlobalKeydown(new KeyboardEvent('keydown', { key: ',', metaKey: true }))
+    expect(dialogs.settings).toEqual({ section: 'general' })
+    dialogs.settings = null
+  })
+
+  it('Cmd/Ctrl+B toggles the panel outside text fields', () => {
+    handleGlobalKeydown(new KeyboardEvent('keydown', { key: 'b', metaKey: true }))
+    expect(app.sidebarOpen).toBe(false)
+    handleGlobalKeydown(new KeyboardEvent('keydown', { key: 'B', ctrlKey: true }))
+    expect(app.sidebarOpen).toBe(true)
   })
 })

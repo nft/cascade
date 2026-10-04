@@ -4,10 +4,22 @@
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Cascade</title>
+    <script>
+        // Mirrors settings.svelte.ts (SETTINGS_STORAGE_KEY, default theme
+        // 'dark') so a light-theme launch paints light before the bundle loads.
+        try {
+            var stored = JSON.parse(localStorage.getItem('cascade.settings.v1') || '{}');
+            var theme = stored.theme === 'system'
+                ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : stored.theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+    </script>
     <style>
-        /* Match the app shell (Tailwind zinc-950) before the bundle loads, so
-           startup never flashes the webview's default white background. */
+        /* Match the app shell (Tailwind zinc-950 / zinc-50) before the bundle
+           loads, so startup never flashes the webview's default white. */
         html, body { background-color: #09090b; }
+        html[data-theme="light"], html[data-theme="light"] body { background-color: #fafafa; }
     </style>
 </head>
 <body>

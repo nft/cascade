@@ -27,6 +27,7 @@
   import { libraryMenuItems, type LibraryMenuKind } from '../../contextMenu'
   import { dialogs } from '../../dialogs.svelte'
   import type { CollectionDef, CollectionFolder, RequestDef } from '../../model'
+  import { settings } from '../../settings.svelte'
   import { app } from '../../state.svelte'
   import Icon from '../Icon.svelte'
   import Button from '../ui/Button.svelte'
@@ -322,7 +323,7 @@
     tabindex="-1"
     data-testid="library-menu"
     class="fixed top-(--cm-y) left-(--cm-x) z-50 min-w-44 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
-    style="--cm-x:{menu.screen.x}px; --cm-y:{menu.screen.y}px"
+    style="--cm-x:{menu.screen.x / settings.uiScale}px; --cm-y:{menu.screen.y / settings.uiScale}px"
     oncontextmenu={(e) => e.preventDefault()}
   >
     {#each menuItems as item (item.action)}

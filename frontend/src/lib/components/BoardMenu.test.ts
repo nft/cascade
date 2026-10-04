@@ -1,7 +1,6 @@
 import { flushSync, mount, unmount } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../api'
-import { dialogs } from '../dialogs.svelte'
 import { app } from '../state.svelte'
 import BoardMenu from './BoardMenu.svelte'
 
@@ -71,52 +70,5 @@ describe('BoardMenu', () => {
     flushSync()
     expect(document.querySelector('[role="menuitem"]')).toBeNull()
     await vi.waitFor(() => expect(spy).toHaveBeenCalledWith('p1', 'b1'))
-  })
-})
-
-describe('BoardMenu response-capture toggle', () => {
-  const toggle = () =>
-    document.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!
-
-  async function settle() {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    flushSync()
-  }
-
-  it('says what turning it on costs, rather than being a bare label', () => {
-    menuButton().click()
-    flushSync()
-    const text = toggle().textContent ?? ''
-    expect(text).toContain('Save response bodies in board files')
-    expect(text).toContain('access tokens')
-    expect(text).toContain('git')
-    // Default on, so an unread toggle leaves capture where it was.
-    expect(toggle().getAttribute('aria-checked')).toBe('true')
-  })
-
-  it('turns capture off and persists it', async () => {
-    const spy = vi.spyOn(api, 'setCaptureResponses').mockResolvedValue()
-    menuButton().click()
-    flushSync()
-
-    toggle().click()
-    await settle()
-    expect(spy).toHaveBeenCalledWith('p1', false)
-    expect(app.project?.project.captureResponses).toBe(false)
-    expect(toggle().getAttribute('aria-checked')).toBe('false')
-    // The menu stays open — the click's whole feedback is the box flipping.
-    expect(document.querySelector('[role="menuitemcheckbox"]')).not.toBeNull()
-  })
-
-  it('rolls back and toasts when the write fails', async () => {
-    vi.spyOn(api, 'setCaptureResponses').mockRejectedValue(new Error('disk full'))
-    menuButton().click()
-    flushSync()
-
-    toggle().click()
-    await settle()
-    expect(app.project?.project.captureResponses).toBeUndefined()
-    expect(dialogs.toast).toContain('disk full')
-    dialogs.toast = null
   })
 })

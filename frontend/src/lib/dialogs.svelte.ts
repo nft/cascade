@@ -2,6 +2,7 @@
 // to dialogs so far. Components set these; the dialog components themselves
 // mount once at the app root and render while their state is non-null.
 import type { RequirementRow } from './importMapping'
+import type { SettingsSection } from './settingsSections'
 
 /** What the request editor dialog is editing. */
 export interface RequestEditorContext {
@@ -56,6 +57,8 @@ class DialogsState {
   importMapping = $state<ImportMappingContext | null>(null)
   /** Deleting a For container takes its children with it — confirmed first. */
   confirmDeleteFor = $state<{ nodeId: string; childCount: number } | null>(null)
+  /** Settings dialog, opened at a section (rail gear, Cmd/Ctrl+,). */
+  settings = $state<{ section: SettingsSection } | null>(null)
   /** Transient bottom-center toast — refused edits, not errors that need reading. */
   toast = $state<string | null>(null)
 

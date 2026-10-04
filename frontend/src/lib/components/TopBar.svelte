@@ -8,13 +8,13 @@
   import IconButton from './ui/IconButton.svelte'
 </script>
 
-<header class="flex h-12 shrink-0 items-center gap-3 border-b border-zinc-800 bg-surface px-4">
+<header class="ui-scaled flex h-12 shrink-0 items-center gap-3 border-b border-zinc-800 bg-surface px-4">
   <IconButton
     icon={app.sidebarOpen ? 'left_panel_close' : 'left_panel_open'}
     iconSize={16}
     label={app.sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
     title={app.sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-    onclick={() => (app.sidebarOpen = !app.sidebarOpen)}
+    onclick={() => app.toggleSidebar()}
   />
   <Logo size={16} class="shrink-0 text-brand" />
   <ProjectSwitcher />

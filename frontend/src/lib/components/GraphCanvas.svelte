@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Background, MiniMap, SvelteFlow } from '@xyflow/svelte'
+  import { Background, BackgroundVariant, MiniMap, SvelteFlow } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/style.css'
   import { sameScope } from '../containment'
   import { assertKnownNodeTypes, decorateEdges, polylinesIntersect, type Point } from '../graph'
   import { app } from '../state.svelte'
+  import { settings, type CanvasGrid } from '../settings.svelte'
   import CanvasControls from './CanvasControls.svelte'
   import CanvasToolbar from './CanvasToolbar.svelte'
   import ContextMenu from './ContextMenu.svelte'
@@ -23,6 +24,22 @@
   const displayEdges = $derived(
     decorateEdges(app.nodes, app.edges, app.activeRunIds, app.logHoverNodeId, app.contextEdgeId),
   )
+
+  // Canvas colours come from style.css tokens so the light theme can remap
+  // them; xyflow takes them as CSS custom-property values, so var() works.
+  const CANVAS_COLOR = 'var(--color-canvas)'
+  const CANVAS_GRID_COLOR = 'var(--color-canvas-grid)'
+  const MINIMAP_NODE_COLOR = 'var(--color-minimap-node)'
+  const MINIMAP_MASK_COLOR = 'var(--minimap-mask)'
+  const TRANSPARENT = 'transparent'
+  const GRID_VARIANT: Record<Exclude<CanvasGrid, 'none'>, BackgroundVariant> = {
+    dots: BackgroundVariant.Dots,
+    lines: BackgroundVariant.Lines,
+    cross: BackgroundVariant.Cross,
+  }
+  // 'none' keeps the Background mounted (it paints the pane colour) and hides the pattern.
+  const gridVariant = $derived(settings.canvasGrid === 'none' ? BackgroundVariant.Dots : GRID_VARIANT[settings.canvasGrid])
+  const gridColor = $derived(settings.canvasGrid === 'none' ? TRANSPARENT : CANVAS_GRID_COLOR)
 
   function screenPoint(event: MouseEvent | TouchEvent) {
     const p = 'touches' in event ? event.touches[0] : event
@@ -111,7 +128,7 @@
     bind:nodes={() => app.nodes, (v) => app.setNodesFromCanvas(v)}
     bind:edges={() => displayEdges, (v) => app.setEdgesFromCanvas(v)}
     {nodeTypes}
-    colorMode="dark"
+    colorMode={settings.resolvedTheme}
     fitView
     deleteKey={['Backspace', 'Delete']}
     panOnDrag={!scissors}
@@ -155,15 +172,17 @@
     }}
     onmovestart={() => app.closeContextMenu()}
   >
-    <Background bgColor="#0b0b0e" patternColor="#27272a" />
+    <Background variant={gridVariant} bgColor={CANVAS_COLOR} patternColor={gridColor} />
     <CanvasControls />
-    <MiniMap
-      width={MINIMAP_WIDTH}
-      height={MINIMAP_HEIGHT}
-      bgColor="var(--color-surface)"
-      maskColor="rgba(0,0,0,0.55)"
-      nodeColor="#3f3f46"
-    />
+    {#if settings.showMinimap}
+      <MiniMap
+        width={MINIMAP_WIDTH}
+        height={MINIMAP_HEIGHT}
+        bgColor="var(--color-surface)"
+        maskColor={MINIMAP_MASK_COLOR}
+        nodeColor={MINIMAP_NODE_COLOR}
+      />
+    {/if}
     <CanvasToolbar />
     <ContextMenu />
     <FlowBridge container={containerEl} />
@@ -175,7 +194,7 @@
         points={slicePoints.map((p) => `${p.x},${p.y}`).join(' ')}
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="fill-none stroke-white stroke-2 transition-opacity duration-500 ease-out {sliceFading
+        class="fill-none stroke-zinc-100 stroke-2 transition-opacity duration-500 ease-out {sliceFading
           ? 'opacity-0'
           : 'opacity-90'}"
       />

@@ -1,5 +1,7 @@
 // App-wide keyboard handling: Escape priority chain, canvas tool
-// keys, and clipboard copy/paste.
+// keys, clipboard copy/paste, the sidebar toggle, and settings.
+import { dialogs } from './dialogs.svelte'
+import { DEFAULT_SETTINGS_SECTION } from './settingsSections'
 import { copyNodes, pasteFromClipboard, selectionForCopy } from './shareActions'
 import { app } from './state.svelte'
 
@@ -24,6 +26,14 @@ export function handleGlobalKeydown(event: KeyboardEvent) {
     }
     if (event.key === 'v' || event.key === 'V') {
       void pasteFromClipboard(app) // lands at the canvas center (app.pasteTarget)
+    }
+    if (event.key === 'b' || event.key === 'B') {
+      event.preventDefault()
+      app.toggleSidebar()
+    }
+    if (event.key === ',') {
+      event.preventDefault()
+      dialogs.settings = { section: DEFAULT_SETTINGS_SECTION }
     }
     return // never treat shortcut chords as canvas tool keys
   }

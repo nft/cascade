@@ -7,6 +7,7 @@
   import { libraryLinkState, updateCollectionRequestFromNode } from '../library'
   import { isHttpNode, type Operation } from '../model'
   import { copyNodes, pasteFromClipboard, selectionForCopy } from '../shareActions'
+  import { settings } from '../settings.svelte'
   import { app } from '../state.svelte'
   import { methodBadge } from '../ui'
   import Icon from './Icon.svelte'
@@ -146,8 +147,8 @@
     role="menu"
     tabindex="-1"
     data-testid="context-menu"
-    class="fixed top-(--cm-y) left-(--cm-x) z-50 min-w-44 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
-    style="--cm-x:{menu.screen.x}px; --cm-y:{menu.screen.y}px"
+    class="ui-scaled fixed top-(--cm-y) left-(--cm-x) z-50 min-w-44 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+    style="--cm-x:{menu.screen.x / settings.uiScale}px; --cm-y:{menu.screen.y / settings.uiScale}px"
     oncontextmenu={(e) => e.preventDefault()}
   >
     {#if paletteOpen}

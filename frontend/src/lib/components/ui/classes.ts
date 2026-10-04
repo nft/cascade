@@ -107,3 +107,20 @@ export const ICON_BUTTON_TONE: Record<IconButtonTone, string> = {
   quiet: 'text-zinc-600 hover:text-zinc-300',
   'quiet-danger': 'text-zinc-600 hover:text-rose-400',
 }
+
+// Toggle (switch). The thumb stays white in both themes, iOS-style, with a
+// shadow so it reads on the light theme's pale off-track.
+export const TOGGLE_TRACK =
+  'relative inline-flex h-4 w-7 shrink-0 items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50'
+
+export const TOGGLE_TRACK_STATE: Record<'on' | 'off', string> = {
+  on: 'border-emerald-600 bg-emerald-600',
+  off: 'border-zinc-700 bg-zinc-800',
+}
+
+export const TOGGLE_THUMB = 'absolute h-3 w-3 rounded-full bg-white shadow-sm transition-transform'
+
+export const TOGGLE_THUMB_STATE: Record<'on' | 'off', string> = {
+  on: 'translate-x-3.5',
+  off: 'translate-x-0.5',
+}
